@@ -43,8 +43,8 @@ subprojects {
             create<MavenPublication>("mavenJava") {
                 pom {
                     name.set(project.name)
-                    description.set("Jayo is a synchronous I/O library for the JVM")
-                    url.set("https://github.com/jayo-projects/jayo")
+                    description.set("Jayo HTTP is a HTTP library based on Jayo for the JVM")
+                    url.set("https://github.com/jayo-projects/jayo-http")
 
                     licenses {
                         license {
@@ -61,9 +61,9 @@ subprojects {
                     }
 
                     scm {
-                        connection.set("scm:git:https://github.com/jayo-projects/jayo")
-                        developerConnection.set("scm:git:git://github.com/jayo-projects/jayo.git")
-                        url.set("https://github.com/jayo-projects/jayo.git")
+                        connection.set("scm:git:https://github.com/jayo-projects/jayo-http")
+                        developerConnection.set("scm:git:git://github.com/jayo-projects/jayo-http.git")
+                        url.set("https://github.com/jayo-projects/jayo-http.git")
                     }
                 }
             }
