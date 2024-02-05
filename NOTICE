@@ -1,0 +1,6 @@
+Jayo HTTP modules
+Copyright (c) 2024-present, pull-vert and Jayo contributors.
+
+A lot of parts of Jayo HTTP modules are copied from, derived from, or inspired by OkHttp (https://github.com/square/okhttp)
+Copyright (C) 2019 Square, Inc.
+Licensed under the Apache License, Version 2.0 (the "License");
