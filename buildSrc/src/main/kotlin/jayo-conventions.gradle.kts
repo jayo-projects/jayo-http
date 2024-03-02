@@ -12,7 +12,7 @@ plugins {
 }
 
 val koverage = mapOf(
-    "jayo-http" to 86,
+    "jayo-http" to 94,
 )
 
 kotlin {
@@ -29,8 +29,8 @@ dependencies {
 
     testImplementation(platform("org.junit:junit-bom:${property("junitVersion")}"))
     testImplementation("org.assertj:assertj-core:${property("assertjVersion")}")
-    testImplementation("org.junit.jupiter:junit-jupiter-api")
-    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    //testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation(kotlin("test"))
 
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
@@ -66,7 +66,7 @@ tasks {
             )
         )
     }
-    
+
     withType<KotlinCompile> {
         kotlinOptions {
             languageVersion = "1.8" // switch to "2.0" with K2 compiler when stable
@@ -75,7 +75,8 @@ tasks {
             allWarningsAsErrors = true
             freeCompilerArgs += arrayOf(
                 "-Xjvm-default=all",
-                "-Xnullability-annotations=@org.jspecify.annotations:strict" // not really sure if this helps ;)
+                "-Xnullability-annotations=@org.jspecify.annotations:strict", // not really sure if this helps ;)
+                "-opt-in=kotlin.contracts.ExperimentalContracts",
             )
         }
     }
