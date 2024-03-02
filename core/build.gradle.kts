@@ -1,3 +1,4 @@
+import java.util.Base64
 import org.jetbrains.kotlin.config.KotlinCompilerVersion.VERSION as KOTLIN_VERSION
 
 println("Using Gradle version: ${gradle.gradleVersion}")
@@ -12,4 +13,32 @@ dependencies {
     api("dev.jayo:jayo:${property("jayoVersion")}")
     
     optional("org.jetbrains.kotlin:kotlin-stdlib")
+
+    testImplementation(project(":jayo-http-testing-support"))
+}
+
+fun ByteArray.toByteStringExpression(): String {
+    return "\"${Base64.getEncoder().encodeToString(this@toByteStringExpression)}\""
+}
+
+val copyJavaTemplates by tasks.registering(Copy::class) {
+    val javaTemplatesOutput = layout.buildDirectory.dir("generated/sources/javaTemplates")
+
+    from("src/main/javaTemplates")
+    into(javaTemplatesOutput)
+
+    // Tag as an input to regenerate after an update
+    inputs.file("src/test/resources/jayo/http/internal/publicsuffix/PublicSuffixDatabase.gz")
+
+    val databaseGz = project.file("src/test/resources/jayo/http/internal/publicsuffix/PublicSuffixDatabase.gz")
+    val listBytes = databaseGz.readBytes().toByteStringExpression()
+
+    expand(
+        // Build jayo.http/internal/publicsuffix/EmbeddedPublicSuffixList.kt
+        "publicSuffixListBytes" to listBytes
+    )
+}
+
+sourceSets.main {
+    java.srcDir(copyJavaTemplates.map { it.outputs })
 }
