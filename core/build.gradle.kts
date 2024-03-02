@@ -12,4 +12,6 @@ dependencies {
     api("dev.jayo:jayo:${property("jayoVersion")}")
     
     optional("org.jetbrains.kotlin:kotlin-stdlib")
+
+    testImplementation(project(":jayo-http-testing-support"))
 }
