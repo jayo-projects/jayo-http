@@ -22,6 +22,7 @@
 package jayo.http;
 
 import jayo.external.NonNegative;
+import jayo.http.internal.RealHttpsUrl;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -33,256 +34,415 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * A uniform resource locator (URL) with a scheme of either `http` or `https`. Use this class to
- * compose and decompose Internet addresses. For example, this code will compose and print a URL for
- * Google search:
- *
- * ```java
- * HttpUrl url = new HttpUrl.Builder()
- *     .scheme("https")
- *     .host("www.google.com")
- *     .addPathSegment("search")
- *     .addQueryParameter("q", "polar bears")
- *     .build();
+ * A uniform resource locator (URL) with a required scheme of `https`. Use this class to compose and decompose Internet
+ * addresses. For example, this code will compose and print a URL for Google search:
+ * <pre>
+ * {@code
+ * HttpsUrl url = HttpsUrl.create(config -> {
+ *   config.setHost("google.com");
+ *   config.addPathSegment("search");
+ *   config.addQueryParameter("q", "polar bears");
+ * });
  * System.out.println(url);
- * ```
- *
+ * }
+ * </pre>
  * which prints:
- *
- * ```
- * https://www.google.com/search?q=polar%20bears
- * ```
- *
+ * <pre>
+ * {@code
+ * https://google.com/search?q=polar%20bears
+ * }
+ * </pre>
  * As another example, this code prints the human-readable query parameters of a Twitter search:
- *
- * ```java
- * HttpUrl url = HttpUrl.parse("https://twitter.com/search?q=cute%20%23puppies&f=images");
+ * <pre>
+ * {@code
+ * HttpsUrl url = HttpsUrl.parse("https://twitter.com/search?q=cute%20%23puppies&f=images");
  * for (int i = 0, size = url.querySize(); i < size; i++) {
  *   System.out.println(url.queryParameterName(i) + ": " + url.queryParameterValue(i));
  * }
- * ```
- *
+ * }
+ * </pre>
  * which prints:
- *
- * ```
+ * <pre>
+ * {@code
  * q: cute #puppies
  * f: images
- * ```
- *
- * In addition to composing URLs from their component parts and decomposing URLs into their
- * component parts, this class implements relative URL resolution: what address you'd reach by
- * clicking a relative link on a specified page. For example:
- *
- * ```java
- * HttpUrl base = HttpUrl.parse("https://www.youtube.com/user/WatchTheDaily/videos");
- * HttpUrl link = base.resolve("../../watch?v=cbP2N1BQdYc");
+ * }
+ * </pre>
+ * In addition to composing URLs from their component parts and decomposing URLs into their component parts, this class
+ * implements relative URL resolution: what address you'd reach by clicking a relative link on a specified page.
+ * For example:
+ * <pre>
+ * {@code
+ * HttpsUrl base = HttpsUrl.parse("https://youtube.com/user/WatchTheDaily/videos");
+ * HttpsUrl link = base.resolve("../../watch?v=cbP2N1BQdYc");
  * System.out.println(link);
- * ```
- *
+ * }
+ * </pre>
  * which prints:
+ * <pre>
+ * {@code
+ * https://youtube.com/watch?v=cbP2N1BQdYc
+ * }
+ * </pre>
  *
- * ```
- * https://www.youtube.com/watch?v=cbP2N1BQdYc
- * ```
- *
- * ## What's in a URL?
- *
+ * <h2>What's in a URL?</h2>
  * A URL has several components.
  *
- * ### Scheme
+ * <h3>Scheme</h3>
+ * Sometimes referred to as <b>protocol</b>, A URL's scheme describes what mechanism should be used to retrieve the
+ * resource. Although URLs have many schemes ({@code mailto}, {@code file}, {@code ftp}), this class only supports
+ * {@code https}. Use {@linkplain URI java.net.URI} for URLs with arbitrary schemes.
  *
- * Sometimes referred to as *protocol*, A URL's scheme describes what mechanism should be used to
- * retrieve the resource. Although URLs have many schemes (`mailto`, `file`, `ftp`), this class only
- * supports `http` and `https`. Use [java.net.URI][URI] for URLs with arbitrary schemes.
+ * <h3>Username and Password</h3>
+ * Username and password are either present, or the empty string {@code ""} if absent. This class offers no mechanism to
+ * differentiate empty from absent. Neither of these components are popular in practice. Typically, HTTP applications
+ * use other mechanisms for user identification and authentication.
  *
- * ### Username and Password
+ * <h3>Host</h3>
+ * The host identifies the webserver that serves the URL's resource. It is either a hostname like {@code jayo.dev} or
+ * {@code localhost}, an IPv4 address like {@code 192.168.0.1}, or an IPv6 address like {@code ::1}.
+ * <p>
+ * Usually a webserver is reachable with multiple identifiers: its IP addresses, registered domain names, and even
+ * {@code localhost} when connecting from the server itself. Each of a web server's names is a distinct URL, and they
+ * are not interchangeable. For example, even if {@code https://square.github.io/dagger} and
+ * {@code https://google.github.io/dagger} are served by the same IP address, the two URLs identify different resources.
  *
- * Username and password are either present, or the empty string `""` if absent. This class offers
- * no mechanism to differentiate empty from absent. Neither of these components are popular in
- * practice. Typically HTTP applications use other mechanisms for user identification and
- * authentication.
+ * <h3>Port</h3>
+ * The port used to connect to the web server. By default, this is 443 for HTTPS. This class never returns -1 for the
+ * port: if no port is explicitly specified in the URL then default port is used.
  *
- * ### Host
- *
- * The host identifies the webserver that serves the URL's resource. It is either a hostname like
- * `square.com` or `localhost`, an IPv4 address like `192.168.0.1`, or an IPv6 address like `::1`.
- *
- * Usually a webserver is reachable with multiple identifiers: its IP addresses, registered
- * domain names, and even `localhost` when connecting from the server itself. Each of a web server's
- * names is a distinct URL and they are not interchangeable. For example, even if
- * `http://square.github.io/dagger` and `http://google.github.io/dagger` are served by the same IP
- * address, the two URLs identify different resources.
- *
- * ### Port
- *
- * The port used to connect to the web server. By default this is 80 for HTTP and 443 for HTTPS.
- * This class never returns -1 for the port: if no port is explicitly specified in the URL then the
- * scheme's default is used.
- *
- * ### Path
- *
+ * <h3>Path</h3>
  * The path identifies a specific resource on the host. Paths have a hierarchical structure like
- * "/square/okhttp/issues/1486" and decompose into a list of segments like `["square", "okhttp",
- * "issues", "1486"]`.
+ * "jayo-projects/jayo-http/issues/1" and decompose into a list of segments like {@code ["jayo-projects", "jayo-http",
+ * "issues", "1"]}.
+ * <p>
+ * This class offers methods to compose and decompose paths by segment. It composes each path from a list of segments by
+ * alternating between "/" and the encoded segment. For example the segments {@code ["a", "b"]} build "/a/b" and the
+ * segments {@code ["a", "b", ""]} build "/a/b/".
+ * <p>
+ * If a path's last segment is the empty string then the path ends with "/". This class always builds non-empty paths:
+ * if the path is omitted it defaults to "/". The default path's segment list is a single empty string: {@code [""]}.
  *
- * This class offers methods to compose and decompose paths by segment. It composes each path
- * from a list of segments by alternating between "/" and the encoded segment. For example the
- * segments `["a", "b"]` build "/a/b" and the segments `["a", "b", ""]` build "/a/b/".
+ * <h3>Query</h3>
+ * The query is optional: it can be null, empty, or non-empty. For many HTTP URLs the query string is subdivided into a
+ * collection of name-value parameters. This class offers methods to set the query as the single string, or as
+ * individual name-value parameters. With name-value parameters the values are optional and names may be repeated.
  *
- * If a path's last segment is the empty string then the path ends with "/". This class always
- * builds non-empty paths: if the path is omitted it defaults to "/". The default path's segment
- * list is a single empty string: `[""]`.
- *
- * ### Query
- *
- * The query is optional: it can be null, empty, or non-empty. For many HTTP URLs the query string
- * is subdivided into a collection of name-value parameters. This class offers methods to set the
- * query as the single string, or as individual name-value parameters. With name-value parameters
- * the values are optional and names may be repeated.
- *
- * ### Fragment
- *
+ * <h3>Fragment</h3>
  * The fragment is optional: it can be null, empty, or non-empty. Unlike host, port, path, and
  * query the fragment is not sent to the webserver: it's private to the client.
  *
- * ## Encoding
+ * <h2>Encoding</h2>
+ * Each component must be encoded before it is embedded in the complete URL. As we saw above, the string
+ * {@code cute #puppies} is encoded as {@code cute%20%23puppies} when used as a query parameter value.
  *
- * Each component must be encoded before it is embedded in the complete URL. As we saw above, the
- * string `cute #puppies` is encoded as `cute%20%23puppies` when used as a query parameter value.
- *
- * ### Percent encoding
- *
- * Percent encoding replaces a character (like `\ud83c\udf69`) with its UTF-8 hex bytes (like
- * `%F0%9F%8D%A9`). This approach works for whitespace characters, control characters, non-ASCII
- * characters, and characters that already have another meaning in a particular context.
- *
- * Percent encoding is used in every URL component except for the hostname. But the set of
- * characters that need to be encoded is different for each component. For example, the path
- * component must escape all of its `?` characters, otherwise it could be interpreted as the
- * start of the URL's query. But within the query and fragment components, the `?` character
- * doesn't delimit anything and doesn't need to be escaped.
- *
- * ```java
- * HttpUrl url = HttpUrl.parse("http://who-let-the-dogs.out").newBuilder()
- *     .addPathSegment("_Who?_")
- *     .query("_Who?_")
- *     .fragment("_Who?_")
- *     .build();
+ * <h3>Percent encoding</h3>
+ * Percent encoding replaces a character (like {@code \ud83c\udf69}) with its UTF-8 hex bytes (like {@code %F0%9F%8D%A9}
+ * ). This approach works for whitespace characters, control characters, non-ASCII characters, and characters that
+ * already have another meaning in a particular context.
+ * <p>
+ * Percent encoding is used in every URL component except for the hostname. But the set of characters that need to be
+ * encoded is different for each component. For example, the path component must escape all of its {@code ?} characters,
+ * otherwise it could be interpreted as the start of the URL's query. But within the query and fragment components, the
+ * {@code ?} character doesn't delimit anything and doesn't need to be escaped.
+ * <pre>
+ * {@code
+ * HttpsUrl url = HttpsUrl.parse("https://who-let-the-dogs.out").createNew(config -> {
+ *   config.addPathSegment("_Who?_");
+ *   config.setQuery("_Who?_");
+ *   config.setFragment("_Who?_");
+ * });
  * System.out.println(url);
- * ```
- *
+ * }
+ * </pre>
  * This prints:
+ * <pre>
+ * {@code
+ * https://who-let-the-dogs.out/_Who%3F_?_Who?_#_Who?_
+ * }
+ * </pre>
+ * When parsing URLs that lack percent encoding where it is required, this class will percent encode the offending
+ * characters.
  *
- * ```
- * http://who-let-the-dogs.out/_Who%3F_?_Who?_#_Who?_
- * ```
+ * <h3>IDNA Mapping and Punycode encoding</h3>
+ * Hostnames have different requirements and use a different encoding scheme. It consists of IDNA mapping and Punycode
+ * encoding.
+ * <p>
+ * In order to avoid confusion and discourage phishing attacks,
+ * <a href="https://unicode.org/reports/tr46/#ToASCII">IDNA Mapping</a> transforms names to avoid confusing characters.
+ * This includes basic case folding: transforming shouting {@code JAYO.DEV} into cool and casual {@code jayo.dev}. It
+ * also handles more exotic characters. For example, the Unicode trademark sign (™) could be confused for the letters
+ * "TM" in {@code https://ho™ail.com}. To mitigate this, the single character (™) maps to the string (tm). There is
+ * similar policy for all of the 1.1 million Unicode code points. Note that some code points such as "\ud83c\udf69" are
+ * not mapped and cannot be used in a hostname.
+ * <p>
+ * <a href="https://ietf.org/rfc/rfc3492.txt">Punycode</a> converts a Unicode string to an ASCII string to make
+ * international domain names work everywhere. For example, "σ" encodes as "xn--4xa". The encoded string is not
+ * human-readable, but can be used with classes like {@link java.net.InetAddress} to establish connections.
  *
- * When parsing URLs that lack percent encoding where it is required, this class will percent encode
- * the offending characters.
+ * <h2>Why another URL model?</h2>
+ * Java includes both {@link java.net.URL} and {@link java.net.URI}. We offer a new URL model to address problems that
+ * the others don't.
  *
- * ### IDNA Mapping and Punycode encoding
+ * <h3>Different URLs should be different</h3>
+ * Although they have different content, {@code java.net.URL} considers the following two URLs equal, and the
+ * {@linkplain Object#equals equals()} method between them returns true:
+ * <ul>
+ * <li>https://example.net/
+ * <li>https://example.com/
+ * </ul>
+ * This is because those two hosts share the same IP address. This is an old, bad design decision that makes
+ * {@code java.net.URL} unusable for many things. It shouldn't be used as a {@linkplain java.util.Map Map} key or in a
+ * {@link Set}. Doing so is both inefficient because equality may require a DNS lookup, and incorrect because unequal
+ * URLs may be equal because of how they are hosted.
  *
- * Hostnames have different requirements and use a different encoding scheme. It consists of IDNA
- * mapping and Punycode encoding.
- *
- * In order to avoid confusion and discourage phishing attacks, [IDNA Mapping][idna] transforms
- * names to avoid confusing characters. This includes basic case folding: transforming shouting
- * `SQUARE.COM` into cool and casual `square.com`. It also handles more exotic characters. For
- * example, the Unicode trademark sign (™) could be confused for the letters "TM" in
- * `http://ho™ail.com`. To mitigate this, the single character (™) maps to the string (tm). There
- * is similar policy for all of the 1.1 million Unicode code points. Note that some code points such
- * as "\ud83c\udf69" are not mapped and cannot be used in a hostname.
- *
- * [Punycode](http://ietf.org/rfc/rfc3492.txt) converts a Unicode string to an ASCII string to make
- * international domain names work everywhere. For example, "σ" encodes as "xn--4xa". The encoded
- * string is not human readable, but can be used with classes like [InetAddress] to establish
- * connections.
- *
- * ## Why another URL model?
- *
- * Java includes both [java.net.URL][URL] and [java.net.URI][URI]. We offer a new URL
- * model to address problems that the others don't.
- *
- * ### Different URLs should be different
- *
- * Although they have different content, `java.net.URL` considers the following two URLs
- * equal, and the [equals()][Object.equals] method between them returns true:
- *
- *  * https://example.net/
- *
- *  * https://example.com/
- *
- * This is because those two hosts share the same IP address. This is an old, bad design decision
- * that makes `java.net.URL` unusable for many things. It shouldn't be used as a [Map] key or in a
- * [Set]. Doing so is both inefficient because equality may require a DNS lookup, and incorrect
- * because unequal URLs may be equal because of how they are hosted.
- *
- * ### Equal URLs should be equal
- *
- * These two URLs are semantically identical, but `java.net.URI` disagrees:
- *
- *  * http://host:80/
- *
- *  * http://host
- *
- * Both the unnecessary port specification (`:80`) and the absent trailing slash (`/`) cause URI to
- * bucket the two URLs separately. This harms URI's usefulness in collections. Any application that
- * stores information-per-URL will need to either canonicalize manually, or suffer unnecessary
- * redundancy for such URLs.
- *
- * Because they don't attempt canonical form, these classes are surprisingly difficult to use
- * securely. Suppose you're building a webservice that checks that incoming paths are prefixed
- * "/static/images/" before serving the corresponding assets from the filesystem.
- *
- * ```java
- * String attack = "http://example.com/static/images/../../../../../etc/passwd";
+ * <h3>Equal URLs should be equal</h3>
+ * These two URLs are semantically identical, but {@code java.net.URI} disagrees:
+ * <ul>
+ * <li> https://host:443/
+ * <li> https://host
+ * </ul>
+ * Both the unnecessary port specification (`:443`) and the absent trailing slash (`/`) cause URI to bucket the two URLs
+ * separately. This harms URI's usefulness in collections. Any application that stores information-per-URL will need to
+ * either canonicalize manually, or suffer unnecessary redundancy for such URLs.
+ * <p>
+ * Because they don't attempt canonical form, these classes are surprisingly difficult to use securely. Suppose you're
+ * building a webservice that checks that incoming paths are prefixed "/static/images/" before serving the corresponding
+ * assets from the filesystem.
+ * <pre>
+ * {@code
+ * String attack = "https://example.com/static/images/../../../../../etc/passwd";
  * System.out.println(new URL(attack).getPath());
  * System.out.println(new URI(attack).getPath());
- * System.out.println(HttpUrl.parse(attack).encodedPath());
- * ```
- *
- * By canonicalizing the input paths, they are complicit in directory traversal attacks. Code that
- * checks only the path prefix may suffer!
- *
- * ```
+ * System.out.println(HttpsUrl.parse(attack).encodedPath());
+ * }
+ * </pre>
+ * By canonicalizing the input paths, they are complicit in directory traversal attacks. Code that checks only the path
+ * prefix may suffer!
+ * This prints:
+ * <pre>
+ * {@code
  * /static/images/../../../../../etc/passwd
  * /static/images/../../../../../etc/passwd
  * /etc/passwd
- * ```
+ * }
+ * </pre>
  *
- * ### If it works on the web, it should work in your application
+ * <h3>If it works on the web, it should work in your application</h3>
+ * The {@code java.net.URI} class is strict around what URLs accepts. It rejects URLs like
+ * {@code https://example.com/abc|def} because the {@code |} character is unsupported. This class is more forgiving: it
+ * will automatically percent-encode the {@code |} yielding {@code https://example.com/abc%7Cdef}.
+ * This kind behavior is consistent with web browsers. {@code HttpsUrl} prefers consistency with major web browsers over
+ * consistency with obsolete specifications.
  *
- * The `java.net.URI` class is strict around what URLs it accepts. It rejects URLs like
- * `http://example.com/abc|def` because the `|` character is unsupported. This class is more
- * forgiving: it will automatically percent-encode the `|'` yielding `http://example.com/abc%7Cdef`.
- * This kind behavior is consistent with web browsers. `HttpUrl` prefers consistency with major web
- * browsers over consistency with obsolete specifications.
- *
- * ### Paths and Queries should decompose
- *
+ * <h3>Paths and Queries should decompose</h3>
  * Neither of the built-in URL models offer direct access to path segments or query parameters.
- * Manually using `StringBuilder` to assemble these components is cumbersome: do '+' characters get
- * silently replaced with spaces? If a query parameter contains a '&amp;', does that get escaped?
- * By offering methods to read and write individual query parameters directly, application
- * developers are saved from the hassles of encoding and decoding.
+ * <p>
+ * Manually using {@code StringBuilder} to assemble these components is cumbersome:
+ * <ul>
+ * <li>do '+' characters get silently replaced with spaces?
+ * <li>If a query parameter contains a '&amp;', does that get escaped?
+ * </ul>
+ * By offering methods to read and write individual query parameters directly, application developers are saved from the
+ * hassles of encoding and decoding.
  *
- * ### Plus a modern API
- *
- * The URL (JDK1.0) and URI (Java 1.4) classes predate builders and instead use telescoping
- * constructors. For example, there's no API to compose a URI with a custom port without also
- * providing a query and fragment.
- *
- * Instances of [HttpUrl] are well-formed and always have a scheme, host, and path. With
- * `java.net.URL` it's possible to create an awkward URL like `http:/` with scheme and path but no
+ * <h3>Plus a modern API</h3>
+ * The URL (JDK1.0) and URI (Java 1.4) classes predate builders and instead use telescoping constructors. For example,
+ * there's no API to compose a URI with a custom port without also providing a query and fragment.
+ * <p>
+ * Instances of {@link HttpsUrl} are well-formed and always have a 'https://' scheme, a host, and a path. With
+ * {@code java.net.URL} it's possible to create an awkward URL like {@code https:/} with scheme and path but no
  * hostname. Building APIs that consume such malformed values is difficult!
- *
- * This class has a modern API. It avoids punitive checked exceptions: [toHttpUrl] throws
- * [IllegalArgumentException] on invalid input or [toHttpUrlOrNull] returns null if the input is an
+ * <p>
+ * This class has a modern API. It avoids punitive checked exceptions: {@link HttpsUrl#get(String)} throws
+ * {@link IllegalArgumentException} on invalid input. {@link HttpsUrl#parse(String)} returns null if the input is an
  * invalid URL. You can even be explicit about whether each component has been encoded already.
- *
- * [idna]: http://www.unicode.org/reports/tr46/#ToASCII
  */
 public interface HttpsUrl {
+    /**
+     * @return the decoded username, or an empty string if none is present.
+     *
+     * <table>
+     *     <tr>
+     *         <th>URL</th>
+     *         <th>{@code getUsername()}</th>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/}</td>
+     *         <td>{@code ""}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://username@host/}</td>
+     *         <td>{@code "username"}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://username:password@host/}</td>
+     *         <td>{@code "username"}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://a%20b:c%20d@host/}</td>
+     *         <td>{@code "a b"}</td>
+     *     </tr>
+     * </table>
+     */
+    @NonNull String getUsername();
+
+    /**
+     * @return the decoded password, or an empty string if none is present.
+     *
+     * <table>
+     *     <tr>
+     *         <th>URL</th>
+     *         <th>{@code getPassword()}</th>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/}</td>
+     *         <td>{@code ""}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://username@host/}</td>
+     *         <td>{@code ""}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://username:password@host/}</td>
+     *         <td>{@code "password"}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://a%20b:c%20d@host/}</td>
+     *         <td>{@code "c d"}</td>
+     *     </tr>
+     * </table>
+     */
+    @NonNull String getPassword();
+
+    /**
+     * @return the host address suitable for use with {@link java.net.InetAddress#getAllByName}. May be:
+     * <ul>
+     *     <li>A regular host name, like {@code android.com}.</li>
+     *     <li>An IPv4 address, like {@code 127.0.0.1}.</li>
+     *     <li>An IPv6 address, like {@code ::1}. Note that there are no square braces.</li>
+     *     <li>An encoded IDN, like {@code xn--n3h.net}.</li>
+     * </ul>
+     *
+     * <table>
+     *     <tr>
+     *         <th>URL</th>
+     *         <th>{@code getHost()}</th>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://android.com/}</td>
+     *         <td>{@code "android.com"}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://127.0.0.1/}</td>
+     *         <td>{@code "127.0.0.1"}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://[::1]/}</td>
+     *         <td>{@code "::1"}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://xn--n3h.net/}</td>
+     *         <td>{@code "xn--n3h.net"}</td>
+     *     </tr>
+     * </table>
+     */
+    @NonNull String getHost();
+
+    /**
+     * @return the explicitly-specified port if one was provided, or the default port 443 for HTTPS.
+     * For example, this returns 8443 for {@code https://jayo.dev:8443/} and 443 for {@code https://jayo.dev/}.
+     * The result is in the {@code [1..65535]} range.
+     *
+     * <table>
+     *     <tr>
+     *         <th>URL</th>
+     *         <th>{@code getPort()}</th>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/}</td>
+     *         <td>{@code 443}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host:8000/}</td>
+     *         <td>{@code 8000}</td>
+     *     </tr>
+     * </table>
+     */
+    int getPort();
+
+    /**
+     * @return a list of path segments like {@code ["a", "b", "c"]} for the URL {@code https://host/a/b/c}. This list is
+     * never empty though it may contain a single empty string.
+     *
+     * <table>
+     *     <tr>
+     *         <th>URL</th>
+     *         <th>{@code getPathSegments()}</th>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/}</td>
+     *         <td>{@code [""]}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/a/b/c}</td>
+     *         <td>{@code ["a", "b", "c"]}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/a/b%20c/d}</td>
+     *         <td>{@code ["a", "b c", "d"]}</td>
+     *     </tr>
+     * </table>
+     */
+    @NonNull List<@NonNull String> getPathSegments();
+
+    /**
+     * @return this URL's fragment, like {@code "abc"} for {@code https://host/#abc}. This is null if the URL has no
+     * fragment.
+     *
+     * <table>
+     *     <tr>
+     *         <th>URL</th>
+     *         <th>{@code getFragment()}</th>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/}</td>
+     *         <td>{@code null}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/#}</td>
+     *         <td>{@code ""}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/#abc}</td>
+     *         <td>{@code "abc"}</td>
+     *     </tr>
+     *     <tr>
+     *         <td>{@code https://host/#abc|def}</td>
+     *         <td>{@code "abc|def"}</td>
+     *     </tr>
+     * </table>
+     */
+    @Nullable String getFragment();
+
+    /**
+     * @return this URL as a {@linkplain URL java.net.URL}
+     */
+    @NonNull URL toUrl();
+
+    /**
+     * @return this URL as a {@linkplain URI java.net.URI}. Because {@code URI} is stricter than this class, the
+     * returned URI may be semantically different from this URL:
+     * <ul>
+     *     <li>Characters forbidden by URI like {@code [} and {@code |} will be escaped.</li>
+     *     <li>Invalid percent-encoded sequences like {@code %xx} will be encoded like {@code %25xx}.</li>
+     *     <li>Whitespace and control characters in the fragment will be stripped.</li>
+     * </ul>
+     * These differences may have a significant consequence when the URI is interpreted by a web server.
+     * For this reason the {@linkplain URI URI class} and this method <b>should be avoided</b>.
+     */
+    @NonNull URI toUri();
+
     /**
      * @return the username, or an empty string if none is set.
      *
@@ -421,189 +581,6 @@ public interface HttpsUrl {
      * </table>
      */
     @Nullable String getEncodedQuery();
-
-    /**
-     * @return the decoded username, or an empty string if none is present.
-     *
-     * <table>
-     *     <tr>
-     *         <th>URL</th>
-     *         <th>{@code getUsername()}</th>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/}</td>
-     *         <td>{@code ""}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://username@host/}</td>
-     *         <td>{@code "username"}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://username:password@host/}</td>
-     *         <td>{@code "username"}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://a%20b:c%20d@host/}</td>
-     *         <td>{@code "a b"}</td>
-     *     </tr>
-     * </table>
-     */
-    @NonNull String getUsername();
-
-    /**
-     * @return the decoded password, or an empty string if none is present.
-     *
-     * <table>
-     *     <tr>
-     *         <th>URL</th>
-     *         <th>{@code getPassword()}</th>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/}</td>
-     *         <td>{@code ""}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://username@host/}</td>
-     *         <td>{@code ""}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://username:password@host/}</td>
-     *         <td>{@code "password"}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://a%20b:c%20d@host/}</td>
-     *         <td>{@code "c d"}</td>
-     *     </tr>
-     * </table>
-     */
-    @NonNull String getPassword();
-
-    /**
-     * @return the host address suitable for use with {@link java.net.InetAddress#getAllByName}. May be:
-     * <ul>
-     *     <li>A regular host name, like {@code android.com}.</li>
-     *     <li>An IPv4 address, like {@code 127.0.0.1}.</li>
-     *     <li>An IPv6 address, like {@code ::1}. Note that there are no square braces.</li>
-     *     <li>An encoded IDN, like {@code xn--n3h.net}.</li>
-     * </ul>
-     * <table>
-     *     <tr>
-     *         <th>URL</th>
-     *         <th>{@code getHost()}</th>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://android.com/}</td>
-     *         <td>{@code "android.com"}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://127.0.0.1/}</td>
-     *         <td>{@code "127.0.0.1"}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://[::1]/}</td>
-     *         <td>{@code "::1"}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://xn--n3h.net/}</td>
-     *         <td>{@code "xn--n3h.net"}</td>
-     *     </tr>
-     * </table>
-     */
-    @NonNull String getHost();
-
-    /**
-     * @return the explicitly-specified port if one was provided, or the default port 443 for HTTPS.
-     * For example, this returns 8443 for {@code https://jayo.dev:8443/} and 443 for {@code https://jayo.dev/}.
-     * The result is in the {@code [1..65535]} range.
-     *
-     * <table>
-     *     <tr>
-     *         <th>URL</th>
-     *         <th>{@code getPort()}</th>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/}</td>
-     *         <td>{@code 443}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host:8000/}</td>
-     *         <td>{@code 8000}</td>
-     *     </tr>
-     * </table>
-     */
-    int getPort();
-
-    /**
-     * @return a list of path segments like {@code ["a", "b", "c"]} for the URL {@code https://host/a/b/c}. This list is
-     * never empty though it may contain a single empty string.
-     *
-     * <table>
-     *     <tr>
-     *         <th>URL</th>
-     *         <th>{@code getPathSegments()}</th>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/}</td>
-     *         <td>{@code [""]}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/a/b/c}</td>
-     *         <td>{@code ["a", "b", "c"]}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/a/b%20c/d}</td>
-     *         <td>{@code ["a", "b c", "d"]}</td>
-     *     </tr>
-     * </table>
-     */
-    @NonNull List<@NonNull String> getPathSegments();
-
-    /**
-     * @return this URL's fragment, like {@code "abc"} for {@code https://host/#abc}. This is null if the URL has no
-     * fragment.
-     *
-     * <table>
-     *     <tr>
-     *         <th>URL</th>
-     *         <th>{@code getFragment()}</th>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/}</td>
-     *         <td>{@code null}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/#}</td>
-     *         <td>{@code ""}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/#abc}</td>
-     *         <td>{@code "abc"}</td>
-     *     </tr>
-     *     <tr>
-     *         <td>{@code https://host/#abc|def}</td>
-     *         <td>{@code "abc|def"}</td>
-     *     </tr>
-     * </table>
-     */
-    @Nullable String getFragment();
-
-    /**
-     * @return this URL as a {@linkplain URL java.net.URL}
-     */
-    @NonNull URL toUrl();
-
-    /**
-     * @return this URL as a {@linkplain URI java.net.URI}. Because {@code URI} is stricter than this class, the
-     * returned URI may be semantically different from this URL:
-     * <ul>
-     *     <li>Characters forbidden by URI like {@code [} and {@code |} will be escaped.</li>
-     *     <li>Invalid percent-encoded sequences like {@code %xx} will be encoded like {@code %25xx}.</li>
-     *     <li>Whitespace and control characters in the fragment will be stripped.</li>
-     * </ul>
-     * These differences may have a significant consequence when the URI is interpreted by a web server.
-     * For this reason the {@linkplain URI URI class} and this method <b>should be avoided</b>.
-     */
-    @NonNull URI toUri();
 
     /**
      * @return the number of segments in this URL's path. This is also the number of slashes in this URL's path, like 3
@@ -967,11 +944,16 @@ public interface HttpsUrl {
     @Nullable String topPrivateDomain();
 
     /**
+     * @return a new {@link HttpsUrl} built with this {@code configurer} and based on this URL.
+     */
+    @NonNull HttpsUrl createNew(final @NonNull Consumer<Config> configurer);
+
+    /**
      * @return a new {@link HttpsUrl} built with this {@code configurer}.
      */
     static @NonNull HttpsUrl create(final @NonNull Consumer<Config> configurer) {
         Objects.requireNonNull(configurer);
-        final var builder = new RealHttpsUrl.Builder();
+        final var builder = new RealHttpsUrl().Builder();
         configurer.accept(builder);
         return builder.build();
     }
