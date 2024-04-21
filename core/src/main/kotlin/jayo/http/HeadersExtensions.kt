@@ -19,17 +19,9 @@
  * limitations under the License.
  */
 
-package jayo.http;
+@file:JvmName("-Headers") // A leading '-' hides this class from Java.
 
-import org.jspecify.annotations.NonNull;
+package jayo.http
 
-public interface RawClientRequest {
-    @NonNull
-    HttpUrl getUrl();
-
-    @NonNull
-    String getMethod();
-
-    @NonNull
-    Headers getHeaders();
-}
+/** @return headers for the header names and values in the [Map]. */
+public fun Map<String, String>.toHeaders(): Headers = Headers.of(this)
