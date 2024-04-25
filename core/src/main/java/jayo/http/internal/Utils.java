@@ -23,8 +23,12 @@ package jayo.http.internal;
 
 import jayo.external.NonNegative;
 import jayo.http.Headers;
+import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.Objects;
 
@@ -41,8 +45,8 @@ public final class Utils {
     static final @NonNull Headers EMPTY_HEADERS = Headers.of();
 
     /**
-     * @return the index of the first character in this string that contains a character in
-     * [delimiters]. Returns endIndex if there is no such character.
+     * @return the index of the first character in this string that contains a character in {@code delimiters}.
+     * Returns endIndex if there is no such character.
      */
     static @NonNegative int delimiterOffset(
             final @NonNull String source,
@@ -94,7 +98,7 @@ public final class Utils {
     }
 
     /**
-     * Increments [startIndex] until this string is not ASCII whitespace. Stops at [endIndex].
+     * Increments {@code startIndex} until this string is not ASCII whitespace. Stops at {@code endIndex}.
      */
     static @NonNegative int indexOfFirstNonAsciiWhitespace(
             final @NonNull String string,
@@ -119,7 +123,8 @@ public final class Utils {
     }
 
     /**
-     * Decrements [endIndex] until `input[endIndex - 1]` is not ASCII whitespace. Stops at [startIndex].
+     * Decrements {@code endIndex} until {@code string.chatAt(endIndex - 1)} is not ASCII whitespace. Stops at
+     * {@code startIndex}.
      */
     static @NonNegative int indexOfLastNonAsciiWhitespace(
             final @NonNull String string,
@@ -146,5 +151,22 @@ public final class Utils {
                 name.equalsIgnoreCase("Cookie") ||
                 name.equalsIgnoreCase("Proxy-Authorization") ||
                 name.equalsIgnoreCase("Set-Cookie");
+    }
+
+    record CharsetMediaType(@NonNull Charset charset, @Nullable MediaType contentType) {
+    }
+
+    static @NonNull CharsetMediaType chooseCharset(final @Nullable MediaType contentType) {
+        var charset = StandardCharsets.UTF_8;
+        var finalContentType = contentType;
+        if (contentType != null) {
+            final var resolvedCharset = contentType.charset();
+            if (resolvedCharset == null) {
+                finalContentType = MediaType.parse(contentType + "; charset=utf-8");
+            } else {
+                charset = resolvedCharset;
+            }
+        }
+        return new CharsetMediaType(charset, finalContentType);
     }
 }

@@ -22,8 +22,15 @@
 package jayo.http;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
-public interface RawClientRequest {
+import java.util.List;
+
+/**
+ * An HTTP client request. Instances of this class are immutable if their {@linkplain #getBody() body} is null or itself
+ * immutable.
+ */
+public interface ClientRequest {
     @NonNull
     HttpUrl getUrl();
 
@@ -32,4 +39,32 @@ public interface RawClientRequest {
 
     @NonNull
     Headers getHeaders();
+
+    @Nullable
+    ClientRequestBody getBody();
+
+    @Nullable
+    HttpUrl getCacheUrlOverride();
+
+    boolean isHttps();
+
+    @Nullable
+    String header(final @NonNull String name);
+
+    @NonNull
+    List<String> headers(final @NonNull String name);
+
+    /**
+     * @return the tag attached with {@code type} as a key, or null if no tag is attached with that key.
+     */
+    <T> @Nullable T tag(final @NonNull Class<? extends T> type);
+
+    /**
+     * @return a builder based on this URL.
+     */
+    @NonNull Builder newBuilder();
+
+    interface Builder {
+
+    }
 }
