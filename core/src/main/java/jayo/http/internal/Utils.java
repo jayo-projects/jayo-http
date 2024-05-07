@@ -92,6 +92,21 @@ public final class Utils {
         return -1;
     }
 
+    /**
+     * @return the index of the next non-whitespace character in this. Result is undefined if input
+     * contains newline characters.
+     */
+    static @NonNegative int indexOfNonWhitespace(final @NonNull String string, final @NonNegative int startIndex) {
+        Objects.requireNonNull(string);
+        for (var i = startIndex; i < string.length(); i++) {
+            final var c = string.charAt(i);
+            if (c != ' ' && c != '\t') {
+                return i;
+            }
+        }
+        return string.length();
+    }
+
     static @NonNegative int indexOfFirstNonAsciiWhitespace(final @NonNull String string) {
         Objects.requireNonNull(string);
         return indexOfFirstNonAsciiWhitespace(string, 0, string.length());
@@ -168,5 +183,26 @@ public final class Utils {
             }
         }
         return new CharsetMediaType(charset, finalContentType);
+    }
+
+    /**
+     * @return this as a non-negative integer, or {@code 0} if it is negative, or {@code Integer.MAX_VALUE} if it is too
+     * large, or {@code defaultValue} if it cannot be parsed.
+     */
+    static @NonNegative int toNonNegativeInt(final @Nullable String string, final @NonNegative int defaultValue) {
+        if (string == null) {
+            return defaultValue;
+        }
+        try {
+            final var value = Long.parseLong(string);
+            if (value > Integer.MAX_VALUE) {
+                return Integer.MAX_VALUE;
+            } else if (value < 0) {
+                return 0;
+            }
+            return (int) value;
+        } catch (NumberFormatException _unused) {
+            return defaultValue;
+        }
     }
 }
