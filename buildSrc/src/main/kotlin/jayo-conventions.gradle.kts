@@ -12,7 +12,7 @@ plugins {
 }
 
 val koverage = mapOf(
-    "jayo-http" to 90,
+    "jayo-http" to 92,
 )
 
 kotlin {

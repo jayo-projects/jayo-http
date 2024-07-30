@@ -205,4 +205,10 @@ public final class Utils {
             return defaultValue;
         }
     }
+
+    static boolean startsWithIgnoreCase(final @NonNull String string, final @NonNull String prefix) {
+        Objects.requireNonNull(string);
+        Objects.requireNonNull(prefix);
+        return string.regionMatches(true, 0, prefix, 0, prefix.length());
+    }
 }
