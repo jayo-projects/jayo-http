@@ -28,5 +28,5 @@ fun String(vararg codePoints: Int): String {
     for (codePoint in codePoints) {
         buffer.writeUtf8CodePoint(codePoint)
     }
-    return buffer.readUtf8()
+    return buffer.readUtf8String()
 }

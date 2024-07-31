@@ -21,7 +21,7 @@
 
 package jayo.http.internal.idn;
 
-import jayo.Sink;
+import jayo.Writer;
 import jayo.external.NonNegative;
 import org.jspecify.annotations.NonNull;
 
@@ -126,7 +126,7 @@ public final class IdnaMappingTable {
     /**
      * @return true if the {@code codePoint} was applied successfully. Returns false if it was disallowed.
      */
-    public boolean map(final int codePoint, final @NonNull Sink sink) {
+    public boolean map(final int codePoint, final @NonNull Writer writer) {
         final var sectionsIndex = findSectionsIndex(codePoint);
 
         final var rangesPosition = read14BitInt(sections, sectionsIndex + 2);
@@ -143,56 +143,56 @@ public final class IdnaMappingTable {
         if (b1 <= 63) {
             // Length of the UTF-16 sequence that this range maps to. The offset is b2b3.
             final var beginIndex = read14BitInt(ranges, rangesIndex + 2);
-            sink.writeUtf8(mappings, beginIndex, beginIndex + b1);
+            writer.writeUtf8(mappings, beginIndex, beginIndex + b1);
         } else if (b1 <= 79) {
             // Mapped inline as codePoint delta to subtract
             final var b2 = (int) ranges.charAt(rangesIndex + 2);
             final var b3 = (int) ranges.charAt(rangesIndex + 3);
 
             final var codepointDelta = ((b1 & 0xF) << 14) | (b2 << 7) | b3;
-            sink.writeUtf8CodePoint(codePoint - codepointDelta);
+            writer.writeUtf8CodePoint(codePoint - codepointDelta);
         } else if (b1 <= 95) {
             // Mapped inline as codePoint delta to add
             final var b2 = (int) ranges.charAt(rangesIndex + 2);
             final var b3 = (int) ranges.charAt(rangesIndex + 3);
 
             final var codepointDelta = ((b1 & 0xF) << 14) | (b2 << 7) | b3;
-            sink.writeUtf8CodePoint(codePoint + codepointDelta);
+            writer.writeUtf8CodePoint(codePoint + codepointDelta);
         } else {
             switch (b1) {
                 case 119 -> {
                     // Ignored.
                 }
                 case 120 -> // Valid.
-                        sink.writeUtf8CodePoint(codePoint);
+                        writer.writeUtf8CodePoint(codePoint);
                 case 121 -> {
                     // Disallowed.
-                    sink.writeUtf8CodePoint(codePoint);
+                    writer.writeUtf8CodePoint(codePoint);
                     return false;
                 }
                 case 122 -> // Mapped inline to the sequence: [b2].
-                        sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2)));
+                        writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2)));
                 case 123 -> // Mapped inline to the sequence: [b2a].
-                        sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2) | 0x80));
+                        writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2) | 0x80));
                 case 124 -> {
                     // Mapped inline to the sequence: [b2, b3].
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2)));
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3)));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2)));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3)));
                 }
                 case 125 -> {
                     // Mapped inline to the sequence: [b2a, b3].
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2) | 0x80));
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3)));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2) | 0x80));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3)));
                 }
                 case 126 -> {
                     // Mapped inline to the sequence: [b2, b3a].
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2)));
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3) | 0x80));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2)));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3) | 0x80));
                 }
                 case 127 -> {
                     // Mapped inline to the sequence: [b2a, b3a].
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2) | 0x80));
-                    sink.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3) | 0x80));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 2) | 0x80));
+                    writer.writeByte((byte) ((int) ranges.charAt(rangesIndex + 3) | 0x80));
                 }
                 default -> throw new IllegalStateException("unexpected rangesIndex for " + codePoint);
             }
