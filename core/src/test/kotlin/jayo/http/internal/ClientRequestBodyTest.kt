@@ -19,7 +19,7 @@ import jayo.Buffer
 import jayo.buffered
 import jayo.http.asRequestBody
 import jayo.http.toMediaType
-import jayo.sink
+import jayo.writer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -54,7 +54,7 @@ class ClientRequestBodyTest {
 
             val buffer = Buffer()
             requestBody.writeTo(buffer)
-            assertThat(buffer.readUtf8()).isEqualTo("Hello")
+            assertThat(buffer.readUtf8String()).isEqualTo("Hello")
         }
     }
 
@@ -82,9 +82,9 @@ class ClientRequestBodyTest {
         content: String? = null,
         fn: (Path) -> T,
     ): T {
-        filePath.sink().buffered().use { sink ->
+        filePath.writer().buffered().use { writer ->
             if (content != null) {
-                sink.writeUtf8(content)
+                writer.writeUtf8(content)
             }
         }
 

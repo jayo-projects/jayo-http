@@ -22,7 +22,7 @@
 package jayo.http;
 
 import jayo.ByteString;
-import jayo.Sink;
+import jayo.Writer;
 import jayo.external.NonNegative;
 import jayo.http.internal.StandardClientRequestBodies;
 import org.jspecify.annotations.NonNull;
@@ -150,7 +150,7 @@ public abstract class ClientRequestBody {
     public abstract @Nullable MediaType contentType();
 
     /**
-     * @return the number of bytes that will be written to sink in a call to {@link #writeTo(Sink)}, or -1 if that count
+     * @return the number of bytes that will be written to writer in a call to {@link #writeTo(Writer)}, or -1 if that count
      * is unknown.
      */
     public long contentByteSize() {
@@ -158,9 +158,9 @@ public abstract class ClientRequestBody {
     }
 
     /**
-     * Writes the content of this request to {@code sink}.
+     * Writes the content of this request to {@code writer}.
      */
-    public abstract void writeTo(final @NonNull Sink sink);
+    public abstract void writeTo(final @NonNull Writer writer);
 
     /**
      * A duplex request body is special in how it is <b>transmitted</b> on the network and in the <b>API contract</b>
@@ -180,10 +180,10 @@ public abstract class ClientRequestBody {
      * with HTTP/2. Calls to HTTP/1 servers will fail before the HTTP request is transmitted. If you cannot ensure that
      * your client and server both support HTTP/2, do not use this feature.
      * <h3>Duplex APIs</h3>
-     * With regular request bodies it is not legal to write bytes to the sink passed to {@link #writeTo(Sink)} after
+     * With regular request bodies it is not legal to write bytes to the writer passed to {@link #writeTo(Writer)} after
      * that method returns. For duplex requests bodies that condition is lifted. Such writes occur on an
      * application-provided thread and may occur concurrently with reads of the {@link ClientResponseBody}. For duplex
-     * request bodies, {@link #writeTo(Sink)} should return quickly, possibly by handing off the provided request body
+     * request bodies, {@link #writeTo(Writer)} should return quickly, possibly by handing off the provided request body
      * to another thread to perform writing.
      */
     public boolean isDuplex() {

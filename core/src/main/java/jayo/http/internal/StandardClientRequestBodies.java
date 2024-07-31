@@ -23,7 +23,7 @@ package jayo.http.internal;
 
 import jayo.ByteString;
 import jayo.Jayo;
-import jayo.Sink;
+import jayo.Writer;
 import jayo.external.NonNegative;
 import jayo.http.ClientRequestBody;
 import jayo.http.MediaType;
@@ -67,8 +67,8 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Sink sink) {
-                sink.write(byteString);
+            public void writeTo(final @NonNull Writer writer) {
+                writer.write(byteString);
             }
         };
     }
@@ -91,8 +91,8 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Sink sink) {
-                sink.write(bytes, offset, byteCount);
+            public void writeTo(final @NonNull Writer writer) {
+                writer.write(bytes, offset, byteCount);
             }
         };
     }
@@ -116,9 +116,9 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Sink sink) {
-                try (final var source = Jayo.source(path)) {
-                    sink.transferFrom(source);
+            public void writeTo(final @NonNull Writer writer) {
+                try (final var reader = Jayo.reader(path)) {
+                    writer.transferFrom(reader);
                 }
             }
         };
@@ -139,9 +139,9 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Sink sink) {
-                try (final var source = Jayo.source(file)) {
-                    sink.transferFrom(source);
+            public void writeTo(final @NonNull Writer writer) {
+                try (final var reader = Jayo.reader(file)) {
+                    writer.transferFrom(reader);
                 }
             }
         };

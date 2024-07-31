@@ -90,7 +90,7 @@ public final class HostnameUtils {
                 j += 2;
             }
         }
-        return result.readUtf8();
+        return result.readUtf8String();
     }
 
     /**
@@ -141,7 +141,7 @@ public final class HostnameUtils {
                 .writeDecimalLong((address[2] & 0xff))
                 .writeByte((byte) ((int) '.'))
                 .writeDecimalLong((address[3] & 0xff))
-                .readUtf8();
+                .readUtf8String();
     }
 
     /**
@@ -200,11 +200,11 @@ public final class HostnameUtils {
         }
 
         // 2. Normalize, from bufferB to bufferA.
-        final var normalized = Normalizer.normalize(bufferB.readUtf8(), NFC);
+        final var normalized = Normalizer.normalize(bufferB.readUtf8String(), NFC);
         bufferA.writeUtf8(normalized);
 
         // 3. For each label, convert/validate Punycode.
-        final var decoded = Punycode.decode(bufferA.readUtf8());
+        final var decoded = Punycode.decode(bufferA.readUtf8String());
         if (decoded == null) {
             return null;
         }
