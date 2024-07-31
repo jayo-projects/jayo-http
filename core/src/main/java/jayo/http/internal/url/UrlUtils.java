@@ -109,7 +109,7 @@ public final class UrlUtils {
                         unicodeAllowed,
                         charset
                 );
-                return out.readUtf8();
+                return out.readUtf8String();
             }
             i += Character.charCount(codePoint);
         }
@@ -258,7 +258,7 @@ public final class UrlUtils {
                 final var out = Buffer.create();
                 out.writeUtf8(encoded, pos, i);
                 writePercentDecoded(out, encoded, i, limit, plusIsSpace);
-                return out.readUtf8();
+                return out.readUtf8String();
             }
         }
 

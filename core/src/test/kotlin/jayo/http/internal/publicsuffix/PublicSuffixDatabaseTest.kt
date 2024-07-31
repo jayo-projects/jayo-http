@@ -23,7 +23,7 @@ package jayo.http.internal.publicsuffix
 
 import jayo.*
 import jayo.http.internal.HostnameUtils
-import jayo.internal.GzipRawSource
+import jayo.internal.GzipRawReader
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -115,8 +115,8 @@ class PublicSuffixDatabaseTest {
     @Test
     fun allPublicSuffixes() {
         val buffer = Buffer()
-        PublicSuffixDatabase.PUBLIC_SUFFIX_RESOURCE.source().use { resource ->
-            GzipRawSource(resource).buffered().use { source ->
+        PublicSuffixDatabase.PUBLIC_SUFFIX_RESOURCE.reader().use { resource ->
+            GzipRawReader(resource).buffered().use { source ->
                 val length = source.readInt()
                 buffer.write(source, length.toLong())
             }
@@ -136,7 +136,7 @@ class PublicSuffixDatabaseTest {
     @Test
     fun publicSuffixExceptions() {
         val buffer = Buffer()
-        PublicSuffixDatabase.PUBLIC_SUFFIX_RESOURCE.source().gzip().buffered().use { source ->
+        PublicSuffixDatabase.PUBLIC_SUFFIX_RESOURCE.reader().gzip().buffered().use { source ->
             var length = source.readInt()
             source.skip(length.toLong())
             length = source.readInt()

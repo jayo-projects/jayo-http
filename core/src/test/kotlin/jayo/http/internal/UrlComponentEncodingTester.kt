@@ -23,7 +23,7 @@ package jayo.http.internal
 
 import jayo.Buffer
 import jayo.ByteString
-import jayo.encodeToByteString
+import jayo.encodeToUtf8
 import jayo.http.HttpUrl
 import jayo.http.internal.idn.Punycode
 import jayo.http.testing.String
@@ -191,13 +191,13 @@ class UrlComponentEncodingTester private constructor() {
         },
         PERCENT {
             override fun encode(codePoint: Int): String {
-                val utf8 = IDENTITY.encode(codePoint).encodeToByteString()
+                val utf8 = IDENTITY.encode(codePoint).encodeToUtf8()
                 val percentEncoded = Buffer()
                 for (i in 0 until utf8.byteSize()) {
                     percentEncoded.writeUtf8("%")
-                        .writeUtf8(ByteString.of(utf8[i]).hex().uppercase())
+                        .writeUtf8(ByteString.of(utf8.getByte(i)).hex().uppercase())
                 }
-                return percentEncoded.readUtf8()
+                return percentEncoded.readUtf8String()
             }
         },
 

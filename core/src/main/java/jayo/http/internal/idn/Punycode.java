@@ -23,6 +23,7 @@ package jayo.http.internal.idn;
 
 import jayo.Buffer;
 import jayo.ByteString;
+import jayo.Utf8;
 import jayo.external.NonNegative;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -36,7 +37,7 @@ public final class Punycode {
     }
 
     public final static String PREFIX_STRING = "xn--";
-    public final static ByteString PREFIX = ByteString.encodeUtf8(PREFIX_STRING);
+    public final static ByteString PREFIX = Utf8.encodeUtf8(PREFIX_STRING);
 
     private final static int BASE = 36;
     private final static int TMIN = 1;
@@ -74,7 +75,7 @@ public final class Punycode {
             }
         }
 
-        return result.readUtf8();
+        return result.readUtf8String();
     }
 
     private static boolean encodeLabel(
@@ -191,7 +192,7 @@ public final class Punycode {
             }
         }
 
-        return result.readUtf8();
+        return result.readUtf8String();
     }
 
     /**

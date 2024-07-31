@@ -1,22 +1,14 @@
-//val centralUsername = if (project.hasProperty("centralUsername")) {
-//    project.property("centralUsername") as String?
-//} else {
-//    System.getenv("CENTRAL_USERNAME")
-//}
-//val centralPassword = if (project.hasProperty("centralPassword")) {
-//    project.property("centralPassword") as String?
-//} else {
-//    System.getenv("CENTRAL_PASSWORD")
-//}
-
 plugins {
     `maven-publish`
     signing
-    id("net.researchgate.release")
+    alias(libs.plugins.release)
+
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.jmh) apply false
+    alias(libs.plugins.shadow) apply false
 }
 
 subprojects {
-    apply(plugin = "jayo-conventions")
     apply(plugin = "maven-publish")
     apply(plugin = "signing")
 
@@ -26,16 +18,6 @@ subprojects {
         repositories {
             maven {
                 url = uri(layout.buildDirectory.dir("repos/releases"))
-
-//                if (project.version.toString().endsWith("SNAPSHOT")) {
-//                    url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-//                } else {
-//                    url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-//                }
-//                credentials {
-//                    username = centralUsername
-//                    password = centralPassword
-//                }
             }
         }
 
@@ -79,6 +61,6 @@ subprojects {
 // when version changes :
 // -> execute ./gradlew wrapper, then remove .gradle directory, then execute ./gradlew wrapper again
 tasks.wrapper {
-    gradleVersion = "8.7"
+    gradleVersion = "8.9"
     distributionType = Wrapper.DistributionType.ALL
 }

@@ -243,7 +243,7 @@ public final class PublicSuffixDatabase {
         byte[] publicSuffixExceptionListBytes;
 
         try {
-            try (final var source = Jayo.buffer(Jayo.gzip(Jayo.source(PUBLIC_SUFFIX_RESOURCE)))) {
+            try (final var source = Jayo.buffer(Jayo.gzip(Jayo.reader(PUBLIC_SUFFIX_RESOURCE)))) {
                 final var totalBytes = source.readInt();
                 publicSuffixListBytes = source.readByteArray(totalBytes);
 
