@@ -31,7 +31,7 @@ import java.time.format.ResolverStyle;
 import java.util.Locale;
 import java.util.Objects;
 
-import static jayo.http.internal.Utils.UTC;
+import static java.time.ZoneOffset.UTC;
 
 public final class DateFormatting {
     // un-instantiable

@@ -22,7 +22,7 @@
 package jayo.http.internal
 
 import jayo.http.internal.UrlComponentEncodingTester.Component
-import jayo.http.testing.String
+import jayo.http.String
 import jayo.http.toHttpUrl
 import jayo.http.toHttpUrlOrNull
 import kotlin.test.fail

@@ -29,12 +29,14 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.reflect.KClass
 
+@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to reified type
 /** Returns the tag attached with [T] as a key, or null if no tag is attached with that key. */
 public inline fun <reified T : Any> ClientRequest.tag(): T? = tag(T::class.java)
 
 /** Returns the tag attached with [type] as a key, or null if no tag is attached with that key. */
 public fun <T : Any> ClientRequest.tag(type: KClass<T>): T? = tag(type.java)
 
+@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to reified type
 /**
  * Attaches [tag] to the request using [T] as a key. Tags can be read from a request using [ClientRequest.tag]. Use null
  * to remove any existing tag assigned for [T].
@@ -42,7 +44,7 @@ public fun <T : Any> ClientRequest.tag(type: KClass<T>): T? = tag(type.java)
  * Use this API to attach timing, debugging, or other application data to a request so that you may read it in
  * interceptors, event listeners, or callbacks.
  */
-public inline fun <reified T : Any> ClientRequest.Builder.tag(tag: T?) = tag(T::class.java, tag)
+public inline fun <reified T : Any> ClientRequest.Builder.tag(tag: T?): ClientRequest.Builder = tag(T::class.java, tag)
 
 @Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to reified type
 /**

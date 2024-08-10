@@ -26,7 +26,7 @@ import jayo.ByteString
 import jayo.encodeToUtf8
 import jayo.http.HttpUrl
 import jayo.http.internal.idn.Punycode
-import jayo.http.testing.String
+import jayo.http.String
 import jayo.http.toHttpUrl
 import org.assertj.core.api.Assertions.assertThat
 import kotlin.test.assertFailsWith
@@ -194,10 +194,11 @@ class UrlComponentEncodingTester private constructor() {
                 val utf8 = IDENTITY.encode(codePoint).encodeToUtf8()
                 val percentEncoded = Buffer()
                 for (i in 0 until utf8.byteSize()) {
-                    percentEncoded.writeUtf8("%")
-                        .writeUtf8(ByteString.of(utf8.getByte(i)).hex().uppercase())
+                    percentEncoded
+                        .write("%")
+                        .write(ByteString.of(utf8.getByte(i)).hex().uppercase())
                 }
-                return percentEncoded.readUtf8String()
+                return percentEncoded.readString()
             }
         },
 
