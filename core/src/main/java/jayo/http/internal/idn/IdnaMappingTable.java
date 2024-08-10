@@ -143,7 +143,7 @@ public final class IdnaMappingTable {
         if (b1 <= 63) {
             // Length of the UTF-16 sequence that this range maps to. The offset is b2b3.
             final var beginIndex = read14BitInt(ranges, rangesIndex + 2);
-            writer.writeUtf8(mappings, beginIndex, beginIndex + b1);
+            writer.write(mappings, beginIndex, beginIndex + b1);
         } else if (b1 <= 79) {
             // Mapped inline as codePoint delta to subtract
             final var b2 = (int) ranges.charAt(rangesIndex + 2);

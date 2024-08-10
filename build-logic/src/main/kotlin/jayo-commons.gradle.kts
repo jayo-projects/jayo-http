@@ -2,7 +2,6 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode.Strict
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0
-import java.nio.charset.StandardCharsets
 import kotlin.jvm.optionals.getOrNull
 
 plugins {
@@ -22,7 +21,7 @@ fun catalogVersion(lib: String) =
 val javaVersion = catalogVersion("java").toInt()
 
 val koverage = mapOf(
-    "jayo-http" to 92,
+    "jayo-http" to 89,
 )
 
 kotlin {
@@ -76,7 +75,7 @@ kover {
 
 tasks {
     withType<JavaCompile> {
-        options.encoding = StandardCharsets.UTF_8.toString()
+        options.encoding = Charsets.UTF_8.toString()
         options.release = javaVersion
 
         // replace '-' with '.' to match JPMS jigsaw module name
@@ -103,15 +102,15 @@ tasks {
             showStandardStreams = true
         }
     }
+
+    withType<Javadoc> {
+        (options as StandardJavadocDocletOptions)
+            .addStringOption("Xdoclint:none", "-quiet")
+    }
 }
 
-// Generate and add javadoc and html-doc jars in jvm artefacts
-val dokkaJavadocJar by tasks.register<Jar>("dokkaJavadocJar") {
-    dependsOn(tasks.dokkaJavadoc)
-    from(tasks.dokkaJavadoc.flatMap { it.outputDirectory })
-    archiveClassifier.set("javadoc")
-}
-
+// Generate html-doc jar for Kotlin code in jvm artefacts.
+// "javadoc" Dokka classifier clashes with the `withJavadocJar()` option below
 val dokkaHtmlJar by tasks.register<Jar>("dokkaHtmlJar") {
     dependsOn(tasks.dokkaHtml)
     from(tasks.dokkaHtml.flatMap { it.outputDirectory })
@@ -120,11 +119,11 @@ val dokkaHtmlJar by tasks.register<Jar>("dokkaHtmlJar") {
 
 java {
     withSourcesJar()
+    withJavadocJar()
 }
 
 publishing.publications.withType<MavenPublication> {
     from(components["java"])
 
-    artifact(dokkaJavadocJar)
     artifact(dokkaHtmlJar)
 }

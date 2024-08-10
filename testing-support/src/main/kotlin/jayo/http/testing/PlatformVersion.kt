@@ -21,12 +21,12 @@
 
 package jayo.http.testing
 
-import jayo.Buffer
-
-fun String(vararg codePoints: Int): String {
-    val buffer = Buffer()
-    for (codePoint in codePoints) {
-        buffer.writeUtf8CodePoint(codePoint)
+object PlatformVersion {
+    val majorVersion: Int by lazy {
+        getJvmSpecVersion().toInt()
     }
-    return buffer.readUtf8String()
+
+    fun getJvmSpecVersion(): String {
+        return System.getProperty("java.specification.version", "unknown")
+    }
 }

@@ -37,7 +37,7 @@ public final class Punycode {
     }
 
     public final static String PREFIX_STRING = "xn--";
-    public final static ByteString PREFIX = Utf8.encodeUtf8(PREFIX_STRING);
+    public final static ByteString PREFIX = Utf8.encode(PREFIX_STRING);
 
     private final static int BASE = 36;
     private final static int TMIN = 1;
@@ -75,7 +75,7 @@ public final class Punycode {
             }
         }
 
-        return result.readUtf8String();
+        return result.readString();
     }
 
     private static boolean encodeLabel(
@@ -85,7 +85,7 @@ public final class Punycode {
             final @NonNull Buffer result
     ) {
         if (!requiresEncode(string, pos, limit)) {
-            result.writeUtf8(string, pos, limit);
+            result.write(string, pos, limit);
             return true;
         }
 
@@ -192,7 +192,7 @@ public final class Punycode {
             }
         }
 
-        return result.readUtf8String();
+        return result.readString();
     }
 
     /**
@@ -208,7 +208,7 @@ public final class Punycode {
             final @NonNull Buffer result
     ) {
         if (!string.regionMatches(true, pos, PREFIX_STRING, 0, 4)) {
-            result.writeUtf8(string, pos, limit);
+            result.write(string, pos, limit);
             return true;
         }
 

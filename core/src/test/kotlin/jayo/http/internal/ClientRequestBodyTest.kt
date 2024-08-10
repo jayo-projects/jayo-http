@@ -54,7 +54,7 @@ class ClientRequestBodyTest {
 
             val buffer = Buffer()
             requestBody.writeTo(buffer)
-            assertThat(buffer.readUtf8String()).isEqualTo("Hello")
+            assertThat(buffer.readString()).isEqualTo("Hello")
         }
     }
 
@@ -84,7 +84,7 @@ class ClientRequestBodyTest {
     ): T {
         filePath.writer().buffered().use { writer ->
             if (content != null) {
-                writer.writeUtf8(content)
+                writer.write(content)
             }
         }
 

@@ -29,18 +29,14 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Objects;
 
 public final class Utils {
     // un-instantiable
     private Utils() {
     }
-
-    /**
-     * GMT and UTC are equivalent for our purposes.
-     */
-    static final @NonNull ZoneId UTC = ZoneId.of("UTC");
 
     static final @NonNull Headers EMPTY_HEADERS = Headers.of();
 
@@ -210,5 +206,50 @@ public final class Utils {
         Objects.requireNonNull(string);
         Objects.requireNonNull(prefix);
         return string.regionMatches(true, 0, prefix, 0, prefix.length());
+    }
+
+    /**
+     * @return an array containing only elements found in this array and also in [other]. The returned
+     * elements are in the same order as in this.
+     */
+    static @NonNull String @NonNull [] intersect(final @NonNull String @NonNull [] first,
+                                                 final @NonNull String @NonNull [] second,
+                                                 final @NonNull Comparator<? super String> comparator) {
+        assert first != null;
+        assert second != null;
+
+        final var result = new ArrayList<String>();
+        for (final var a : first) {
+            for (final var b : second) {
+                if (comparator.compare(a, b) == 0) {
+                    result.add(a);
+                    break;
+                }
+            }
+        }
+        return result.toArray(String[]::new);
+    }
+
+    /**
+     * @return true if there is an element in the first array that is also in the second. This method terminates if any
+     * intersection is found. The sizes of both arguments are assumed to be so small, and the likelihood of an
+     * intersection so great, that it is not worth the CPU cost of sorting or the memory cost of hashing.
+     */
+    static boolean hasIntersection(final @NonNull String @NonNull [] first,
+                                   final @NonNull String @Nullable [] second,
+                                   final @NonNull Comparator<? super String> comparator) {
+        assert first != null;
+
+        if (first.length == 0 || second == null || second.length == 0) {
+            return false;
+        }
+        for (final var a : first) {
+            for (final var b : second) {
+                if (comparator.compare(a, b) == 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

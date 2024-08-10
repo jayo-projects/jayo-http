@@ -96,7 +96,7 @@ public final class UrlUtils {
             ) {
                 // Slow path: the character at i requires encoding!
                 final var out = Buffer.create();
-                out.writeUtf8(input, pos, i);
+                out.write(input, pos, i);
                 writeCanonicalized(
                         out,
                         input,
@@ -109,7 +109,7 @@ public final class UrlUtils {
                         unicodeAllowed,
                         charset
                 );
-                return out.readUtf8String();
+                return out.readString();
             }
             i += Character.charCount(codePoint);
         }
@@ -143,10 +143,10 @@ public final class UrlUtils {
             } else //noinspection StringEquality
                 if (codePoint == ((int) ' ') && encodeSet == FORM_ENCODE_SET) {
                     // Encode ' ' as '+'.
-                    buffer.writeUtf8("+");
+                    buffer.write("+");
                 } else if (codePoint == ((int) '+') && plusIsSpace) {
                     // Encode '+' as '%2B' since we permit ' ' to be encoded as either '+' or '%20'.
-                    buffer.writeUtf8(alreadyEncoded ? "+" : "%2B");
+                    buffer.write(alreadyEncoded ? "+" : "%2B");
                 } else if (codePoint < 0x20 ||
                         codePoint == 0x7f ||
                         codePoint >= 0x80 && !unicodeAllowed ||
@@ -159,10 +159,10 @@ public final class UrlUtils {
                         encodedCharBuffer = Buffer.create();
                     }
 
-                    if (charset == null || charset == StandardCharsets.UTF_8) {
+                    if (charset == null || charset.equals(StandardCharsets.UTF_8)) {
                         encodedCharBuffer.writeUtf8CodePoint(codePoint);
                     } else {
-                        encodedCharBuffer.writeString(input, i, i + Character.charCount(codePoint), charset);
+                        encodedCharBuffer.write(input, i, i + Character.charCount(codePoint), charset);
                     }
 
                     while (!encodedCharBuffer.exhausted()) {
@@ -256,9 +256,9 @@ public final class UrlUtils {
             if (c == '%' || c == '+' && plusIsSpace) {
                 // Slow path: the character at i requires decoding!
                 final var out = Buffer.create();
-                out.writeUtf8(encoded, pos, i);
+                out.write(encoded, pos, i);
                 writePercentDecoded(out, encoded, i, limit, plusIsSpace);
-                return out.readUtf8String();
+                return out.readString();
             }
         }
 

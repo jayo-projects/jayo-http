@@ -4,7 +4,7 @@ java = "21"
 
 # plugins
 # https://github.com/JetBrains/kotlin/releases
-kotlin = "2.0.0"
+kotlin = "2.1.0"
 # https://github.com/Kotlin/dokka/releases
 dokka = "1.9.20"
 # https://github.com/Kotlin/kotlinx-kover/releases
@@ -12,23 +12,23 @@ kover = "0.8.3"
 # https://github.com/melix/jmh-gradle-plugin/releases (for benchmarks)
 jmhPlugin = "0.7.2"
 # https://github.com/johnrengelman/shadow/releases (for benchmarks)
-shadow = "8.1.1"
+shadow = "8.3.5"
 # https://github.com/researchgate/gradle-release/releases
 release = "3.0.2"
 
 # main
 # https://github.com/jayo-projects/jayo/tags
-jayo = "0.1.0-alpha.9"
+jayo = "0.1.0-Alpha11"
 # https://github.com/jspecify/jspecify/releases
 jspecify = "1.0.0"
 
 # tests
 # https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
-junit = "5.10.3"
+junit = "5.11.3"
 # https://mvnrepository.com/artifact/org.assertj/assertj-core
 assertj = "3.26.3"
 # https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
-slf4j = "2.0.13"
+slf4j = "2.0.16"
 
 # benchmarks
 # https://mvnrepository.com/artifact/org.openjdk.jmh/jmh-core
@@ -41,7 +41,6 @@ kover-gradle-plugin = { group = "org.jetbrains.kotlinx", name = "kover-gradle-pl
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 jmh = { id = "me.champeau.jmh", version.ref = "jmhPlugin" }
-shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 release = { id = "net.researchgate.release", version.ref = "release" }

@@ -9,6 +9,7 @@ println("Using Java compiler version: ${JavaVersion.current()}")
 plugins {
     id("jayo-commons")
     id("jayo.build.optional-dependencies")
+    `java-test-fixtures`
 }
 
 val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -22,7 +23,7 @@ dependencies {
 
     optional("org.jetbrains.kotlin:kotlin-stdlib")
 
-    testImplementation(project(":jayo-http-testing-support"))
+    testImplementation(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
 }
 
 fun ByteArray.toByteStringExpression(): String {
