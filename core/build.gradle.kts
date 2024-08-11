@@ -21,5 +21,10 @@ dependencies {
 
     optional("org.jetbrains.kotlin:kotlin-stdlib")
 
+    // These compileOnly dependencies must also be listed in the OSGi configuration above (todo).
+    compileOnly("org.bouncycastle:bcprov-jdk18on:${catalogVersion("bouncycastle")}")
+    compileOnly("org.bouncycastle:bctls-jdk18on:${catalogVersion("bouncycastle")}")
+    compileOnly("org.conscrypt:conscrypt-openjdk-uber:${catalogVersion("conscrypt")}")
+
     testImplementation(project(":jayo-http-testing-support"))
 }

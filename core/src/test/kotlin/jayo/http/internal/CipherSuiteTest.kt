@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jayo.http
+package jayo.http.internal
 
+import jayo.http.CipherSuite
 import jayo.http.CipherSuite.fromJavaName
-import jayo.http.testing.DelegatingSSLSocket
+import jayo.http.TlsVersion
+import jayo.http.testing.DelegatingSSLEngine
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Test
 
 class CipherSuiteTest {
@@ -109,74 +112,89 @@ class CipherSuiteTest {
             .isEqualTo(fromJavaName("TLS_FAKE_NEW_CIPHER"))
     }
 
-    /*@Test
+    @Test
     fun applyIntersectionRetainsTlsPrefixes() {
-        val socket = FakeSslSocket()
-        socket.enabledProtocols = arrayOf("TLSv1")
-        socket.supportedCipherSuites = arrayOf("SSL_A", "SSL_B", "SSL_C", "SSL_D", "SSL_E")
-        socket.enabledCipherSuites = arrayOf("SSL_A", "SSL_B", "SSL_C")
+        val sslEngine = FakeSslEngine()
+        sslEngine.enabledProtocols = arrayOf("TLSv1")
+        sslEngine.supportedCipherSuites = arrayOf("SSL_A", "SSL_B", "SSL_C", "SSL_D", "SSL_E")
+        sslEngine.enabledCipherSuites = arrayOf("SSL_A", "SSL_B", "SSL_C")
         val connectionSpec =
-            okhttp3.ConnectionSpec.Builder.build()
-        okhttp3.internal.applyConnectionSpec(connectionSpec, socket, false)
-        assertArrayEquals(arrayOf("TLS_A", "TLS_C"), socket.enabledCipherSuites)
+            RealConnectionSpec.Builder(true)
+                .tlsVersions(TlsVersion.TLS_1_0)
+                .cipherSuites("TLS_A", "TLS_C", "TLS_E")
+                .build()
+        connectionSpec.apply(sslEngine, false)
+        assertArrayEquals(arrayOf("TLS_A", "TLS_C"), sslEngine.enabledCipherSuites)
     }
 
     @Test
     fun applyIntersectionRetainsSslPrefixes() {
-        val socket = FakeSslSocket()
-        socket.enabledProtocols = arrayOf("TLSv1")
-        socket.supportedCipherSuites =
+        val sslEngine = FakeSslEngine()
+        sslEngine.enabledProtocols = arrayOf("TLSv1")
+        sslEngine.supportedCipherSuites =
             arrayOf("TLS_A", "TLS_B", "TLS_C", "TLS_D", "TLS_E")
-        socket.enabledCipherSuites = arrayOf("TLS_A", "TLS_B", "TLS_C")
+        sslEngine.enabledCipherSuites = arrayOf("TLS_A", "TLS_B", "TLS_C")
         val connectionSpec =
-            okhttp3.ConnectionSpec.Builder.build()
-        okhttp3.internal.applyConnectionSpec(connectionSpec, socket, false)
-        assertArrayEquals(arrayOf("SSL_A", "SSL_C"), socket.enabledCipherSuites)
+            RealConnectionSpec.Builder(true)
+                .tlsVersions(TlsVersion.TLS_1_0)
+                .cipherSuites("SSL_A", "SSL_C", "SSL_E")
+                .build()
+        connectionSpec.apply(sslEngine, false)
+        assertArrayEquals(arrayOf("SSL_A", "SSL_C"), sslEngine.enabledCipherSuites)
     }
 
     @Test
     fun applyIntersectionAddsSslScsvForFallback() {
-        val socket = FakeSslSocket()
-        socket.enabledProtocols = arrayOf("TLSv1")
-        socket.supportedCipherSuites = arrayOf("SSL_A", "SSL_FALLBACK_SCSV")
-        socket.enabledCipherSuites = arrayOf("SSL_A")
+        val sslEngine = FakeSslEngine()
+        sslEngine.enabledProtocols = arrayOf("TLSv1")
+        sslEngine.supportedCipherSuites = arrayOf("SSL_A", "SSL_FALLBACK_SCSV")
+        sslEngine.enabledCipherSuites = arrayOf("SSL_A")
         val connectionSpec =
-            okhttp3.ConnectionSpec.Builder.build()
-        okhttp3.internal.applyConnectionSpec(connectionSpec, socket, true)
+            RealConnectionSpec.Builder(true)
+                .tlsVersions(TlsVersion.TLS_1_0)
+                .cipherSuites("SSL_A")
+                .build()
+        connectionSpec.apply(sslEngine, true)
         assertArrayEquals(
             arrayOf("SSL_A", "SSL_FALLBACK_SCSV"),
-            socket.enabledCipherSuites,
+            sslEngine.enabledCipherSuites,
         )
     }
 
     @Test
     fun applyIntersectionAddsTlsScsvForFallback() {
-        val socket = FakeSslSocket()
-        socket.enabledProtocols = arrayOf("TLSv1")
-        socket.supportedCipherSuites = arrayOf("TLS_A", "TLS_FALLBACK_SCSV")
-        socket.enabledCipherSuites = arrayOf("TLS_A")
+        val sslEngine = FakeSslEngine()
+        sslEngine.enabledProtocols = arrayOf("TLSv1")
+        sslEngine.supportedCipherSuites = arrayOf("TLS_A", "TLS_FALLBACK_SCSV")
+        sslEngine.enabledCipherSuites = arrayOf("TLS_A")
         val connectionSpec =
-            okhttp3.ConnectionSpec.Builder.build()
-        okhttp3.internal.applyConnectionSpec(connectionSpec, socket, true)
+            RealConnectionSpec.Builder(true)
+                .tlsVersions(TlsVersion.TLS_1_0)
+                .cipherSuites("TLS_A")
+                .build()
+        connectionSpec.apply(sslEngine, true)
         assertArrayEquals(
             arrayOf("TLS_A", "TLS_FALLBACK_SCSV"),
-            socket.enabledCipherSuites,
+            sslEngine.enabledCipherSuites,
         )
     }
 
     @Test
     fun applyIntersectionToProtocolVersion() {
-        val socket = FakeSslSocket()
-        socket.enabledProtocols = arrayOf("TLSv1", "TLSv1.1", "TLSv1.2")
-        socket.supportedCipherSuites = arrayOf("TLS_A")
-        socket.enabledCipherSuites = arrayOf("TLS_A")
+        val sslEngine = FakeSslEngine()
+        sslEngine.enabledProtocols = arrayOf("TLSv1", "TLSv1.1", "TLSv1.2")
+        sslEngine.supportedCipherSuites = arrayOf("TLS_A")
+        sslEngine.enabledCipherSuites = arrayOf("TLS_A")
         val connectionSpec =
-            okhttp3.ConnectionSpec.Builder.build()
-        okhttp3.internal.applyConnectionSpec(connectionSpec, socket, false)
-        assertArrayEquals(arrayOf("TLSv1.1", "TLSv1.2"), socket.enabledProtocols)
-    }*/
+            RealConnectionSpec.Builder(true)
+                .tlsVersions(TlsVersion.TLS_1_1, TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
+                .cipherSuites("TLS_A")
+                .build()
+        connectionSpec.apply(sslEngine, false)
+        assertArrayEquals(arrayOf("TLSv1.1", "TLSv1.2"), sslEngine.enabledProtocols)
+    }
 
-    internal class FakeSslSocket : DelegatingSSLSocket(null) {
+    internal class FakeSslEngine : DelegatingSSLEngine(null) {
         private lateinit var enabledProtocols: Array<String>
         private lateinit var supportedCipherSuites: Array<String>
         private lateinit var enabledCipherSuites: Array<String>

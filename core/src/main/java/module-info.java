@@ -7,6 +7,8 @@ module jayo.http {
     requires jayo;
     
     requires static kotlin.stdlib;
+    requires static org.bouncycastle.tls;
+    requires static org.conscrypt;
     requires static org.jspecify;
 
     exports jayo.http;

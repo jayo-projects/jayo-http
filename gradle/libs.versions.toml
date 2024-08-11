@@ -22,13 +22,23 @@ jayo = "0.1.0-alpha.9"
 # https://github.com/jspecify/jspecify/releases
 jspecify = "1.0.0"
 
+# main -> optional dependencies
+# https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk18on
+bouncycastle = "1.78.1"
+# https://mvnrepository.com/artifact/org.conscrypt/conscrypt-openjdk-uber
+conscrypt = "2.5.2"
+# https://mvnrepository.com/artifact/software.amazon.cryptools/AmazonCorrettoCryptoProvider
+amazonCorretto = "2.4.1"
+
 # tests
 # https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
 junit = "5.10.3"
 # https://mvnrepository.com/artifact/org.assertj/assertj-core
 assertj = "3.26.3"
 # https://mvnrepository.com/artifact/org.slf4j/slf4j-simple
-slf4j = "2.0.13"
+slf4j = "2.0.16"
+# https://mvnrepository.com/artifact/org.hamcrest/hamcrest
+hamcrest = "3.0"
 
 # benchmarks
 # https://mvnrepository.com/artifact/org.openjdk.jmh/jmh-core
