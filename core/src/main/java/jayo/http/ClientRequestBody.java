@@ -150,8 +150,8 @@ public abstract class ClientRequestBody {
     public abstract @Nullable MediaType contentType();
 
     /**
-     * @return the number of bytes that will be written to writer in a call to {@link #writeTo(Writer)}, or -1 if that count
-     * is unknown.
+     * @return the number of bytes that will be written to writer in a call to {@link #writeTo(Writer)}, or -1 if that
+     * count is unknown.
      */
     public long contentByteSize() {
         return -1L;
