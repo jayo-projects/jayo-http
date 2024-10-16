@@ -21,7 +21,7 @@
 
 package jayo.http;
 
-import jayo.exceptions.JayoException;
+import jayo.JayoException;
 import org.jspecify.annotations.NonNull;
 
 import java.net.URI;

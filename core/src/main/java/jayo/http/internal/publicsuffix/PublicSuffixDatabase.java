@@ -22,8 +22,8 @@
 package jayo.http.internal.publicsuffix;
 
 import jayo.Jayo;
-import jayo.exceptions.JayoCancelledException;
-import jayo.exceptions.JayoException;
+import jayo.JayoInterruptedIOException;
+import jayo.JayoException;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -222,7 +222,7 @@ public final class PublicSuffixDatabase {
                 try {
                     readTheList();
                     return;
-                } catch (JayoCancelledException _unused) {
+                } catch (JayoInterruptedIOException _unused) {
                     //noinspection ResultOfMethodCallIgnored
                     Thread.interrupted(); // Temporarily clear the interrupted state.
                     interrupted = true;

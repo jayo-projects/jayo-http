@@ -34,9 +34,9 @@ class PublicSuffixDatabaseTest {
     fun longestMatchWins() {
         val buffer =
             Buffer.create()
-                .writeUtf8("com\n")
-                .writeUtf8("my.jayo.com\n")
-                .writeUtf8("jayo.com\n")
+                .write("com\n")
+                .write("my.jayo.com\n")
+                .write("jayo.com\n")
         publicSuffixDatabase.setListBytes(buffer.readByteArray(), byteArrayOf())
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("example.com"))
             .isEqualTo("example.com")
@@ -52,9 +52,9 @@ class PublicSuffixDatabaseTest {
     fun wildcardMatch() {
         val buffer =
             Buffer()
-                .writeUtf8("*.jayo.com\n")
-                .writeUtf8("com\n")
-                .writeUtf8("example.com\n")
+                .write("*.jayo.com\n")
+                .write("com\n")
+                .write("example.com\n")
         publicSuffixDatabase.setListBytes(buffer.readByteArray(), byteArrayOf())
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("my.jayo.com")).isNull()
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("foo.my.jayo.com"))
@@ -67,9 +67,9 @@ class PublicSuffixDatabaseTest {
     fun boundarySearches() {
         val buffer =
             Buffer()
-                .writeUtf8("bbb\n")
-                .writeUtf8("ddd\n")
-                .writeUtf8("fff\n")
+                .write("bbb\n")
+                .write("ddd\n")
+                .write("fff\n")
         publicSuffixDatabase.setListBytes(buffer.readByteArray(), byteArrayOf())
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("aaa")).isNull()
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("ggg")).isNull()
@@ -81,13 +81,13 @@ class PublicSuffixDatabaseTest {
     fun exceptionRule() {
         val exception =
             Buffer()
-                .writeUtf8("my.jayo.jp\n")
+                .write("my.jayo.jp\n")
         val buffer =
             Buffer()
-                .writeUtf8("*.jp\n")
-                .writeUtf8("*.jayo.jp\n")
-                .writeUtf8("example.com\n")
-                .writeUtf8("jayo.com\n")
+                .write("*.jp\n")
+                .write("*.jayo.jp\n")
+                .write("example.com\n")
+                .write("jayo.com\n")
         publicSuffixDatabase.setListBytes(buffer.readByteArray(), exception.readByteArray())
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("my.jayo.jp"))
             .isEqualTo("my.jayo.jp")
@@ -100,13 +100,13 @@ class PublicSuffixDatabaseTest {
     fun noEffectiveTldPlusOne() {
         val exception =
             Buffer()
-                .writeUtf8("my.jayo.jp\n")
+                .write("my.jayo.jp\n")
         val buffer =
             Buffer()
-                .writeUtf8("*.jp\n")
-                .writeUtf8("*.jayo.jp\n")
-                .writeUtf8("example.com\n")
-                .writeUtf8("jayo.com\n")
+                .write("*.jp\n")
+                .write("*.jayo.jp\n")
+                .write("example.com\n")
+                .write("jayo.com\n")
         publicSuffixDatabase.setListBytes(buffer.readByteArray(), exception.readByteArray())
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("example.com")).isNull()
         assertThat(publicSuffixDatabase.getEffectiveTldPlusOne("foo.jayo.jp")).isNull()
@@ -122,7 +122,7 @@ class PublicSuffixDatabaseTest {
             }
         }
         while (!buffer.exhausted()) {
-            var publicSuffix = buffer.readUtf8LineStrict()
+            var publicSuffix = buffer.readLineStrict()
             if (publicSuffix.contains("*")) {
                 // A wildcard rule, let's replace the wildcard with a value.
                 publicSuffix = publicSuffix.replace("\\*".toRegex(), "jayo")
@@ -143,7 +143,7 @@ class PublicSuffixDatabaseTest {
             buffer.write(source, length.toLong())
         }
         while (!buffer.exhausted()) {
-            val exception = buffer.readUtf8LineStrict()
+            val exception = buffer.readLineStrict()
             assertThat(publicSuffixDatabase.getEffectiveTldPlusOne(exception)).isEqualTo(
                 exception,
             )
