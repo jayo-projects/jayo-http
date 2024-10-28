@@ -4,7 +4,7 @@
  */
 
 module jayo.http {
-    requires jayo;
+    requires transitive jayo;
     
     requires static kotlin.stdlib;
     requires static org.jspecify;
