@@ -21,17 +21,21 @@
 
 package jayo.http.internal;
 
+import jayo.ByteString;
+import jayo.JayoException;
+import jayo.Options;
+import jayo.Reader;
 import jayo.external.NonNegative;
 import jayo.http.Headers;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import java.io.Closeable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Objects;
 
 public final class Utils {
     // un-instantiable
@@ -41,19 +45,37 @@ public final class Utils {
     static final @NonNull Headers EMPTY_HEADERS = Headers.of();
 
     /**
+     * Byte order marks.
+     */
+    private static final @NonNull Options UNICODE_BOMS =
+            Options.of(
+                    // UTF-8.
+                    ByteString.decodeHex("efbbbf"),
+                    // UTF-16BE.
+                    ByteString.decodeHex("feff"),
+                    // UTF-32LE.
+                    ByteString.decodeHex("fffe0000"),
+                    // UTF-16LE.
+                    ByteString.decodeHex("fffe"),
+                    // UTF-32BE.
+                    ByteString.decodeHex("0000feff")
+            );
+
+    /**
      * @return the index of the first character in this string that contains a character in {@code delimiters}.
      * Returns endIndex if there is no such character.
      */
     static @NonNegative int delimiterOffset(
-            final @NonNull String source,
+            final @NonNull String string,
             final @NonNull String delimiters,
             final @NonNegative int startIndex,
             final @NonNegative int endIndex
     ) {
-        Objects.requireNonNull(source);
-        Objects.requireNonNull(delimiters);
+        assert string != null;
+        assert delimiters != null;
+
         for (var i = startIndex; i < endIndex; i++) {
-            if (delimiters.indexOf(source.charAt(i)) >= 0) {
+            if (delimiters.indexOf(string.charAt(i)) >= 0) {
                 return i;
             }
         }
@@ -61,14 +83,15 @@ public final class Utils {
     }
 
     static @NonNegative int delimiterOffset(
-            final @NonNull String source,
+            final @NonNull String string,
             final char delimiter,
             final @NonNegative int startIndex,
             final @NonNegative int endIndex
     ) {
-        Objects.requireNonNull(source);
+        assert string != null;
+
         for (var i = startIndex; i < endIndex; i++) {
-            if (source.charAt(i) == delimiter) {
+            if (string.charAt(i) == delimiter) {
                 return i;
             }
         }
@@ -93,7 +116,8 @@ public final class Utils {
      * contains newline characters.
      */
     static @NonNegative int indexOfNonWhitespace(final @NonNull String string, final @NonNegative int startIndex) {
-        Objects.requireNonNull(string);
+        assert string != null;
+
         for (var i = startIndex; i < string.length(); i++) {
             final var c = string.charAt(i);
             if (c != ' ' && c != '\t') {
@@ -104,7 +128,8 @@ public final class Utils {
     }
 
     static @NonNegative int indexOfFirstNonAsciiWhitespace(final @NonNull String string) {
-        Objects.requireNonNull(string);
+        assert string != null;
+
         return indexOfFirstNonAsciiWhitespace(string, 0, string.length());
     }
 
@@ -116,7 +141,8 @@ public final class Utils {
             final @NonNegative int startIndex,
             final @NonNegative int endIndex
     ) {
-        Objects.requireNonNull(string);
+        assert string != null;
+
         for (var i = startIndex; i < endIndex; i++) {
             final var charAtIndex = string.charAt(i);
             if (charAtIndex != '\t' && charAtIndex != '\n' && charAtIndex != '\u000C' && charAtIndex != '\r'
@@ -129,7 +155,8 @@ public final class Utils {
 
     static @NonNegative int indexOfLastNonAsciiWhitespace(final @NonNull String string,
                                                           final @NonNegative int startIndex) {
-        Objects.requireNonNull(string);
+        assert string != null;
+
         return indexOfLastNonAsciiWhitespace(string, startIndex, string.length());
     }
 
@@ -142,7 +169,8 @@ public final class Utils {
             final @NonNegative int startIndex,
             final @NonNegative int endIndex
     ) {
-        Objects.requireNonNull(string);
+        assert string != null;
+
         for (var i = endIndex - 1; i >= startIndex; i--) {
             final var charAtIndex = string.charAt(i);
             if (charAtIndex != '\t' && charAtIndex != '\n' && charAtIndex != '\u000C' && charAtIndex != '\r'
@@ -157,11 +185,21 @@ public final class Utils {
      * @return true if we should void putting this header in an exception or toString().
      */
     static boolean isSensitiveHeader(final @NonNull String name) {
-        Objects.requireNonNull(name);
+        assert name != null;
+
         return name.equalsIgnoreCase("Authorization") ||
                 name.equalsIgnoreCase("Cookie") ||
                 name.equalsIgnoreCase("Proxy-Authorization") ||
                 name.equalsIgnoreCase("Set-Cookie");
+    }
+
+    static @NonNull Charset charsetOrUtf8(final @Nullable MediaType contentType) {
+        if (contentType == null || contentType.charset() == null) {
+            return StandardCharsets.UTF_8;
+        }
+
+        //noinspection DataFlowIssue
+        return contentType.charset();
     }
 
     record CharsetMediaType(@NonNull Charset charset, @Nullable MediaType contentType) {
@@ -179,6 +217,19 @@ public final class Utils {
             }
         }
         return new CharsetMediaType(charset, finalContentType);
+    }
+
+    static @NonNull Charset readBomAsCharset(final @NonNull Reader reader, final @NonNull Charset defaultCharset) {
+        return switch (reader.select(UNICODE_BOMS)) {
+            // a mapping from the index of encoding methods in UNICODE_BOMS to its corresponding encoding method
+            case 0 -> StandardCharsets.UTF_8;
+            case 1 -> StandardCharsets.UTF_16BE;
+            case 2 -> Charset.forName("UTF-32LE");
+            case 3 -> StandardCharsets.UTF_16LE;
+            case 4 -> Charset.forName("UTF-32BE");
+            case -1 -> defaultCharset;
+            default -> throw new AssertionError();
+        };
     }
 
     /**
@@ -203,8 +254,9 @@ public final class Utils {
     }
 
     static boolean startsWithIgnoreCase(final @NonNull String string, final @NonNull String prefix) {
-        Objects.requireNonNull(string);
-        Objects.requireNonNull(prefix);
+        assert string != null;
+        assert prefix != null;
+
         return string.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 
@@ -217,6 +269,7 @@ public final class Utils {
                                                  final @NonNull Comparator<? super String> comparator) {
         assert first != null;
         assert second != null;
+        assert comparator != null;
 
         final var result = new ArrayList<String>();
         for (final var a : first) {
@@ -239,6 +292,7 @@ public final class Utils {
                                    final @NonNull String @Nullable [] second,
                                    final @NonNull Comparator<? super String> comparator) {
         assert first != null;
+        assert comparator != null;
 
         if (first.length == 0 || second == null || second.length == 0) {
             return false;
@@ -251,5 +305,20 @@ public final class Utils {
             }
         }
         return false;
+    }
+
+    /**
+     * Closes this {@code closeable}, ignoring any checked exceptions and any {@link JayoException}.
+     */
+    public static void closeQuietly(final @NonNull Closeable closeable) {
+        assert closeable != null;
+
+        try {
+            closeable.close();
+        } catch (JayoException ignored) {
+        } catch (RuntimeException rethrown) {
+            throw rethrown;
+        } catch (Exception ignored) {
+        }
     }
 }
