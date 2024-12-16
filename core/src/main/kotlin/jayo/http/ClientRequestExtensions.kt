@@ -162,7 +162,7 @@ public open class ClientRequestBuilderDsl internal constructor(private val build
      * interceptors, event listeners, or callbacks.
      */
     public inline fun <reified T : Any> tag(tag: T?) {
-        builder.tag(T::class.java, tag)
+        tag(T::class, tag)
     }
 
     /**

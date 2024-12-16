@@ -23,6 +23,7 @@
 
 package jayo.http
 
+import jayo.JayoDslMarker
 import jayo.external.NonNegative
 import java.net.URI
 import java.net.URL
@@ -55,7 +56,7 @@ public fun HttpUrl.Builder.build(config: HttpUrlBuilderDsl.() -> Unit): HttpUrl 
     return build()
 }
 
-@JayoHttpDslMarker
+@JayoDslMarker
 @JvmInline
 public value class HttpUrlBuilderDsl internal constructor(private val builder: HttpUrl.Builder) {
     /** Sets the scheme; either "http" or "https". */
