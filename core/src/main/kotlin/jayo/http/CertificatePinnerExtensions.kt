@@ -19,14 +19,15 @@
  * limitations under the License.
  */
 
-package jayo.http.testing
+@file:JvmName("-CertificatePinner") // A leading '-' hides this class from Java.
 
-object PlatformVersion {
-    val majorVersion: Int by lazy {
-        getJvmSpecVersion().toInt()
-    }
+package jayo.http
 
-    fun getJvmSpecVersion(): String {
-        return System.getProperty("java.specification.version", "unknown")
-    }
-}
+import jayo.ByteString
+import java.security.cert.X509Certificate
+
+@Suppress("UnusedReceiverParameter")
+public val CertificatePinner.DEFAULT: CertificatePinner
+    get() = CertificatePinner.builder().build()
+
+public fun X509Certificate.sha256Hash(): ByteString = CertificatePinner.sha256Hash(this)
