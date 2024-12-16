@@ -7,6 +7,7 @@
 
 package jayo.http
 
+import jayo.JayoDslMarker
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.time.Duration
@@ -19,7 +20,7 @@ public fun CacheControl.Builder.build(config: CacheControlBuilderDsl.() -> Unit)
     return build()
 }
 
-@JayoHttpDslMarker
+@JayoDslMarker
 @JvmInline
 public value class CacheControlBuilderDsl internal constructor(private val builder: CacheControl.Builder) {
     /** Don't accept an unvalidated cached response. */
