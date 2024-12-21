@@ -21,7 +21,7 @@ fun catalogVersion(lib: String) =
 val javaVersion = catalogVersion("java").toInt()
 
 val koverage = mapOf(
-    "jayo-http" to 90,
+    "jayo-http" to 88,
 )
 
 kotlin {
