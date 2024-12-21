@@ -26,6 +26,7 @@ import jayo.JayoException;
 import jayo.Options;
 import jayo.Reader;
 import jayo.external.NonNegative;
+import jayo.http.ClientResponseBody;
 import jayo.http.Headers;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
@@ -42,7 +43,9 @@ public final class Utils {
     private Utils() {
     }
 
+    static final byte @NonNull [] EMPTY_BYTE_ARRAY = new byte[0];
     static final @NonNull Headers EMPTY_HEADERS = Headers.of();
+    static final @NonNull ClientResponseBody EMPTY_RESPONSE = ClientResponseBody.create(EMPTY_BYTE_ARRAY);
 
     /**
      * Byte order marks.
