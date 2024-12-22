@@ -21,10 +21,7 @@
 
 package jayo.http.internal;
 
-import jayo.ByteString;
-import jayo.JayoException;
-import jayo.Options;
-import jayo.Reader;
+import jayo.*;
 import jayo.external.NonNegative;
 import jayo.http.ClientResponseBody;
 import jayo.http.Headers;
@@ -323,5 +320,16 @@ public final class Utils {
             throw rethrown;
         } catch (Exception ignored) {
         }
+    }
+
+    public static @NonNegative int skipAll(final @NonNull Buffer buffer, final byte b) {
+        assert buffer != null;
+
+        var count = 0;
+        while (!buffer.exhausted() && buffer.getByte(0L) == b) {
+            count++;
+            buffer.readByte();
+        }
+        return count;
     }
 }
