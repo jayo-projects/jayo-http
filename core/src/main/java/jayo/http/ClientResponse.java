@@ -23,7 +23,7 @@ package jayo.http;
 
 import jayo.external.NonNegative;
 import jayo.http.internal.RealClientResponse;
-import jayo.tls.AlpnProtocol;
+import jayo.tls.Protocol;
 import jayo.tls.Handshake;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -62,10 +62,10 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
     ClientRequest getRequest();
 
     /**
-     * @return the HTTP protocol, such as {@link AlpnProtocol#HTTP_1_1} or {@link AlpnProtocol#HTTP_2}.
+     * @return the HTTP protocol, such as {@link Protocol#HTTP_1_1} or {@link Protocol#HTTP_2}.
      */
     @NonNull
-    AlpnProtocol getProtocol();
+    Protocol getProtocol();
 
     /**
      * @return the HTTP status.
@@ -210,7 +210,7 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
         Builder request(final @NonNull ClientRequest request);
 
         @NonNull
-        Builder protocol(final @NonNull AlpnProtocol protocol);
+        Builder protocol(final @NonNull Protocol protocol);
 
         @NonNull
         Builder code(final @NonNegative int code);

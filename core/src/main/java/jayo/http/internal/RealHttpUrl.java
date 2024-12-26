@@ -1061,7 +1061,7 @@ public final class RealHttpUrl implements HttpUrl {
                 pop();
                 return;
             }
-            if (encodedPathSegments.getLast().isEmpty()) {
+            if (encodedPathSegments.get(encodedPathSegments.size() - 1).isEmpty()) {
                 encodedPathSegments.set(encodedPathSegments.size() - 1, segment);
             } else {
                 encodedPathSegments.add(segment);
@@ -1072,7 +1072,7 @@ public final class RealHttpUrl implements HttpUrl {
         }
 
         private void pop() {
-            final var removed = encodedPathSegments.removeLast();
+            final var removed = encodedPathSegments.remove(encodedPathSegments.size() - 1);
 
             // Make sure the path ends with a '/' by either adding an empty string or clearing a segment.
             if (removed.isEmpty() && !encodedPathSegments.isEmpty()) {

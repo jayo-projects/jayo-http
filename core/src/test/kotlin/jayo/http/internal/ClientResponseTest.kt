@@ -23,10 +23,11 @@ package jayo.http.internal
 
 import jayo.Buffer
 import jayo.ByteString.EMPTY
+import jayo.JayoClosedResourceException
 import jayo.RawReader
 import jayo.buffered
 import jayo.http.*
-import jayo.tls.AlpnProtocol
+import jayo.tls.Protocol
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
@@ -69,7 +70,7 @@ class ClientResponseTest {
         val response = newResponse(responseBody("abc"))
         assertThat(response.body.string()).isEqualTo("abc")
 
-        assertFailsWith<IllegalStateException> {
+        assertFailsWith<JayoClosedResourceException> {
             response.peekBody(3)
         }
     }
@@ -122,7 +123,7 @@ class ClientResponseTest {
                         .url("https://example.com/")
                         .get(),
                 )
-                .protocol(AlpnProtocol.HTTP_1_1)
+                .protocol(Protocol.HTTP_1_1)
                 .code(200)
                 .message("OK")
                 .build()
@@ -167,7 +168,7 @@ class ClientResponseTest {
                     .url("https://example.com/")
                     .get(),
             )
-            .protocol(AlpnProtocol.HTTP_1_1)
+            .protocol(Protocol.HTTP_1_1)
             .code(code)
             .message("OK")
             .body(responseBody)

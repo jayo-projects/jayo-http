@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static jayo.crypto.Digests.SHA_256;
+import static jayo.crypto.JdkDigest.SHA_256;
 
 /**
  * Constrains which certificates are trusted. Pinning certificates defends against attacks on certificate authorities.

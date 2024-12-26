@@ -24,7 +24,7 @@ package jayo.http.internal;
 import jayo.Buffer;
 import jayo.external.NonNegative;
 import jayo.http.*;
-import jayo.tls.AlpnProtocol;
+import jayo.tls.Protocol;
 import jayo.tls.Handshake;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -40,7 +40,7 @@ import static jayo.http.internal.HttpStatusCodes.HTTP_TEMP_REDIRECT;
 
 public final class RealClientResponse implements ClientResponse {
     private final @NonNull ClientRequest request;
-    private final @NonNull AlpnProtocol protocol;
+    private final @NonNull Protocol protocol;
     private final @NonNull ResponseStatus status;
     private final @Nullable Handshake handshake;
     private final @NonNull Headers headers;
@@ -55,7 +55,7 @@ public final class RealClientResponse implements ClientResponse {
     private @Nullable CacheControl lazyCacheControl = null;
 
     public RealClientResponse(final @NonNull ClientRequest request,
-                              final @NonNull AlpnProtocol protocol,
+                              final @NonNull Protocol protocol,
                               final @NonNull ResponseStatus status,
                               final @Nullable Handshake handshake,
                               final @NonNull Headers headers,
@@ -86,7 +86,7 @@ public final class RealClientResponse implements ClientResponse {
     }
 
     @Override
-    public @NonNull AlpnProtocol getProtocol() {
+    public @NonNull Protocol getProtocol() {
         return protocol;
     }
 
@@ -137,7 +137,7 @@ public final class RealClientResponse implements ClientResponse {
 
     @Override
     public boolean isSuccessful() {
-        return status.code() >= 199 && status.code() < 300;
+        return status.code() > 199 && status.code() < 300;
     }
 
     @Override
@@ -218,7 +218,7 @@ public final class RealClientResponse implements ClientResponse {
 
     public static final class Builder implements ClientResponse.Builder {
         private @Nullable ClientRequest request = null;
-        private @Nullable AlpnProtocol protocol = null;
+        private @Nullable Protocol protocol = null;
         private int code = -1;
         private @Nullable String message = null;
         private @Nullable Handshake handshake = null;
@@ -262,7 +262,7 @@ public final class RealClientResponse implements ClientResponse {
         }
 
         @Override
-        public @NonNull Builder protocol(final @NonNull AlpnProtocol protocol) {
+        public @NonNull Builder protocol(final @NonNull Protocol protocol) {
             this.protocol = Objects.requireNonNull(protocol);
             return this;
         }

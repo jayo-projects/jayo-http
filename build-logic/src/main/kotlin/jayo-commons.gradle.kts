@@ -6,7 +6,7 @@ import kotlin.jvm.optionals.getOrNull
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.dokka")
+    id("org.jetbrains.dokka-javadoc")
     `java-library`
     `maven-publish`
     id("org.jetbrains.kotlinx.kover")
@@ -60,9 +60,7 @@ dependencies {
 
 kover {
     reports {
-        total {
             verify {
-                onCheck = true
                 rule {
                     bound {
                         minValue = koverage[project.name]
@@ -70,7 +68,6 @@ kover {
                 }
             }
         }
-    }
 }
 
 tasks {
@@ -86,6 +83,7 @@ tasks {
             listOf(
                 "--patch-module",
                 "$jpmsName=${sourceSets.main.get().output.asPath}",
+                //"--enable-preview",
             )
         )
     }
@@ -101,29 +99,23 @@ tasks {
             exceptionFormat = TestExceptionFormat.FULL
             showStandardStreams = true
         }
-    }
-
-    withType<Javadoc> {
-        (options as StandardJavadocDocletOptions)
-            .addStringOption("Xdoclint:none", "-quiet")
+        //jvmArgs("--enable-preview")
     }
 }
 
-// Generate html-doc jar for Kotlin code in jvm artefacts.
-// "javadoc" Dokka classifier clashes with the `withJavadocJar()` option below
-val dokkaHtmlJar by tasks.register<Jar>("dokkaHtmlJar") {
-    dependsOn(tasks.dokkaHtml)
-    from(tasks.dokkaHtml.flatMap { it.outputDirectory })
-    archiveClassifier.set("html-doc")
+// Generate javadoc jar for Java and Kotlin code in jvm artefacts.
+val dokkaJavadocJar by tasks.registering(Jar::class) {
+    description = "A Javadoc JAR containing Dokka Javadoc for Java and Kotlin"
+    from(tasks.dokkaGeneratePublicationJavadoc.flatMap { it.outputDirectory })
+    archiveClassifier.set("javadoc")
 }
 
 java {
     withSourcesJar()
-    withJavadocJar()
 }
 
 publishing.publications.withType<MavenPublication> {
     from(components["java"])
 
-    artifact(dokkaHtmlJar)
+    artifact(dokkaJavadocJar)
 }

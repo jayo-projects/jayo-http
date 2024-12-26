@@ -61,6 +61,6 @@ subprojects {
 // when version changes :
 // -> execute ./gradlew wrapper, then remove .gradle directory, then execute ./gradlew wrapper again
 tasks.wrapper {
-    gradleVersion = "8.11.1"
+    gradleVersion = "8.12"
     distributionType = Wrapper.DistributionType.ALL
 }

@@ -77,12 +77,12 @@ public final class PublicSuffixDatabase {
         final var domainLabels = splitDomain(unicodeDomain);
 
         final var rule = findMatchingRule(domainLabels);
-        if (domainLabels.size() == rule.size() && rule.getFirst().charAt(0) != EXCEPTION_MARKER) {
+        if (domainLabels.size() == rule.size() && rule.get(0).charAt(0) != EXCEPTION_MARKER) {
             return null; // The domain is a public suffix.
         }
 
         final int firstLabelOffset;
-        if (rule.getFirst().charAt(0) == EXCEPTION_MARKER) {
+        if (rule.get(0).charAt(0) == EXCEPTION_MARKER) {
             // Exception rules hold the effective TLD plus one.
             firstLabelOffset = domainLabels.size() - rule.size();
         } else {
@@ -98,9 +98,9 @@ public final class PublicSuffixDatabase {
     private @NonNull List<String> splitDomain(final @NonNull String domain) {
         final var domainLabels = Arrays.asList(domain.split("\\."));
 
-        if (domainLabels.getLast().isEmpty()) {
+        if (domainLabels.get(domainLabels.size() - 1).isEmpty()) {
             // allow for domain name trailing dot
-            domainLabels.removeLast();
+            domainLabels.remove(domainLabels.size() - 1);
         }
 
         return domainLabels;
