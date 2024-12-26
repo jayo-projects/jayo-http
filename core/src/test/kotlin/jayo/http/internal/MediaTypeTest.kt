@@ -265,7 +265,7 @@ class MediaTypeTest {
 
     @Test
     fun testTurkishDotlessIWithEnUs() {
-        withLocale(Locale.of("en", "US")) {
+        withLocale(Locale("en", "US")) {
             val mediaType = parse("IMAGE/JPEG")
             assertEquals("image", mediaType.type)
             assertEquals("jpeg", mediaType.subtype)
@@ -274,7 +274,7 @@ class MediaTypeTest {
 
     @Test
     fun testTurkishDotlessIWithTrTr() {
-        withLocale(Locale.of("tr", "TR")) {
+        withLocale(Locale("tr", "TR")) {
             val mediaType = parse("IMAGE/JPEG")
             assertEquals("image", mediaType.type)
             assertEquals("jpeg", mediaType.subtype)

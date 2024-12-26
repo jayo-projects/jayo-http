@@ -66,12 +66,12 @@ final class CertificateChainCleaner {
     List<Certificate> clean(final @NonNull List<Certificate> chain) {
         final List<Certificate> chainCopy = new ArrayList<>(chain);
         final List<Certificate> result = new ArrayList<>();
-        result.add(chainCopy.removeFirst());
+        result.add(chainCopy.remove(0));
         var foundTrustedCertificate = false;
 
         followIssuerChain:
         for (var c = 0; c < MAX_SIGNERS; c++) {
-            final var toVerify = (X509Certificate) result.getLast();
+            final var toVerify = (X509Certificate) result.get(result.size() - 1);
 
             // If this cert has been signed by a trusted cert, use that. Add the trusted certificate to
             // the end of the chain unless it's already present. (That would happen if the first
