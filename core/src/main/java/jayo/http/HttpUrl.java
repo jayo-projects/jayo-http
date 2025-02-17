@@ -21,7 +21,6 @@
 
 package jayo.http;
 
-import jayo.external.NonNegative;
 import jayo.http.internal.RealHttpUrl;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -726,7 +725,6 @@ public sealed interface HttpUrl permits RealHttpUrl {
      *     </tr>
      * </table>
      */
-    @NonNegative
     int getQuerySize();
 
     /**
@@ -876,7 +874,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
      * </table>
      */
     @NonNull
-    String queryParameterName(final @NonNegative int index);
+    String queryParameterName(final int index);
 
     /**
      * @return the value of the query parameter at {@code index}. For example this returns {@code "apple"} for
@@ -917,7 +915,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
      * </table>
      */
     @Nullable
-    String queryParameterValue(final @NonNegative int index);
+    String queryParameterValue(final int index);
 
     /**
      * @return this URL's encoded fragment, like {@code "abc"} for {@code https://host/#abc}. This is null if the URL
@@ -1036,7 +1034,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
         Builder host(final @NonNull String host);
 
         @NonNull
-        Builder port(final @NonNegative int port);
+        Builder port(final int port);
 
         @NonNull
         Builder username(final @NonNull String username);
@@ -1071,13 +1069,13 @@ public sealed interface HttpUrl permits RealHttpUrl {
         Builder addEncodedPathSegments(final @NonNull String encodedPathSegments);
 
         @NonNull
-        Builder setPathSegment(final @NonNegative int index, final @NonNull String pathSegment);
+        Builder setPathSegment(final int index, final @NonNull String pathSegment);
 
         @NonNull
-        Builder setEncodedPathSegment(final @NonNegative int index, final @NonNull String encodedPathSegment);
+        Builder setEncodedPathSegment(final int index, final @NonNull String encodedPathSegment);
 
         @NonNull
-        Builder removePathSegment(final @NonNegative int index);
+        Builder removePathSegment(final int index);
 
         @NonNull
         Builder encodedPath(final @NonNull String encodedPath);

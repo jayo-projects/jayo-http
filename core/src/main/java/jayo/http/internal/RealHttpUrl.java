@@ -21,7 +21,6 @@
 
 package jayo.http.internal;
 
-import jayo.external.NonNegative;
 import jayo.http.HttpUrl;
 import jayo.http.internal.publicsuffix.PublicSuffixDatabase;
 import jayo.http.internal.url.UrlUtils;
@@ -250,7 +249,7 @@ public final class RealHttpUrl implements HttpUrl {
     }
 
     @Override
-    public @NonNull String queryParameterName(final @NonNegative int index) {
+    public @NonNull String queryParameterName(final int index) {
         if (queryNamesAndValues == null) {
             throw new IndexOutOfBoundsException();
         }
@@ -260,7 +259,7 @@ public final class RealHttpUrl implements HttpUrl {
     }
 
     @Override
-    public @Nullable String queryParameterValue(final @NonNegative int index) {
+    public @Nullable String queryParameterValue(final int index) {
         if (queryNamesAndValues == null) {
             throw new IndexOutOfBoundsException();
         }
@@ -383,7 +382,7 @@ public final class RealHttpUrl implements HttpUrl {
         }
 
         @Override
-        public HttpUrl.@NonNull Builder port(final @NonNegative int port) {
+        public HttpUrl.@NonNull Builder port(final int port) {
             if (port < 1 || port > 65535) {
                 throw new IllegalArgumentException("unexpected port: " + port);
             }
@@ -456,7 +455,7 @@ public final class RealHttpUrl implements HttpUrl {
         }
 
         @Override
-        public HttpUrl.@NonNull Builder setPathSegment(final @NonNegative int index, final @NonNull String pathSegment) {
+        public HttpUrl.@NonNull Builder setPathSegment(final int index, final @NonNull String pathSegment) {
             Objects.requireNonNull(pathSegment);
             if (index < 0) {
                 throw new IllegalArgumentException("index < 0 : " + index);
@@ -470,7 +469,7 @@ public final class RealHttpUrl implements HttpUrl {
         }
 
         @Override
-        public HttpUrl.@NonNull Builder setEncodedPathSegment(final @NonNegative int index,
+        public HttpUrl.@NonNull Builder setEncodedPathSegment(final int index,
                                                               final @NonNull String encodedPathSegment) {
             Objects.requireNonNull(encodedPathSegment);
             if (index < 0) {
@@ -485,7 +484,7 @@ public final class RealHttpUrl implements HttpUrl {
         }
 
         @Override
-        public HttpUrl.@NonNull Builder removePathSegment(final @NonNegative int index) {
+        public HttpUrl.@NonNull Builder removePathSegment(final int index) {
             if (index < 0) {
                 throw new IllegalArgumentException("index < 0 : " + index);
             }
@@ -992,7 +991,7 @@ public final class RealHttpUrl implements HttpUrl {
             return this;
         }
 
-        private @NonNegative int effectivePort() {
+        private int effectivePort() {
             if ((port != -1)) {
                 return port;
             } else {
@@ -1003,8 +1002,8 @@ public final class RealHttpUrl implements HttpUrl {
 
         private void resolvePath(
                 final @NonNull String input,
-                final @NonNegative int startPos,
-                final @NonNegative int limit
+                final int startPos,
+                final int limit
         ) {
             var pos = startPos;
             // Read a delimiter.
@@ -1039,8 +1038,8 @@ public final class RealHttpUrl implements HttpUrl {
          */
         private void push(
                 final @NonNull String input,
-                final @NonNegative int pos,
-                final @NonNegative int limit,
+                final int pos,
+                final int limit,
                 final boolean addTrailingSlash,
                 final boolean alreadyEncoded
         ) {
@@ -1183,8 +1182,8 @@ public final class RealHttpUrl implements HttpUrl {
          */
         private static int schemeDelimiterOffset(
                 final @NonNull String input,
-                final @NonNegative int pos,
-                final @NonNegative int limit
+                final int pos,
+                final int limit
         ) {
             Objects.requireNonNull(input);
             if (limit - pos < 2) {
@@ -1216,8 +1215,8 @@ public final class RealHttpUrl implements HttpUrl {
          */
         private static int slashCount(
                 final @NonNull String input,
-                final @NonNegative int pos,
-                final @NonNegative int limit
+                final int pos,
+                final int limit
         ) {
             var slashCount = 0;
             for (var i = pos; i < limit; i++) {
@@ -1236,8 +1235,8 @@ public final class RealHttpUrl implements HttpUrl {
          */
         private static int portColonOffset(
                 final @NonNull String input,
-                final @NonNegative int pos,
-                final @NonNegative int limit
+                final int pos,
+                final int limit
         ) {
             var i = pos;
             while (i < limit) {
@@ -1260,8 +1259,8 @@ public final class RealHttpUrl implements HttpUrl {
 
         private static int parsePort(
                 final @NonNull String input,
-                final @NonNegative int pos,
-                final @NonNegative int limit
+                final int pos,
+                final int limit
         ) {
             try {
                 // Canonicalize the port string to skip '\n' etc.

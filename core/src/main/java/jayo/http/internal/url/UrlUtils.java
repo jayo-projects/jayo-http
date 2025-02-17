@@ -22,7 +22,6 @@
 package jayo.http.internal.url;
 
 import jayo.Buffer;
-import jayo.external.NonNegative;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -75,8 +74,8 @@ public final class UrlUtils {
             final @NonNull String input,
             final @NonNull String encodeSet,
             final boolean alreadyEncoded,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final boolean strict,
             final boolean plusIsSpace,
             final boolean unicodeAllowed,
@@ -123,8 +122,8 @@ public final class UrlUtils {
             final @NonNull String input,
             final @NonNull String encodeSet,
             final boolean alreadyEncoded,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final boolean strict,
             final boolean plusIsSpace,
             final boolean unicodeAllowed,
@@ -182,8 +181,8 @@ public final class UrlUtils {
     private static void writePercentDecoded(
             final @NonNull Buffer buffer,
             final @NonNull String encoded,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final boolean plusIsSpace
     ) {
         int codePoint;
@@ -221,8 +220,8 @@ public final class UrlUtils {
             final @NonNull String input,
             final @NonNull String encodeSet,
             final boolean alreadyEncoded,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final boolean strict,
             final boolean plusIsSpace,
             final boolean unicodeAllowed
@@ -246,8 +245,8 @@ public final class UrlUtils {
 
     public static @NonNull String percentDecode(
             final @NonNull String encoded,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final boolean plusIsSpace
     ) {
         Objects.requireNonNull(encoded);
@@ -268,8 +267,8 @@ public final class UrlUtils {
 
     private static boolean isPercentEncoded(
             final @NonNull String input,
-            final @NonNegative int pos,
-            final @NonNegative int limit
+            final int pos,
+            final int limit
     ) {
         return pos + 2 < limit &&
                 input.charAt(pos) == '%' &&

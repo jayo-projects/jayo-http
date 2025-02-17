@@ -21,7 +21,6 @@
 
 package jayo.http.internal;
 
-import jayo.external.NonNegative;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -168,7 +167,7 @@ public final class RealMediaType implements MediaType {
 
     private static @Nullable MatchResult matchAt(final @NonNull Pattern pattern,
                                                  final @NonNull String input,
-                                                 final @NonNegative int index) {
+                                                 final int index) {
         final var matcher = pattern.matcher(input)
                 .useAnchoringBounds(false)
                 .useTransparentBounds(true)

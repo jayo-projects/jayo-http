@@ -24,7 +24,6 @@ package jayo.http.internal;
 import jayo.ByteString;
 import jayo.Jayo;
 import jayo.Writer;
-import jayo.external.NonNegative;
 import jayo.http.ClientRequestBody;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
@@ -36,7 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-import static jayo.external.JayoUtils.checkOffsetAndCount;
+import static jayo.tools.JayoUtils.checkOffsetAndCount;
 import static jayo.http.internal.Utils.chooseCharset;
 
 public final class StandardClientRequestBodies {
@@ -75,8 +74,8 @@ public final class StandardClientRequestBodies {
 
     public static @NonNull ClientRequestBody create(final byte @NonNull [] bytes,
                                                     final @Nullable MediaType contentType,
-                                                    final @NonNegative int offset,
-                                                    final @NonNegative int byteCount) {
+                                                    final int offset,
+                                                    final int byteCount) {
         Objects.requireNonNull(bytes);
         checkOffsetAndCount(bytes.length, offset, byteCount);
         return new ClientRequestBody() {

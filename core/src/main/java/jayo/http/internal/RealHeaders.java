@@ -21,7 +21,6 @@
 
 package jayo.http.internal;
 
-import jayo.external.NonNegative;
 import jayo.http.Headers;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -63,7 +62,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
     }
 
     @Override
-    public @NonNull String name(final @NonNegative int index) {
+    public @NonNull String name(final int index) {
         if (index < 0 || (index * 2) >= namesAndValues.length) {
             throw new IndexOutOfBoundsException("name[ " + index + "]");
         }
@@ -71,7 +70,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
     }
 
     @Override
-    public @NonNull String value(final @NonNegative int index) {
+    public @NonNull String value(final int index) {
         if (index < 0 || (index * 2 + 1) >= namesAndValues.length) {
             throw new IndexOutOfBoundsException("value[ " + index + "]");
         }

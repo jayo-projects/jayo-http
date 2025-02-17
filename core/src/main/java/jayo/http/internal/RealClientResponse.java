@@ -22,7 +22,6 @@
 package jayo.http.internal;
 
 import jayo.Buffer;
-import jayo.external.NonNegative;
 import jayo.http.*;
 import jayo.tls.Protocol;
 import jayo.tls.Handshake;
@@ -268,7 +267,7 @@ public final class RealClientResponse implements ClientResponse {
         }
 
         @Override
-        public @NonNull Builder code(final @NonNegative int code) {
+        public @NonNull Builder code(final int code) {
             this.code = code;
             return this;
         }

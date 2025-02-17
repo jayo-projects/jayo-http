@@ -23,7 +23,6 @@ package jayo.http.internal.idn;
 
 import jayo.Buffer;
 import jayo.ByteString;
-import jayo.external.NonNegative;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -79,8 +78,8 @@ public final class Punycode {
 
     private static boolean encodeLabel(
             final @NonNull String string,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final @NonNull Buffer result
     ) {
         if (!requiresEncode(string, pos, limit)) {
@@ -202,8 +201,8 @@ public final class Punycode {
      */
     private static boolean decodeLabel(
             final @NonNull String string,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final @NonNull Buffer result
     ) {
         if (!string.regionMatches(true, pos, PREFIX_STRING, 0, 4)) {
@@ -309,8 +308,8 @@ public final class Punycode {
      * @return a new bias.
      */
     private static int adapt(
-            final @NonNegative int delta,
-            final @NonNegative int numpoints,
+            final int delta,
+            final int numpoints,
             final boolean first
     ) {
         var _delta = first ? delta / DAMP : delta / 2;
@@ -325,8 +324,8 @@ public final class Punycode {
 
     private static boolean requiresEncode(
             final @NonNull String string,
-            final @NonNegative int pos,
-            final @NonNegative int limit
+            final int pos,
+            final int limit
     ) {
         for (var i = pos; i < limit; i++) {
             if (((int) string.charAt(i)) >= INITIAL_N) {
@@ -338,8 +337,8 @@ public final class Punycode {
 
     private static @NonNull List<Integer> codePoints(
             final @NonNull String string,
-            final @NonNegative int pos,
-            final @NonNegative int limit
+            final int pos,
+            final int limit
     ) {
         final var result = new ArrayList<Integer>();
         var i = pos;

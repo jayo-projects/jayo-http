@@ -22,7 +22,6 @@
 package jayo.http.internal;
 
 import jayo.*;
-import jayo.external.NonNegative;
 import jayo.http.ClientResponseBody;
 import jayo.http.Headers;
 import jayo.http.MediaType;
@@ -65,11 +64,11 @@ public final class Utils {
      * @return the index of the first character in this string that contains a character in {@code delimiters}.
      * Returns endIndex if there is no such character.
      */
-    static @NonNegative int delimiterOffset(
+    static int delimiterOffset(
             final @NonNull String string,
             final @NonNull String delimiters,
-            final @NonNegative int startIndex,
-            final @NonNegative int endIndex
+            final int startIndex,
+            final int endIndex
     ) {
         assert string != null;
         assert delimiters != null;
@@ -82,11 +81,11 @@ public final class Utils {
         return endIndex;
     }
 
-    static @NonNegative int delimiterOffset(
+    static int delimiterOffset(
             final @NonNull String string,
             final char delimiter,
-            final @NonNegative int startIndex,
-            final @NonNegative int endIndex
+            final int startIndex,
+            final int endIndex
     ) {
         assert string != null;
 
@@ -115,7 +114,7 @@ public final class Utils {
      * @return the index of the next non-whitespace character in this. Result is undefined if input
      * contains newline characters.
      */
-    static @NonNegative int indexOfNonWhitespace(final @NonNull String string, final @NonNegative int startIndex) {
+    static int indexOfNonWhitespace(final @NonNull String string, final int startIndex) {
         assert string != null;
 
         for (var i = startIndex; i < string.length(); i++) {
@@ -127,7 +126,7 @@ public final class Utils {
         return string.length();
     }
 
-    static @NonNegative int indexOfFirstNonAsciiWhitespace(final @NonNull String string) {
+    static int indexOfFirstNonAsciiWhitespace(final @NonNull String string) {
         assert string != null;
 
         return indexOfFirstNonAsciiWhitespace(string, 0, string.length());
@@ -136,10 +135,10 @@ public final class Utils {
     /**
      * Increments {@code startIndex} until this string is not ASCII whitespace. Stops at {@code endIndex}.
      */
-    static @NonNegative int indexOfFirstNonAsciiWhitespace(
+    static int indexOfFirstNonAsciiWhitespace(
             final @NonNull String string,
-            final @NonNegative int startIndex,
-            final @NonNegative int endIndex
+            final int startIndex,
+            final int endIndex
     ) {
         assert string != null;
 
@@ -153,8 +152,8 @@ public final class Utils {
         return endIndex;
     }
 
-    static @NonNegative int indexOfLastNonAsciiWhitespace(final @NonNull String string,
-                                                          final @NonNegative int startIndex) {
+    static int indexOfLastNonAsciiWhitespace(final @NonNull String string,
+                                                          final int startIndex) {
         assert string != null;
 
         return indexOfLastNonAsciiWhitespace(string, startIndex, string.length());
@@ -164,10 +163,10 @@ public final class Utils {
      * Decrements {@code endIndex} until {@code string.chatAt(endIndex - 1)} is not ASCII whitespace. Stops at
      * {@code startIndex}.
      */
-    static @NonNegative int indexOfLastNonAsciiWhitespace(
+    static int indexOfLastNonAsciiWhitespace(
             final @NonNull String string,
-            final @NonNegative int startIndex,
-            final @NonNegative int endIndex
+            final int startIndex,
+            final int endIndex
     ) {
         assert string != null;
 
@@ -236,7 +235,7 @@ public final class Utils {
      * @return this as a non-negative integer, or {@code 0} if it is negative, or {@code Integer.MAX_VALUE} if it is too
      * large, or {@code defaultValue} if it cannot be parsed.
      */
-    static @NonNegative int toNonNegativeInt(final @Nullable String string, final @NonNegative int defaultValue) {
+    static int toNonNegativeInt(final @Nullable String string, final int defaultValue) {
         if (string == null) {
             return defaultValue;
         }
@@ -322,7 +321,7 @@ public final class Utils {
         }
     }
 
-    public static @NonNegative int skipAll(final @NonNull Buffer buffer, final byte b) {
+    public static int skipAll(final @NonNull Buffer buffer, final byte b) {
         assert buffer != null;
 
         var count = 0;

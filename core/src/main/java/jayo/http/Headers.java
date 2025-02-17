@@ -21,7 +21,6 @@
 
 package jayo.http;
 
-import jayo.external.NonNegative;
 import jayo.http.internal.RealHeaders;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -83,20 +82,19 @@ public sealed interface Headers extends Collection<Headers.@NonNull Header> perm
      * @return the number of field values.
      */
     @Override
-    @NonNegative
     int size();
 
     /**
      * @return the field at {@code index}.
      */
     @NonNull
-    String name(final @NonNegative int index);
+    String name(final int index);
 
     /**
      * @return the value at {@code index}.
      */
     @NonNull
-    String value(final @NonNegative int index);
+    String value(final int index);
 
     /**
      * @return an immutable case-insensitive set of all header names.
@@ -115,7 +113,6 @@ public sealed interface Headers extends Collection<Headers.@NonNull Header> perm
      * HTTP/2 headers before they are compressed with HPACK. This value is intended to be used as a metric: smaller
      * headers are more efficient to encode and transmit.
      */
-    @NonNegative
     long byteCount();
 
     /**
