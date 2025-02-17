@@ -22,7 +22,6 @@
 package jayo.http.internal;
 
 import jayo.Buffer;
-import jayo.external.NonNegative;
 import jayo.http.internal.idn.Punycode;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -282,8 +281,8 @@ public final class HostnameUtils {
      */
     static byte @Nullable [] decodeIpv6(
             final @NonNull String input,
-            final @NonNegative int pos,
-            final @NonNegative int limit
+            final int pos,
+            final int limit
     ) {
         final var address = new byte[16];
         var b = 0;
@@ -370,10 +369,10 @@ public final class HostnameUtils {
      */
     private static boolean decodeIpv4Suffix(
             final @NonNull String input,
-            final @NonNegative int pos,
-            final @NonNegative int limit,
+            final int pos,
+            final int limit,
             final byte @NonNull [] address,
-            final @NonNegative int addressOffset
+            final int addressOffset
     ) {
         var b = addressOffset;
 

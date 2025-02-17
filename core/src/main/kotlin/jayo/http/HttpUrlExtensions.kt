@@ -24,7 +24,6 @@
 package jayo.http
 
 import jayo.JayoDslMarker
-import jayo.external.NonNegative
 import java.net.URI
 import java.net.URL
 import kotlin.contracts.InvocationKind
@@ -79,7 +78,7 @@ public value class HttpUrlBuilderDsl internal constructor(private val builder: H
     public var port: Int
         @Deprecated("Getter is unsupported.", level = DeprecationLevel.ERROR)
         get() = error("unsupported")
-        set(@NonNegative value) {
+        set(value) {
             builder.port(value)
         }
 
@@ -135,15 +134,15 @@ public value class HttpUrlBuilderDsl internal constructor(private val builder: H
         builder.addEncodedPathSegments(encodedPathSegments)
     }
 
-    public fun setPathSegment(@NonNegative index: Int, pathSegment: String) {
+    public fun setPathSegment(index: Int, pathSegment: String) {
         builder.setPathSegment(index, pathSegment)
     }
 
-    public fun setEncodedPathSegment(@NonNegative index: Int, encodedPathSegment: String) {
+    public fun setEncodedPathSegment(index: Int, encodedPathSegment: String) {
         builder.setEncodedPathSegment(index, encodedPathSegment)
     }
 
-    public fun removePathSegment(@NonNegative index: Int) {
+    public fun removePathSegment(index: Int) {
         builder.removePathSegment(index)
     }
 

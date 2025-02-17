@@ -5,7 +5,6 @@
 
 package jayo.http;
 
-import jayo.external.NonNegative;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -14,5 +13,5 @@ import org.jspecify.annotations.NonNull;
  * @param code    the HTTP status code.
  * @param message the HTTP status message.
  */
-public record ResponseStatus(@NonNegative int code, @NonNull String message) {
+public record ResponseStatus(int code, @NonNull String message) {
 }

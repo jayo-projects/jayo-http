@@ -21,7 +21,6 @@
 
 package jayo.http;
 
-import jayo.external.NonNegative;
 import jayo.http.internal.RealClientResponse;
 import jayo.tls.Protocol;
 import jayo.tls.Handshake;
@@ -165,7 +164,7 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
      * {@code byteCount}, such as 1 MiB.
      */
     @NonNull
-    ClientResponseBody peekBody(final @NonNegative long byteCount);
+    ClientResponseBody peekBody(final long byteCount);
 
     @NonNull
     Builder newBuilder();
@@ -213,7 +212,7 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
         Builder protocol(final @NonNull Protocol protocol);
 
         @NonNull
-        Builder code(final @NonNegative int code);
+        Builder code(final int code);
 
         @NonNull
         Builder message(final @NonNull String message);

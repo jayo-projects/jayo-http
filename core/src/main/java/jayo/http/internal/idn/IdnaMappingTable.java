@@ -22,7 +22,6 @@
 package jayo.http.internal.idn;
 
 import jayo.Writer;
-import jayo.external.NonNegative;
 import org.jspecify.annotations.NonNull;
 
 import java.util.function.Function;
@@ -207,7 +206,7 @@ public final class IdnaMappingTable {
      * This binary searches over 4-byte entries, and so it needs to adjust binary search indices in (by dividing by 4)
      * and out (by multiplying by 4).
      */
-    private @NonNegative int findSectionsIndex(final int codePoint) {
+    private int findSectionsIndex(final int codePoint) {
         final var target = (codePoint & 0x1fff80) >> 7;
         final var offset =
                 binarySearch(
@@ -231,10 +230,10 @@ public final class IdnaMappingTable {
      * This binary searches over 4-byte entries, and so it needs to adjust binary search indices
      * in (by dividing by 4) and out (by multiplying by 4).
      */
-    private @NonNegative int findRangesOffset(
+    private int findRangesOffset(
             final int codePoint,
-            final @NonNegative int position,
-            final @NonNegative int limit
+            final int position,
+            final int limit
     ) {
         final var target = codePoint & 0x7f;
         final var offset =
@@ -253,7 +252,7 @@ public final class IdnaMappingTable {
         return (-offset - 2) * 4; // Not found? Use the preceding element.
     }
 
-    static int read14BitInt(final @NonNull String value, final @NonNegative int index) {
+    static int read14BitInt(final @NonNull String value, final int index) {
         final var b0 = (int) value.charAt(index);
         final var b1 = (int) value.charAt(index + 1);
         return (b0 << 7) + b1;
@@ -267,8 +266,8 @@ public final class IdnaMappingTable {
      * inserting the element at `insertionPoint` will retain sorted order.
      */
     static int binarySearch(
-            final @NonNegative int position,
-            final @NonNegative int limit,
+            final int position,
+            final int limit,
             final @NonNull Function<Integer, Integer> compare
     ) {
         // Do the binary searching bit.

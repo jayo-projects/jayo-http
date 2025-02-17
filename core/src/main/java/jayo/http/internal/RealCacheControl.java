@@ -21,7 +21,6 @@
 
 package jayo.http.internal;
 
-import jayo.external.NonNegative;
 import jayo.http.CacheControl;
 import jayo.http.Headers;
 import org.jspecify.annotations.NonNull;
@@ -290,7 +289,7 @@ public final class RealCacheControl implements CacheControl {
     private static int indexOfElement(
             final @NonNull String string,
             final @NonNull String characters,
-            final @NonNegative int startIndex
+            final int startIndex
             ) {
         for (var i = startIndex; i < string.length(); i++) {
             if (characters.indexOf(string.charAt(i)) >= 0) {
@@ -392,7 +391,7 @@ public final class RealCacheControl implements CacheControl {
             );
         }
 
-        private static @NonNegative int clampToInt(final @NonNegative long seconds) {
+        private static int clampToInt(final long seconds) {
             return (seconds > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) seconds;
         }
     }

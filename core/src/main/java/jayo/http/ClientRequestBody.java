@@ -23,7 +23,6 @@ package jayo.http;
 
 import jayo.ByteString;
 import jayo.Writer;
-import jayo.external.NonNegative;
 import jayo.http.internal.StandardClientRequestBodies;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -93,8 +92,8 @@ public abstract class ClientRequestBody {
      *                                   indices.
      */
     public static @NonNull ClientRequestBody create(final byte @NonNull [] content,
-                                                    final @NonNegative int offset,
-                                                    final @NonNegative int byteCount) {
+                                                    final int offset,
+                                                    final int byteCount) {
         return StandardClientRequestBodies.create(content, null, offset, byteCount);
     }
 
@@ -106,8 +105,8 @@ public abstract class ClientRequestBody {
      */
     public static @NonNull ClientRequestBody create(final byte @NonNull [] content,
                                                     final @NonNull MediaType contentType,
-                                                    final @NonNegative int offset,
-                                                    final @NonNegative int byteCount) {
+                                                    final int offset,
+                                                    final int byteCount) {
         Objects.requireNonNull(contentType);
         return StandardClientRequestBodies.create(content, contentType, offset, byteCount);
     }

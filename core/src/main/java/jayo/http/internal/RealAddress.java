@@ -21,7 +21,6 @@
 
 package jayo.http.internal;
 
-import jayo.external.NonNegative;
 import jayo.http.*;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
@@ -40,7 +39,7 @@ public final class RealAddress implements Address {
     private final @NonNull List<ConnectionSpec> connectionSpecs;
 
     RealAddress(final @NonNull String uriHost,
-                final @NonNegative int uriPort,
+                final int uriPort,
                 final @NonNull Dns dns,
                 final @Nullable HostnameVerifier hostnameVerifier,
                 final @Nullable CertificatePinner certificatePinner,

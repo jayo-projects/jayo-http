@@ -18,7 +18,7 @@ release = "3.1.0"
 
 # main
 # https://github.com/jayo-projects/jayo/tags
-jayo = "0.1.0-alpha21"
+jayo = "0.1.0-alpha22"
 # https://github.com/jspecify/jspecify/releases
 jspecify = "1.0.0"
 
