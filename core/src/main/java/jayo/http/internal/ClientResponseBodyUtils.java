@@ -21,10 +21,9 @@
 
 package jayo.http.internal;
 
-import jayo.ByteString;
 import jayo.JayoException;
 import jayo.Reader;
-import jayo.Utf8;
+import jayo.bytestring.ByteString;
 import jayo.http.ClientResponseBody;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -32,11 +31,10 @@ import org.jspecify.annotations.Nullable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
-import static java.nio.charset.StandardCharsets.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class ClientResponseBodyUtils {
     // un-instantiable
@@ -75,28 +73,6 @@ public final class ClientResponseBodyUtils {
         return bytes;
     }
 
-    public static @NonNull Utf8 consumeToUtf8(final @NonNull ClientResponseBody responseBody) {
-        final var contentByteSize = responseBody.contentByteSize();
-        if (contentByteSize > Integer.MAX_VALUE) {
-            throw new JayoException("Cannot buffer entire body for content byte byteSize: " + contentByteSize);
-        }
-
-        try (final var reader = responseBody.reader()) {
-            final var charset = Utils.readBomAsCharset(reader, charset(responseBody));
-
-            if (charset.equals(UTF_8)) {
-                return reader.readUtf8();
-            }
-
-            if (charset.equals(US_ASCII)
-                    || charset.equals(ISO_8859_1)) { // latin1 is compatible with ASCII, considered fine !
-                return reader.readAscii();
-            }
-
-            throw new UnsupportedCharsetException(charset.name());
-        }
-    }
-
     public static @NonNull String consumeToString(final @NonNull ClientResponseBody responseBody) {
         final var contentByteSize = responseBody.contentByteSize();
         if (contentByteSize > Integer.MAX_VALUE) {
@@ -104,15 +80,9 @@ public final class ClientResponseBodyUtils {
         }
 
         try (final var reader = responseBody.reader()) {
-            final var charset = Utils.readBomAsCharset(reader, charset(responseBody));
+            final var charset = Utils.readBomAsCharset(reader, charsetOrUtf8(responseBody));
             return reader.readString(charset);
         }
-    }
-
-    private static @NonNull Charset charset(final @NonNull ClientResponseBody responseBody) {
-        assert responseBody != null;
-
-        return Utils.charsetOrUtf8(responseBody.contentType());
     }
 
     public static final class BomAwareReader extends java.io.Reader {
@@ -121,10 +91,9 @@ public final class ClientResponseBodyUtils {
         private boolean closed = false;
         private java.io.@Nullable Reader delegate = null;
 
-
         public BomAwareReader(final @NonNull ClientResponseBody responseBody) {
             this.reader = responseBody.reader();
-            this.charset = charset(responseBody);
+            this.charset = charsetOrUtf8(responseBody);
         }
 
         @Override
@@ -155,5 +124,17 @@ public final class ClientResponseBodyUtils {
                 }
             }
         }
+    }
+
+    private static @NonNull Charset charsetOrUtf8(final @NonNull ClientResponseBody responseBody) {
+        assert responseBody != null;
+
+        final var contentType = responseBody.contentType();
+        if (contentType == null || contentType.charset() == null) {
+            return UTF_8;
+        }
+
+        //noinspection DataFlowIssue
+        return contentType.charset();
     }
 }

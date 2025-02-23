@@ -27,12 +27,18 @@ import org.jspecify.annotations.Nullable;
 
 import java.net.URL;
 import java.util.List;
+import java.util.Objects;
 
 /**
- * A HTTP client request. Instances of this class are immutable if their {@linkplain #getBody() body} is null or itself
+ * An HTTP client request. Instances of this class are immutable if their {@linkplain #getBody() body} is null or itself
  * immutable.
  */
 public sealed interface ClientRequest permits RealClientRequest {
+    static @NonNull ClientRequest get(final @NonNull HttpUrl url) {
+        Objects.requireNonNull(url);
+        return builder().url(url).get();
+    }
+
     static @NonNull Builder builder() {
         return new RealClientRequest.Builder();
     }
@@ -136,6 +142,12 @@ public sealed interface ClientRequest permits RealClientRequest {
         T removeHeader(final @NonNull String name);
 
         /**
+         * Remove all headers on this builder and adds {@code headers}.
+         */
+        @NonNull
+        T headers(final @NonNull Headers headers);
+
+        /**
          * Sets this request's {@code Cache-Control} header, replacing any cache control headers already present. If
          * {@code cacheControl} doesn't define any directives, this clears this request's cache-control headers.
          */
@@ -166,18 +178,34 @@ public sealed interface ClientRequest permits RealClientRequest {
          */
         @NonNull
         T cacheUrlOverride(final @Nullable HttpUrl cacheUrlOverride);
+
+        /**
+         * When set to {@code true}, configures this request's body to be compressed when it is transmitted. Default is
+         * false. This also adds the {@code Content-Encoding: gzip} header. If a {@code Content-Encoding} header was
+         * already present, it is discarded and replaced by {@code gzip} value.
+         * <ul>
+         * <li>Only use this method if you have prior knowledge that the receiving server supports gzip-compressed
+         * requests.
+         * <li>This option is no-op if this request doesn't have a request body.
+         * </ul>
+         */
+        @NonNull
+        T gzip(final boolean gzip);
+
+        /**
+         * Build a {@link ClientRequest} for a {@code method} HTTP call. You may provide a non-null {@code body}.
+         *
+         * @throws IllegalArgumentException if {@code body} is non-null for a {@code method} that does not permit one,
+         *                                  or if {@code body} is null for a {@code method} that requires one.
+         */
+        @NonNull
+        ClientRequest method(final @NonNull String method, final @Nullable ClientRequestBody body);
     }
 
     /**
      * The builder used to create a {@link ClientRequest} instance.
      */
     sealed interface Builder extends AbstractBuilder<Builder> permits RealClientRequest.Builder {
-        /**
-         * Remove all headers on this builder and adds {@code headers}.
-         */
-        @NonNull
-        Builder headers(final @NonNull Headers headers);
-
         /**
          * Build a {@link ClientRequest} for a GET HTTP call
          */
@@ -219,6 +247,12 @@ public sealed interface ClientRequest permits RealClientRequest {
          */
         @NonNull
         ClientRequest patch(final @NonNull ClientRequestBody requestBody);
+
+        /**
+         * Build a {@link ClientRequest} for a CONNECT HTTP call
+         */
+        @NonNull
+        ClientRequest connect();
     }
 
     /**

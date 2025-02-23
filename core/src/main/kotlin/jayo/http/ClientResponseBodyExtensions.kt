@@ -23,7 +23,7 @@
 
 package jayo.http
 
-import jayo.ByteString
+import jayo.bytestring.ByteString
 import jayo.Reader
 import jayo.http.internal.StandardClientResponseBodies
 

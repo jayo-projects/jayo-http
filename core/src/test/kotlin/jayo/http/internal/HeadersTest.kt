@@ -22,7 +22,6 @@
 package jayo.http.internal
 
 import jayo.http.Headers
-import jayo.http.internal.Utils.EMPTY_HEADERS
 import jayo.http.toHeaders
 import org.assertj.core.api.Assertions.assertThat
 import java.time.Instant
@@ -32,9 +31,9 @@ import kotlin.test.assertFailsWith
 class HeadersTest {
     @Test
     fun ofTrims() {
-        val headers = Headers.of("\t User-Agent \n", " \r OkHttp ")
+        val headers = Headers.of("\t User-Agent \n", " \r JayoHttp ")
         assertThat(headers.name(0)).isEqualTo("User-Agent")
-        assertThat(headers.value(0)).isEqualTo("OkHttp")
+        assertThat(headers.value(0)).isEqualTo("JayoHttp")
     }
 
     @Test
@@ -340,7 +339,7 @@ class HeadersTest {
 
     @Test
     fun byteCount() {
-        assertThat(EMPTY_HEADERS.byteCount()).isEqualTo(0L)
+        assertThat(Headers.EMPTY.byteCount()).isEqualTo(0L)
         assertThat(
             Headers.builder()
                 .add("abc", "def")

@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2025-present, pull-vert and Jayo contributors.
+ * Use of this source code is governed by the Apache 2.0 license.
+ *
+ * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
+ *
  * ====================================================================
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -24,14 +29,14 @@
  * <http://www.apache.org/>.
  */
 
-package jayo.http.internal;
+package jayo.http.internal.http;
 
 /**
  * Contains <a href="https://datatracker.ietf.org/doc/html/rfc7231#page-47">HTTP Status Codes</a> not offered by
  * HttpUrlConnection.
  * Forked from <a href="https://github.com/apache/httpcomponents-core/blob/master/httpcore5/src/main/java/org/apache/hc/core5/http/HttpStatus.java">Apache httpcomponents</a>
  */
-final class HttpStatusCodes {
+public final class HttpStatusCodes {
     // un-instantiable
     private HttpStatusCodes() {
     }
@@ -39,30 +44,30 @@ final class HttpStatusCodes {
     /**
      * {@code 100 Continue} (HTTP/1.1 - RFC 7231)
      */
-    static final int HTTP_CONTINUE = 100;
+    public static final int HTTP_CONTINUE = 100;
 
     /**
      * {@code 102 Processing} (WebDAV - RFC 2518)
      */
-    static final int HTTP_PROCESSING = 102;
+    public static final int HTTP_PROCESSING = 102;
 
     /**
      * {@code 103 Early Hints} (Early Hints - RFC 8297)
      */
-    static final int HTTP_EARLY_HINTS = 103;
+    public static final int HTTP_EARLY_HINTS = 103;
 
     /**
      * {@code 307 Temporary Redirect} (HTTP/1.1 - RFC 7231)
      */
-    static final int HTTP_TEMP_REDIRECT = 307;
+    public static final int HTTP_TEMP_REDIRECT = 307;
 
     /**
      * {@code 308 Permanent Redirect} (HTTP/1.1 - RFC 7538)
      */
-    static final int HTTP_PERM_REDIRECT = 308;
+    public static final int HTTP_PERM_REDIRECT = 308;
 
     /**
      * {@code 421 Misdirected Request} (HTTP/2 - RFC 7540)
      */
-    static final int HTTP_MISDIRECTED_REQUEST = 421;
+    public static final int HTTP_MISDIRECTED_REQUEST = 421;
 }

@@ -19,6 +19,7 @@ import jayo.Buffer
 import jayo.buffered
 import jayo.http.asRequestBody
 import jayo.http.toMediaType
+import jayo.http.toRequestBody
 import jayo.writer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -34,6 +35,17 @@ class ClientRequestBodyTest {
     fun setup(@TempDir tempDir: Path) {
         filePath = tempDir.resolve("file.txt")
         filePath.createFile()
+    }
+
+    @Test
+    fun correctContentType() {
+        val body = "Body"
+        val requestBody = body.toRequestBody(RealMediaType("text/plain", "text", "plain", arrayOf()))
+
+        val contentType = requestBody.contentType()!! as RealMediaType
+
+        assertThat(contentType.mediaType).isEqualTo("text/plain; charset=utf-8")
+        assertThat(contentType.parameter("charset")).isEqualTo("utf-8")
     }
 
     @Test

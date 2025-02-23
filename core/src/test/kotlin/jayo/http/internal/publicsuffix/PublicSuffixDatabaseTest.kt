@@ -21,9 +21,12 @@
 
 package jayo.http.internal.publicsuffix
 
-import jayo.*
+import jayo.Buffer
+import jayo.buffered
+import jayo.bytestring.ByteString
+import jayo.gzip
 import jayo.http.internal.HostnameUtils
-import jayo.internal.GzipRawReader
+import jayo.reader
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -121,11 +124,9 @@ class PublicSuffixDatabaseTest {
     @Test
     fun allPublicSuffixes() {
         val buffer = Buffer()
-        ResourcePublicSuffixList.PUBLIC_SUFFIX_RESOURCE.reader().use { resource ->
-            GzipRawReader(resource).buffered().use { source ->
-                val length = source.readInt()
-                buffer.write(source, length.toLong())
-            }
+        ResourcePublicSuffixList.PUBLIC_SUFFIX_RESOURCE.reader().buffered().gzip().buffered().use { source ->
+            val length = source.readInt()
+            buffer.writeFrom(source, length.toLong())
         }
         while (!buffer.exhausted()) {
             var publicSuffix = buffer.readLineStrict()
@@ -142,11 +143,11 @@ class PublicSuffixDatabaseTest {
     @Test
     fun publicSuffixExceptions() {
         val buffer = Buffer()
-        ResourcePublicSuffixList.PUBLIC_SUFFIX_RESOURCE.reader().gzip().buffered().use { source ->
+        ResourcePublicSuffixList.PUBLIC_SUFFIX_RESOURCE.reader().buffered().gzip().buffered().use { source ->
             var length = source.readInt()
             source.skip(length.toLong())
             length = source.readInt()
-            buffer.write(source, length.toLong())
+            buffer.writeFrom(source, length.toLong())
         }
         while (!buffer.exhausted()) {
             val exception = buffer.readLineStrict()

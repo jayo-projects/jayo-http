@@ -47,10 +47,10 @@ public final class RealMediaType implements MediaType {
      */
     private final @NonNull String @NonNull [] parameterNamesAndValues;
 
-    private RealMediaType(final @NonNull String mediaType,
-                         final @NonNull String type,
-                         final @NonNull String subtype,
-                         final @NonNull String @NonNull [] parameterNamesAndValues) {
+    RealMediaType(final @NonNull String mediaType,
+                  final @NonNull String type,
+                  final @NonNull String subtype,
+                  final @NonNull String @NonNull [] parameterNamesAndValues) {
         this.mediaType = Objects.requireNonNull(mediaType);
         this.type = Objects.requireNonNull(type);
         this.subtype = Objects.requireNonNull(subtype);
@@ -111,17 +111,22 @@ public final class RealMediaType implements MediaType {
     }
 
     @Override
+    public boolean equals(final @Nullable Object other) {
+        if (!(other instanceof RealMediaType that)) {
+            return false;
+        }
+
+        return mediaType.equals(that.mediaType);
+    }
+
+    @Override
     public int hashCode() {
         return mediaType.hashCode();
     }
 
-    @Override
-    public boolean equals(final @Nullable Object other) {
-        return (other instanceof RealMediaType otherAsMediaType) && mediaType.equals(otherAsMediaType.mediaType);
-    }
+    public static @NonNull MediaType get(final @NonNull String mediaType) {
+        assert mediaType != null;
 
-    public static MediaType get(final @NonNull String mediaType) {
-        Objects.requireNonNull(mediaType);
         final var typeSubtype = matchAt(TYPE_SUBTYPE, mediaType, 0);
         if (typeSubtype == null) {
             throw new IllegalArgumentException("No subtype found for: \"" + mediaType + "\"");
@@ -148,7 +153,7 @@ public final class RealMediaType implements MediaType {
             final var token = parameter.group(2);
             final String value;
             if (token == null) {
-                // Value is "double-quoted". That's valid and our regex group already strips the quotes.
+                // Value is "double-quoted". That's valid, and our regex group already strips the quotes.
                 value = parameter.group(3);
             } else if (token.startsWith("'") && token.endsWith("'") && token.length() > 2) {
                 // If the token is 'single-quoted' it's invalid! But we're lenient and strip the quotes.
@@ -168,6 +173,9 @@ public final class RealMediaType implements MediaType {
     private static @Nullable MatchResult matchAt(final @NonNull Pattern pattern,
                                                  final @NonNull String input,
                                                  final int index) {
+        assert pattern != null;
+        assert input != null;
+
         final var matcher = pattern.matcher(input)
                 .useAnchoringBounds(false)
                 .useTransparentBounds(true)

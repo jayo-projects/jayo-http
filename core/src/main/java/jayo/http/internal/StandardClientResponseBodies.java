@@ -22,9 +22,8 @@
 package jayo.http.internal;
 
 import jayo.Buffer;
-import jayo.ByteString;
 import jayo.Reader;
-import jayo.Utf8;
+import jayo.bytestring.ByteString;
 import jayo.http.ClientResponseBody;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
@@ -32,7 +31,6 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
-import static java.nio.charset.StandardCharsets.*;
 import static jayo.http.internal.Utils.chooseCharset;
 
 public final class StandardClientResponseBodies {
@@ -61,14 +59,18 @@ public final class StandardClientResponseBodies {
                                                      final @Nullable MediaType contentType) {
         Objects.requireNonNull(byteString);
 
-        if (byteString instanceof Utf8 && contentType != null && contentType.charset() != null
-                && !UTF_8.equals(contentType.charset()) && !US_ASCII.equals(contentType.charset())
-                && !ISO_8859_1.equals(contentType.charset())) { // latin1 is compatible with ASCII, considered fine !
-            throw new IllegalArgumentException("Invalid charset for Utf8 byte string: " + contentType.charset());
-        }
-
         final var buffer = Buffer.create().write(byteString);
         return create(buffer, contentType, byteString.byteSize());
+    }
+
+    public static @NonNull ClientResponseBody create(final @NonNull Reader reader,
+                                                     final @Nullable String contentTypeAsString,
+                                                     final long contentByteSize) {
+        MediaType contentType = null;
+        if (contentTypeAsString != null) {
+            contentType = MediaType.parse(contentTypeAsString);
+        }
+        return create(reader, contentType, contentByteSize);
     }
 
     public static @NonNull ClientResponseBody create(final @NonNull Reader reader,

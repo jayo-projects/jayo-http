@@ -40,12 +40,12 @@ import java.util.List;
  * Use of the chain cleaner is necessary to omit unexpected certificates that aren't relevant to the TLS handshake and
  * to extract the trusted CA certificate for the benefit of certificate pinning.
  */
-final class CertificateChainCleaner {
+public final class CertificateChainCleaner {
     private static final int MAX_SIGNERS = 9;
 
     private final TrustRootIndex trustRootIndex;
 
-    CertificateChainCleaner(final @NonNull X509TrustManager trustManager) {
+    public CertificateChainCleaner(final @NonNull X509TrustManager trustManager) {
         this(trustManager.getAcceptedIssuers());
     }
 
@@ -62,8 +62,7 @@ final class CertificateChainCleaner {
      * This is unexpected unless the trust root index in this class has a different trust manager than what was used to
      * establish {@code chain}.
      */
-    @NonNull
-    List<Certificate> clean(final @NonNull List<Certificate> chain) {
+    public @NonNull List<@NonNull Certificate> clean(final @NonNull List<@NonNull Certificate> chain) {
         final List<Certificate> chainCopy = new ArrayList<>(chain);
         final List<Certificate> result = new ArrayList<>();
         result.add(chainCopy.remove(0));
@@ -88,8 +87,8 @@ final class CertificateChainCleaner {
                 continue;
             }
 
-            // Search for the certificate in the chain that signed this certificate. This is typically
-            // the next element in the chain, but it could be any element.
+            // Search for the certificate in the chain that signed this certificate. This is typically the next element
+            // in the chain, but it could be any element.
             final var i = chainCopy.iterator();
             while (i.hasNext()) {
                 final var signingCert = (X509Certificate) i.next();
@@ -113,10 +112,9 @@ final class CertificateChainCleaner {
     }
 
     /**
-     * Returns true if [toVerify] was signed by [signingCert]'s public key.
-     *
      * @param minIntermediates the minimum number of intermediate certificates in [signingCert]. This
      *                         is -1 if signing cert is a lone self-signed certificate.
+     * @return true if {@code toVerify} was signed by {@code signingCert}'s public key.
      */
     private boolean verifySignature(final @NonNull X509Certificate toVerify,
                                     final @NonNull X509Certificate signingCert,
@@ -125,7 +123,7 @@ final class CertificateChainCleaner {
             return false;
         }
         if (signingCert.getBasicConstraints() < minIntermediates) {
-            return false; // The signer can't have this many intermediates beneath it.
+            return false; // The signer cannot have this many intermediates beneath it.
         }
         try {
             toVerify.verify(signingCert.getPublicKey());
@@ -137,8 +135,11 @@ final class CertificateChainCleaner {
 
     @Override
     public boolean equals(final @Nullable Object other) {
-        return other == this ||
-                (other instanceof CertificateChainCleaner that && trustRootIndex.equals(that.trustRootIndex));
+        if (!(other instanceof CertificateChainCleaner that)) {
+            return false;
+        }
+
+        return trustRootIndex.equals(that.trustRootIndex);
     }
 
     @Override

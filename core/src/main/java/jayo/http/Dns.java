@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-present, pull-vert and Jayo contributors.
+ * Copyright (c) 2025-present, pull-vert and Jayo contributors.
  * Use of this source code is governed by the Apache 2.0 license.
  *
  * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
@@ -35,6 +35,7 @@ import java.util.List;
  *
  * @implSpec Implementations of this interface must be safe for concurrent use.
  */
+@FunctionalInterface
 public interface Dns {
     /**
      * @return the IP addresses of {@code hostname}, in the order they will be attempted by Jayo HTTP. If a connection
@@ -43,10 +44,11 @@ public interface Dns {
      * @throws jayo.JayoUnknownHostException if {@code hostname} has no known IP address in this Dns.
      */
     @NonNull
-    List<InetAddress> lookup(String hostname);
+    List<@NonNull InetAddress> lookup(final @NonNull String hostname);
 
     /**
-     * A DNS that uses {@link InetAddress#getAllByName} to ask the underlying operating system to lookup IP addresses.
+     * A DNS that uses {@link InetAddress#getAllByName(String)} to ask the underlying operating system to lookup IP
+     * addresses.
      * Most custom {@link Dns} implementations should delegate to this instance.
      */
     @NonNull

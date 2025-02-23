@@ -27,7 +27,6 @@ import jayo.http.build
 import org.assertj.core.api.Assertions.assertThat
 import java.time.Duration
 import java.time.temporal.ChronoUnit
-import java.util.concurrent.TimeUnit.*
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.seconds
@@ -35,7 +34,6 @@ import kotlin.time.toJavaDuration
 
 class CacheControlTest {
     @Test
-    @Throws(Exception::class)
     fun emptyBuilderIsEmpty() {
         val cacheControl = CacheControl.builder().build()
         assertThat(cacheControl.toString()).isEqualTo("")
@@ -53,7 +51,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun completeBuilder() {
         val cacheControl =
             CacheControl.builder()
@@ -86,7 +83,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun completeDsl() {
         val cacheControl =
             CacheControl.builder().build {
@@ -119,7 +115,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun parseEmpty() {
         val cacheControl =
             CacheControl.parse(
@@ -139,7 +134,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun parse() {
         val header = (
                 "no-cache, no-store, max-age=1, s-maxage=2, private, public, must-revalidate, " +
@@ -166,7 +160,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun parseIgnoreCacheControlExtensions() {
         // Example from http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.9.6
         val header = "private, community=\"UCI\""
@@ -250,7 +243,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun timeDurationTruncatedToMaxValue() {
         val cacheControl =
             CacheControl.builder()
@@ -260,7 +252,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun secondsMustBeNonNegative() {
         val builder = CacheControl.builder()
         assertFailsWith<IllegalArgumentException> {
@@ -269,7 +260,6 @@ class CacheControlTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun timePrecisionIsTruncatedToSeconds() {
         val cacheControl =
             CacheControl.builder()

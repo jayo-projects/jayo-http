@@ -20,10 +20,17 @@ fun catalogVersion(lib: String) =
 
 dependencies {
     api("dev.jayo:jayo:${catalogVersion("jayo")}")
+    api("dev.jayo:jayo-scheduler:${catalogVersion("jayo")}")
 
     optional("org.jetbrains.kotlin:kotlin-stdlib")
 
     testImplementation(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
+    testImplementation("com.squareup.okhttp3:mockwebserver3-junit5:${catalogVersion("mockwebserver3")}")
+
+    testFixturesApi(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
+    testFixturesApi(testFixtures("dev.jayo:jayo-scheduler:${catalogVersion("jayo")}"))
+    testFixturesApi("org.junit.jupiter:junit-jupiter:${catalogVersion("junit")}")
+    testFixturesApi("org.assertj:assertj-core:${catalogVersion("assertj")}")
 }
 
 fun ByteArray.toByteStringExpression(): String {
@@ -43,8 +50,10 @@ val copyJavaTemplates by tasks.registering(Copy::class) {
     val listBytes = databaseGz.readBytes().toByteStringExpression()
 
     expand(
-        // Build jayo.http/internal/publicsuffix/EmbeddedPublicSuffixList.kt
-        "publicSuffixListBytes" to listBytes
+        // For jayo.http/internal/publicsuffix/EmbeddedPublicSuffixList.java
+        "publicSuffixListBytes" to listBytes,
+        // For jayo.http/internal/InternalVersion.java
+        "projectVersion" to project.version,
     )
 }
 

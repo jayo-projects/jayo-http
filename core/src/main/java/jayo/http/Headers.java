@@ -36,9 +36,9 @@ import java.util.Set;
  * {@code Response} for interpreted headers. This class maintains the order of the header fields within the HTTP
  * message.
  * <p>
- * This class tracks header values line-by-line. A field with multiple comma-separated values on the same line will be
- * treated as a field with a single value by this class. It is the caller's responsibility to detect and split on commas
- * if their field permits multiple values. This simplifies use of single-valued fields whose values routinely contain
+ * This class tracks header values line-by-line. This class will treat a field with multiple comma-separated values on
+ * the same line as a field with a single value. It is the caller's responsibility to detect and split on commas if
+ * their field permits multiple values. This simplifies the use of single-valued fields whose values routinely contain
  * commas, such as cookies or dates.
  * <p>
  * This class trims whitespace from values. It never returns values with leading or trailing whitespace.
@@ -49,6 +49,12 @@ public sealed interface Headers extends Collection<Headers.@NonNull Header> perm
     static @NonNull Builder builder() {
         return new RealHeaders.Builder();
     }
+
+    /**
+     * Empty headers.
+     */
+    @NonNull
+    Headers EMPTY = RealHeaders.of();
 
     /**
      * @return headers for the alternating header names and values. There must be an even number of arguments, and they

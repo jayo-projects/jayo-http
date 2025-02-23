@@ -22,8 +22,9 @@
 package jayo.http.internal;
 
 import jayo.*;
-import jayo.http.ClientResponseBody;
-import jayo.http.Headers;
+import jayo.bytestring.ByteString;
+import jayo.http.ClientResponse;
+import jayo.http.JayoHttpClient;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -31,17 +32,24 @@ import org.jspecify.annotations.Nullable;
 import java.io.Closeable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.time.Duration;
 
 public final class Utils {
     // un-instantiable
     private Utils() {
     }
 
-    static final byte @NonNull [] EMPTY_BYTE_ARRAY = new byte[0];
-    static final @NonNull Headers EMPTY_HEADERS = Headers.of();
-    static final @NonNull ClientResponseBody EMPTY_RESPONSE = ClientResponseBody.create(EMPTY_BYTE_ARRAY);
+    /**
+     * The string "JayoHttp" unless the library has been shaded for inclusion in another library or obfuscated with
+     * tools like R8 or ProGuard. In such cases it'll return a longer string like
+     * "com.example.shaded.jayo.http.JayoHttp". In large applications it's possible to have multiple Jayo HTTP
+     * instances; this makes it clear which is which.
+     */
+    public static final @NonNull String JAYO_HTTP_NAME = JayoHttpClient.class.getName()
+            .replaceFirst("^jayo.http\\.", "")
+            .replaceFirst("Client$", "");
+
+    public static final @NonNull String USER_AGENT = "jayohttp/" + InternalVersion.VERSION;
 
     /**
      * Byte order marks.
@@ -64,12 +72,10 @@ public final class Utils {
      * @return the index of the first character in this string that contains a character in {@code delimiters}.
      * Returns endIndex if there is no such character.
      */
-    static int delimiterOffset(
-            final @NonNull String string,
-            final @NonNull String delimiters,
-            final int startIndex,
-            final int endIndex
-    ) {
+    static int delimiterOffset(final @NonNull String string,
+                               final @NonNull String delimiters,
+                               final int startIndex,
+                               final int endIndex) {
         assert string != null;
         assert delimiters != null;
 
@@ -81,12 +87,10 @@ public final class Utils {
         return endIndex;
     }
 
-    static int delimiterOffset(
-            final @NonNull String string,
-            final char delimiter,
-            final int startIndex,
-            final int endIndex
-    ) {
+    static int delimiterOffset(final @NonNull String string,
+                               final char delimiter,
+                               final int startIndex,
+                               final int endIndex) {
         assert string != null;
 
         for (var i = startIndex; i < endIndex; i++) {
@@ -135,11 +139,9 @@ public final class Utils {
     /**
      * Increments {@code startIndex} until this string is not ASCII whitespace. Stops at {@code endIndex}.
      */
-    static int indexOfFirstNonAsciiWhitespace(
-            final @NonNull String string,
-            final int startIndex,
-            final int endIndex
-    ) {
+    private static int indexOfFirstNonAsciiWhitespace(final @NonNull String string,
+                                                      final int startIndex,
+                                                      final int endIndex) {
         assert string != null;
 
         for (var i = startIndex; i < endIndex; i++) {
@@ -152,8 +154,7 @@ public final class Utils {
         return endIndex;
     }
 
-    static int indexOfLastNonAsciiWhitespace(final @NonNull String string,
-                                                          final int startIndex) {
+    static int indexOfLastNonAsciiWhitespace(final @NonNull String string, final int startIndex) {
         assert string != null;
 
         return indexOfLastNonAsciiWhitespace(string, startIndex, string.length());
@@ -163,11 +164,9 @@ public final class Utils {
      * Decrements {@code endIndex} until {@code string.chatAt(endIndex - 1)} is not ASCII whitespace. Stops at
      * {@code startIndex}.
      */
-    static int indexOfLastNonAsciiWhitespace(
-            final @NonNull String string,
-            final int startIndex,
-            final int endIndex
-    ) {
+    private static int indexOfLastNonAsciiWhitespace(final @NonNull String string,
+                                                     final int startIndex,
+                                                     final int endIndex) {
         assert string != null;
 
         for (var i = endIndex - 1; i >= startIndex; i--) {
@@ -181,6 +180,20 @@ public final class Utils {
     }
 
     /**
+     * Shortcut for {@code string.substring(startIndex, endIndex).strip()}.
+     */
+    static @NonNull String trimSubstring(final @NonNull String string,
+                                         final int startIndex,
+                                         final int endIndex) {
+        assert string != null;
+
+        return string.substring(startIndex, endIndex).strip();
+//        final var start = indexOfFirstNonAsciiWhitespace(string, startIndex, endIndex);
+//        final var end = indexOfLastNonAsciiWhitespace(string, start, endIndex);
+//        return string.substring(start, end);
+    }
+
+    /**
      * @return true if we should void putting this header in an exception or toString().
      */
     static boolean isSensitiveHeader(final @NonNull String name) {
@@ -190,15 +203,6 @@ public final class Utils {
                 name.equalsIgnoreCase("Cookie") ||
                 name.equalsIgnoreCase("Proxy-Authorization") ||
                 name.equalsIgnoreCase("Set-Cookie");
-    }
-
-    static @NonNull Charset charsetOrUtf8(final @Nullable MediaType contentType) {
-        if (contentType == null || contentType.charset() == null) {
-            return StandardCharsets.UTF_8;
-        }
-
-        //noinspection DataFlowIssue
-        return contentType.charset();
     }
 
     record CharsetMediaType(@NonNull Charset charset, @Nullable MediaType contentType) {
@@ -235,7 +239,7 @@ public final class Utils {
      * @return this as a non-negative integer, or {@code 0} if it is negative, or {@code Integer.MAX_VALUE} if it is too
      * large, or {@code defaultValue} if it cannot be parsed.
      */
-    static int toNonNegativeInt(final @Nullable String string, final int defaultValue) {
+    public static int toNonNegativeInt(final @Nullable String string, final int defaultValue) {
         if (string == null) {
             return defaultValue;
         }
@@ -257,53 +261,6 @@ public final class Utils {
         assert prefix != null;
 
         return string.regionMatches(true, 0, prefix, 0, prefix.length());
-    }
-
-    /**
-     * @return an array containing only elements found in this array and also in [other]. The returned
-     * elements are in the same order as in this.
-     */
-    static @NonNull String @NonNull [] intersect(final @NonNull String @NonNull [] first,
-                                                 final @NonNull String @NonNull [] second,
-                                                 final @NonNull Comparator<? super String> comparator) {
-        assert first != null;
-        assert second != null;
-        assert comparator != null;
-
-        final var result = new ArrayList<String>();
-        for (final var a : first) {
-            for (final var b : second) {
-                if (comparator.compare(a, b) == 0) {
-                    result.add(a);
-                    break;
-                }
-            }
-        }
-        return result.toArray(String[]::new);
-    }
-
-    /**
-     * @return true if there is an element in the first array that is also in the second. This method terminates if any
-     * intersection is found. The sizes of both arguments are assumed to be so small, and the likelihood of an
-     * intersection so great, that it is not worth the CPU cost of sorting or the memory cost of hashing.
-     */
-    static boolean hasIntersection(final @NonNull String @NonNull [] first,
-                                   final @NonNull String @Nullable [] second,
-                                   final @NonNull Comparator<? super String> comparator) {
-        assert first != null;
-        assert comparator != null;
-
-        if (first.length == 0 || second == null || second.length == 0) {
-            return false;
-        }
-        for (final var a : first) {
-            for (final var b : second) {
-                if (comparator.compare(a, b) == 0) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     /**
@@ -330,5 +287,62 @@ public final class Utils {
             buffer.readByte();
         }
         return count;
+    }
+
+    /**
+     * Reads until {@code reader} is exhausted or the timeout has expired. This is careful to not extend the deadline if
+     * one exists already.
+     */
+    public static boolean skipAll(final @NonNull RawReader reader, final @NonNull Duration timeout) {
+        assert reader != null;
+        assert timeout != null;
+
+        try {
+            // we execute the skip operation with a timeout to avoid a long wait. Jayo's Cancellable ensures that if a
+            // shorter existing timeout is already configured, it will be used instead of the new one.
+            return Cancellable.call(timeout, ignored -> {
+                Buffer skipBuffer = Buffer.create();
+                while (reader.readAtMostTo(skipBuffer, 16_709) != -1L) {
+                    skipBuffer.clear();
+                }
+                return true; // Success! The reader has been exhausted.
+            });
+        } catch (JayoInterruptedIOException e) {
+            return false; // We ran out of time before exhausting the reader.
+        }
+    }
+
+    /**
+     * Attempts to exhaust {@code reader}, returning true if successful. This is useful when reading a complete reader
+     * is helpful, such as when doing so completes a cache body or frees a socket connection for reuse.
+     */
+    public static boolean discard(final @NonNull RawReader reader, final @NonNull Duration timeout) {
+        assert reader != null;
+        assert timeout != null;
+
+        try {
+            return skipAll(reader, timeout);
+        } catch (JayoException e) {
+            return false;
+        }
+    }
+
+    public static long headersContentLength(final @NonNull ClientResponse response) {
+        assert response != null;
+
+        final var maybeContentLength = response.getHeaders().get("Content-Length");
+        try {
+            return (maybeContentLength != null) ? Long.parseLong(maybeContentLength) : -1L;
+        } catch (NumberFormatException e) {
+            return -1L;
+        }
+    }
+
+    public static ClientResponse.@NonNull Builder stripBody(final @NonNull ClientResponse response) {
+        assert response != null;
+        return response.newBuilder()
+                .body(new UnreadableResponseBody(
+                        response.getBody().contentType(),
+                        response.getBody().contentByteSize()));
     }
 }

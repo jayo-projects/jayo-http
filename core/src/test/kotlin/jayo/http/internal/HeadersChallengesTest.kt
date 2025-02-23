@@ -22,7 +22,7 @@
 package jayo.http.internal
 
 import jayo.http.Headers
-import jayo.http.internal.HttpHeaders.parseChallenges
+import jayo.http.internal.http.HttpHeaders.parseChallenges
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

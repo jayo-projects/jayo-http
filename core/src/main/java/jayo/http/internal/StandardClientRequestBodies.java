@@ -21,22 +21,25 @@
 
 package jayo.http.internal;
 
-import jayo.ByteString;
 import jayo.Jayo;
+import jayo.JayoException;
 import jayo.Writer;
+import jayo.bytestring.ByteString;
 import jayo.http.ClientRequestBody;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-import static jayo.tools.JayoUtils.checkOffsetAndCount;
 import static jayo.http.internal.Utils.chooseCharset;
+import static jayo.tools.JayoUtils.checkOffsetAndCount;
 
 public final class StandardClientRequestBodies {
     // un-instantiable
@@ -45,7 +48,8 @@ public final class StandardClientRequestBodies {
 
     public static @NonNull ClientRequestBody create(final @NonNull String string,
                                                     final @Nullable MediaType contentType) {
-        Objects.requireNonNull(string);
+        assert string != null;
+
         final var charsetMediaType = chooseCharset(contentType);
         final var bytes = string.getBytes(charsetMediaType.charset());
         return create(bytes, charsetMediaType.contentType(), 0, bytes.length);
@@ -53,7 +57,8 @@ public final class StandardClientRequestBodies {
 
     public static @NonNull ClientRequestBody create(final @NonNull ByteString byteString,
                                                     final @Nullable MediaType contentType) {
-        Objects.requireNonNull(byteString);
+        assert byteString != null;
+
         return new ClientRequestBody() {
             @Override
             public @Nullable MediaType contentType() {
@@ -66,8 +71,9 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Writer writer) {
-                writer.write(byteString);
+            public void writeTo(final @NonNull Writer destination) {
+                Objects.requireNonNull(destination);
+                destination.write(byteString);
             }
         };
     }
@@ -76,8 +82,9 @@ public final class StandardClientRequestBodies {
                                                     final @Nullable MediaType contentType,
                                                     final int offset,
                                                     final int byteCount) {
-        Objects.requireNonNull(bytes);
+        assert bytes != null;
         checkOffsetAndCount(bytes.length, offset, byteCount);
+
         return new ClientRequestBody() {
             @Override
             public @Nullable MediaType contentType() {
@@ -90,15 +97,17 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Writer writer) {
-                writer.write(bytes, offset, byteCount);
+            public void writeTo(final @NonNull Writer destination) {
+                Objects.requireNonNull(destination);
+                destination.write(bytes, offset, byteCount);
             }
         };
     }
 
     public static @NonNull ClientRequestBody create(final @NonNull Path path,
                                                     final @Nullable MediaType contentType) {
-        Objects.requireNonNull(path);
+        assert path != null;
+
         return new ClientRequestBody() {
             @Override
             public @Nullable MediaType contentType() {
@@ -115,9 +124,11 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Writer writer) {
+            public void writeTo(final @NonNull Writer destination) {
+                Objects.requireNonNull(destination);
+
                 try (final var reader = Jayo.reader(path)) {
-                    writer.transferFrom(reader);
+                    destination.writeAllFrom(reader);
                 }
             }
         };
@@ -125,7 +136,8 @@ public final class StandardClientRequestBodies {
 
     public static @NonNull ClientRequestBody create(final @NonNull File file,
                                                     final @Nullable MediaType contentType) {
-        Objects.requireNonNull(file);
+        assert file != null;
+
         return new ClientRequestBody() {
             @Override
             public @Nullable MediaType contentType() {
@@ -138,9 +150,39 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
-            public void writeTo(final @NonNull Writer writer) {
+            public void writeTo(final @NonNull Writer destination) {
+                Objects.requireNonNull(destination);
+
                 try (final var reader = Jayo.reader(file)) {
-                    writer.transferFrom(reader);
+                    destination.writeAllFrom(reader);
+                }
+            }
+        };
+    }
+
+    public static @NonNull ClientRequestBody create(final @NonNull FileDescriptor fileDescriptor,
+                                                    final @Nullable MediaType contentType) {
+        assert fileDescriptor != null;
+
+        return new ClientRequestBody() {
+            @Override
+            public @Nullable MediaType contentType() {
+                return contentType;
+            }
+
+            @Override
+            public boolean isOneShot() {
+                return true;
+            }
+
+            @Override
+            public void writeTo(final @NonNull Writer destination) {
+                Objects.requireNonNull(destination);
+
+                try (final var fis = new FileInputStream(fileDescriptor)) {
+                    destination.writeAllFrom(Jayo.reader(fis));
+                } catch (IOException e) {
+                    throw JayoException.buildJayoException(e);
                 }
             }
         };

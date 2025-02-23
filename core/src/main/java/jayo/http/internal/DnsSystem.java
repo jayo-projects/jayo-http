@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-present, pull-vert and Jayo contributors.
+ * Copyright (c) 2025-present, pull-vert and Jayo contributors.
  * Use of this source code is governed by the Apache 2.0 license.
  *
  * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
@@ -32,11 +32,12 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A DNS that uses {@link InetAddress#getAllByName} to ask the underlying operating system to lookup IP addresses.
+ * A DNS that uses {@link InetAddress#getAllByName(String)} to ask the underlying operating system to lookup IP
+ * addresses.
  */
 public final class DnsSystem implements Dns {
     @Override
-    public @NonNull List<InetAddress> lookup(final String hostname) {
+    public @NonNull List<@NonNull InetAddress> lookup(@NonNull final String hostname) {
         Objects.requireNonNull(hostname);
 
         try {

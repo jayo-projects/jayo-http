@@ -23,18 +23,13 @@ package jayo.http.internal;
 
 import jayo.http.ConnectionSpec;
 import jayo.tls.CipherSuite;
+import jayo.tls.ClientTlsEndpoint;
+import jayo.tls.Protocol;
 import jayo.tls.TlsVersion;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import javax.net.ssl.SSLEngine;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-
-import static java.util.Arrays.copyOf;
-import static java.util.Comparator.naturalOrder;
+import java.util.*;
 
 /**
  * Follow <a
@@ -46,7 +41,7 @@ public final class RealConnectionSpec implements ConnectionSpec {
      * Offers the best security and performance, limiting your range of clients to modern devices and browsers.
      * Supports TLS 1.2 -> 1.3 cipher suites. All suites are forward-secret and support authenticated encryption (AEAD).
      */
-    private static final @NonNull List<CipherSuite> MODERN_CIPHER_SUITES =
+    private static final @NonNull List<@NonNull CipherSuite> MODERN_CIPHER_SUITES =
             List.of(
                     // TLSv1.3.
                     CipherSuite.TLS_AES_128_GCM_SHA256,
@@ -65,7 +60,7 @@ public final class RealConnectionSpec implements ConnectionSpec {
      * Provides broader compatibility with somewhat weaker security.
      * Supports TLS 1.2 -> 1.3 cipher suites. All suites are forward-secret.
      */
-    private static final @NonNull List<CipherSuite> COMPATIBLE_CIPHER_SUITES =
+    private static final @NonNull List<@NonNull CipherSuite> COMPATIBLE_CIPHER_SUITES =
             List.of(
                     // TLSv1.3.
                     CipherSuite.TLS_AES_128_GCM_SHA256,
@@ -90,7 +85,7 @@ public final class RealConnectionSpec implements ConnectionSpec {
      * Includes all cipher suites that Cloudflare supports today. Broadest compatibility with the weakest security.
      * Supports TLS 1.0 -> 1.3 cipher suites.
      */
-    private static final @NonNull List<CipherSuite> LEGACY_CIPHER_SUITES =
+    private static final @NonNull List<@NonNull CipherSuite> LEGACY_CIPHER_SUITES =
             List.of(
                     // TLSv1.3.
                     CipherSuite.TLS_AES_128_GCM_SHA256,
@@ -127,8 +122,8 @@ public final class RealConnectionSpec implements ConnectionSpec {
      */
     public static final @NonNull RealConnectionSpec MODERN_TLS =
             new Builder(true)
-                    .cipherSuites(MODERN_CIPHER_SUITES.toArray(CipherSuite[]::new))
-                    .tlsVersions(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2)
+                    .cipherSuites(MODERN_CIPHER_SUITES)
+                    .tlsVersions(List.of(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2))
                     .build();
 
     /**
@@ -137,8 +132,8 @@ public final class RealConnectionSpec implements ConnectionSpec {
      */
     public static final @NonNull RealConnectionSpec COMPATIBLE_TLS =
             new Builder(true)
-                    .cipherSuites(COMPATIBLE_CIPHER_SUITES.toArray(CipherSuite[]::new))
-                    .tlsVersions(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2)
+                    .cipherSuites(COMPATIBLE_CIPHER_SUITES)
+                    .tlsVersions(List.of(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2))
                     .build();
 
     /**
@@ -147,8 +142,8 @@ public final class RealConnectionSpec implements ConnectionSpec {
      */
     public static final @NonNull RealConnectionSpec LEGACY_TLS =
             new Builder(true)
-                    .cipherSuites(LEGACY_CIPHER_SUITES.toArray(CipherSuite[]::new))
-                    .tlsVersions(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2, TlsVersion.TLS_1_1, TlsVersion.TLS_1_0)
+                    .cipherSuites(LEGACY_CIPHER_SUITES)
+                    .tlsVersions(List.of(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2, TlsVersion.TLS_1_1, TlsVersion.TLS_1_0))
                     .build();
 
     /**
@@ -157,15 +152,15 @@ public final class RealConnectionSpec implements ConnectionSpec {
     public static final @NonNull RealConnectionSpec CLEARTEXT = new Builder(false).build();
 
     final boolean isTls;
-    final @NonNull String @Nullable [] cipherSuitesAsString;
-    final @NonNull String @Nullable [] tlsVersionsAsString;
+    final @Nullable List<@NonNull CipherSuite> cipherSuites;
+    final @Nullable List<@NonNull TlsVersion> tlsVersions;
 
     private RealConnectionSpec(final boolean isTls,
-                               final @NonNull String @Nullable [] cipherSuitesAsString,
-                               final @NonNull String @Nullable [] tlsVersionsAsString) {
+                               final @Nullable List<@NonNull CipherSuite> cipherSuites,
+                               @Nullable List<@NonNull TlsVersion> tlsVersions) {
         this.isTls = isTls;
-        this.cipherSuitesAsString = cipherSuitesAsString;
-        this.tlsVersionsAsString = tlsVersionsAsString;
+        this.cipherSuites = cipherSuites;
+        this.tlsVersions = tlsVersions;
     }
 
     @Override
@@ -174,41 +169,29 @@ public final class RealConnectionSpec implements ConnectionSpec {
     }
 
     @Override
-    public @Nullable List<CipherSuite> getCipherSuites() {
-        if (cipherSuitesAsString == null || cipherSuitesAsString.length == 0) {
-            return null;
-        }
-        return Arrays.stream(cipherSuitesAsString)
-                .map(CipherSuite::fromJavaName)
-                .toList();
+    public @Nullable List<@NonNull CipherSuite> getCipherSuites() {
+        return cipherSuites;
     }
 
     @Override
-    public @Nullable List<TlsVersion> getTlsVersions() {
-        if (tlsVersionsAsString == null || tlsVersionsAsString.length == 0) {
-            return null;
-        }
-        return Arrays.stream(tlsVersionsAsString)
-                .map(TlsVersion::fromJavaName)
-                .toList();
+    public @Nullable List<@NonNull TlsVersion> getTlsVersions() {
+        return tlsVersions;
     }
 
     @Override
-    public boolean isCompatible(final @NonNull SSLEngine sslEngine) {
-        Objects.requireNonNull(sslEngine);
+    public boolean isCompatible(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer) {
+        Objects.requireNonNull(tlsParameterizer);
 
         if (!isTls) {
             return false;
         }
 
-        if (tlsVersionsAsString != null &&
-                !Utils.hasIntersection(tlsVersionsAsString, sslEngine.getEnabledProtocols(), naturalOrder())) {
+        if (tlsVersions != null && Collections.disjoint(tlsVersions, tlsParameterizer.getEnabledTlsVersions())) {
             return false;
         }
 
         //noinspection RedundantIfStatement
-        if (cipherSuitesAsString != null &&
-                !Utils.hasIntersection(cipherSuitesAsString, sslEngine.getEnabledCipherSuites(), ORDER_BY_NAME)) {
+        if (cipherSuites != null && Collections.disjoint(cipherSuites, tlsParameterizer.getEnabledCipherSuites())) {
             return false;
         }
 
@@ -217,35 +200,25 @@ public final class RealConnectionSpec implements ConnectionSpec {
 
     @Override
     public boolean equals(final @Nullable Object other) {
-        if (other == this) {
-            return true;
-        }
-        if (!(other instanceof RealConnectionSpec _other)) {
+        if (!(other instanceof RealConnectionSpec that)) {
             return false;
         }
 
-        if (this.isTls != _other.isTls) {
+        if (this.isTls != that.isTls) {
             return false;
         }
 
-        if (isTls) {
-            if (!Arrays.equals(this.cipherSuitesAsString, _other.cipherSuitesAsString)) {
-                return false;
-            }
-            if (!Arrays.equals(this.tlsVersionsAsString, _other.tlsVersionsAsString)) {
-                return false;
-            }
-        }
-
-        return true;
+        return !isTls ||
+                (Objects.equals(this.cipherSuites, that.cipherSuites) &&
+                        Objects.equals(this.tlsVersions, that.tlsVersions));
     }
 
     @Override
     public int hashCode() {
         var result = 17;
         if (isTls) {
-            result = 31 * result + Arrays.hashCode(cipherSuitesAsString);
-            result = 31 * result + Arrays.hashCode(tlsVersionsAsString);
+            result = 31 * result + Objects.hashCode(cipherSuites);
+            result = 31 * result + Objects.hashCode(tlsVersions);
         }
         return result;
     }
@@ -256,51 +229,59 @@ public final class RealConnectionSpec implements ConnectionSpec {
             return "ConnectionSpec()";
         }
 
-        return
-                "ConnectionSpec(" +
-                        "cipherSuites=" + Objects.toString(getCipherSuites(), "[all enabled]") + ", " +
-                        "tlsVersions=" + Objects.toString(getTlsVersions(), "[all enabled]") + ")";
+        return "ConnectionSpec(" +
+                "cipherSuites=" + Objects.toString(cipherSuites, "[all enabled]") + ", " +
+                "tlsVersions=" + Objects.toString(tlsVersions, "[all enabled]") + ")";
     }
 
     /**
-     * Applies this spec to {@code sslEngine}.
+     * Applies this spec to {@code sslEngine} and the given {@code routeProtocols}.
      */
-    void apply(final @NonNull SSLEngine sslEngine, final boolean isFallback) {
-        assert sslEngine != null;
+    public void apply(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer,
+                      final boolean isFallback,
+                      final @NonNull List<@NonNull Protocol> routeProtocols) {
+        assert tlsParameterizer != null;
+        assert routeProtocols != null;
 
-        final var specToApply = supportedSpec(sslEngine, isFallback);
+        final var specToApply = supportedSpec(tlsParameterizer, isFallback);
 
-        if (specToApply.tlsVersionsAsString != null) {
-            sslEngine.setEnabledProtocols(specToApply.tlsVersionsAsString);
+        if (specToApply.tlsVersions != null) {
+            tlsParameterizer.setEnabledTlsVersions(specToApply.tlsVersions);
         }
 
-        if (specToApply.cipherSuitesAsString != null) {
-            sslEngine.setEnabledCipherSuites(specToApply.cipherSuitesAsString);
+        if (specToApply.cipherSuites != null) {
+            tlsParameterizer.setEnabledCipherSuites(specToApply.cipherSuites);
         }
+
+        tlsParameterizer.setEnabledProtocols(routeProtocols);
     }
 
     /**
      * @return a copy of this that omits cipher suites and TLS versions not enabled by {@code sslEngine}.
      */
-    private @NonNull RealConnectionSpec supportedSpec(final @NonNull SSLEngine sslEngine, final boolean isFallback) {
-        final var socketEnabledCipherSuites = sslEngine.getEnabledCipherSuites();
-        String[] cipherSuitesIntersection = effectiveCipherSuites(this, socketEnabledCipherSuites);
+    @NonNull
+    RealConnectionSpec supportedSpec(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer,
+                                     final boolean isFallback) {
+        assert tlsParameterizer != null;
 
-        final String[] tlsVersionsIntersection;
-        if (tlsVersionsAsString != null) {
-            tlsVersionsIntersection = Utils.intersect(sslEngine.getEnabledProtocols(), tlsVersionsAsString,
-                    naturalOrder());
+        final var tlsEndpointEnabledCipherSuites = tlsParameterizer.getEnabledCipherSuites();
+        var cipherSuitesIntersection = effectiveCipherSuites(this, tlsEndpointEnabledCipherSuites);
+
+        final List<TlsVersion> tlsVersionsIntersection;
+        if (tlsVersions != null) {
+            tlsVersionsIntersection = tlsVersions.stream()
+                    .filter(tlsParameterizer.getEnabledTlsVersions()::contains)
+                    .toList();
         } else {
-            tlsVersionsIntersection = sslEngine.getEnabledProtocols();
+            tlsVersionsIntersection = tlsParameterizer.getEnabledTlsVersions();
         }
 
         // In accordance with https://tools.ietf.org/html/draft-ietf-tls-downgrade-scsv-00 the SCSV cipher is added to
         // signal that a protocol fallback has taken place.
-        final var supportedCipherSuites = sslEngine.getSupportedCipherSuites();
+        final var supportedCipherSuites = tlsParameterizer.getSupportedCipherSuites();
         final var indexOfFallbackScsv = indexOfTlsFallbackScsv(supportedCipherSuites);
         if (isFallback && indexOfFallbackScsv != -1) {
-            cipherSuitesIntersection =
-                    concat(cipherSuitesIntersection, supportedCipherSuites[indexOfFallbackScsv]);
+            cipherSuitesIntersection = concat(cipherSuitesIntersection, supportedCipherSuites.get(indexOfFallbackScsv));
         }
 
         return new Builder(this)
@@ -309,39 +290,49 @@ public final class RealConnectionSpec implements ConnectionSpec {
                 .build();
     }
 
-    static @NonNull String @NonNull [] effectiveCipherSuites(final @NonNull RealConnectionSpec connectionSpec,
-                                                             final @NonNull String @NonNull [] enabledCipherSuites) {
-        if (connectionSpec.cipherSuitesAsString != null) {
+    static @NonNull List<@NonNull CipherSuite> effectiveCipherSuites(
+            final @NonNull RealConnectionSpec connectionSpec,
+            final @NonNull List<@NonNull CipherSuite> enabledCipherSuites) {
+        assert connectionSpec != null;
+        assert enabledCipherSuites != null;
+
+        if (connectionSpec.cipherSuites != null) {
             // 3 options here for ordering
-            // 1) Legacy Platform - based on the Platform/Provider existing ordering in
-            // sslSocket.enabledCipherSuites
+            // 1) Legacy Platform - based on the Platform/Provider existing ordering in sslSocket.enabledCipherSuites
             // 2) Jayo HTTP Client - based on MODERN_TLS source code ordering
-            // 3) Caller specified but assuming the visible defaults in MODERN_CIPHER_SUITES are rejigged
-            // to match legacy i.e. the platform/provider
+            // 3) Caller specified but assuming the visible defaults in MODERN_CIPHER_SUITES are rejigged to match
+            // legacy i.e. the platform/provider
             //
             // Opting for 2 here and keeping MODERN_TLS in line with secure browsers.
-            return Utils.intersect(connectionSpec.cipherSuitesAsString, enabledCipherSuites, ORDER_BY_NAME);
+            return intersect(connectionSpec.cipherSuites, enabledCipherSuites);
         }
         return enabledCipherSuites;
     }
 
     /**
-     * @return the index of the given item from the array if it exists, else return -1.
+     * @return the index of the given item from the list if it exists, else return -1.
      */
-    private static int indexOfTlsFallbackScsv(final @NonNull String @NonNull [] array) {
-        for (int i = 0; i < array.length; i++) {
-            if (ORDER_BY_NAME.compare("TLS_FALLBACK_SCSV", array[i]) == 0) {
+    private static int indexOfTlsFallbackScsv(final @NonNull List<@NonNull CipherSuite> cipherSuites) {
+        for (var i = 0; i < cipherSuites.size(); i++) {
+            if (ORDER_BY_NAME.compare(CipherSuite.TLS_FALLBACK_SCSV.getJavaName(),
+                    cipherSuites.get(i).getJavaName()) == 0) {
                 return i;
             }
         }
         return -1;
     }
 
-    private static @NonNull String @NonNull [] concat(final @NonNull String @NonNull [] array,
-                                                      final @NonNull String value) {
-        final var result = copyOf(array, array.length + 1);
-        result[result.length - 1] = value;
-        return result;
+    /**
+     * Concat a single value to an unmodifiable list, and return it as a new unmodifiable list.
+     */
+    private static @NonNull List<@NonNull CipherSuite> concat(final @NonNull List<@NonNull CipherSuite> list,
+                                                              final @NonNull CipherSuite value) {
+        assert list != null;
+        assert value != null;
+
+        final var tmpList = new ArrayList<>(list);
+        tmpList.add(value);
+        return List.copyOf(tmpList);
     }
 
     /**
@@ -370,10 +361,31 @@ public final class RealConnectionSpec implements ConnectionSpec {
         return 0;
     };
 
+    /**
+     * @return a list containing only elements found in this array and also in {@code second}. The returned elements are
+     * in the same order as in {@code first}.
+     */
+    private static @NonNull List<@NonNull CipherSuite> intersect(final @NonNull List<@NonNull CipherSuite> first,
+                                                                 final @NonNull List<@NonNull CipherSuite> second) {
+        assert first != null;
+        assert second != null;
+
+        final var result = new ArrayList<CipherSuite>();
+        for (final var a : first) {
+            for (final var b : second) {
+                if (ORDER_BY_NAME.compare(a.getJavaName(), b.getJavaName()) == 0) {
+                    result.add(a);
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+
     public static final class Builder implements ConnectionSpec.Builder {
         private final boolean tls;
-        private @NonNull String @Nullable [] cipherSuites = null;
-        private @NonNull String @Nullable [] tlsVersions = null;
+        private @Nullable List<@NonNull CipherSuite> cipherSuites = null;
+        private @Nullable List<@NonNull TlsVersion> tlsVersions = null;
 
         Builder(final boolean tls) {
             this.tls = tls;
@@ -383,8 +395,8 @@ public final class RealConnectionSpec implements ConnectionSpec {
             Objects.requireNonNull(connectionSpec);
 
             this.tls = connectionSpec.isTls;
-            this.cipherSuites = connectionSpec.cipherSuitesAsString;
-            this.tlsVersions = connectionSpec.tlsVersionsAsString;
+            this.cipherSuites = connectionSpec.cipherSuites;
+            this.tlsVersions = connectionSpec.tlsVersions;
         }
 
         @Override
@@ -401,26 +413,15 @@ public final class RealConnectionSpec implements ConnectionSpec {
         }
 
         @Override
-        public @NonNull Builder cipherSuites(final @NonNull CipherSuite @NonNull ... cipherSuites) {
+        public @NonNull Builder cipherSuites(final @NonNull List<@NonNull CipherSuite> cipherSuites) {
             Objects.requireNonNull(cipherSuites);
             if (!tls) {
                 throw new IllegalArgumentException("no cipher suites for cleartext connections");
             }
-            final var strings = Arrays.stream(cipherSuites)
-                    .map(CipherSuite::getJavaName)
-                    .toArray(String[]::new);
-            return cipherSuites(strings);
-        }
-
-        @Override
-        public @NonNull Builder cipherSuites(final @NonNull String @NonNull ... cipherSuites) {
-            if (!tls) {
-                throw new IllegalArgumentException("no cipher suites for cleartext connections");
-            }
-            if (cipherSuites == null || cipherSuites.length == 0) {
+            if (cipherSuites.isEmpty()) {
                 throw new IllegalArgumentException("At least one cipher suite is required");
             }
-            this.cipherSuites = Arrays.copyOf(cipherSuites, cipherSuites.length);
+            this.cipherSuites = List.copyOf(cipherSuites);
             return this;
         }
 
@@ -438,26 +439,15 @@ public final class RealConnectionSpec implements ConnectionSpec {
         }
 
         @Override
-        public @NonNull Builder tlsVersions(final @NonNull TlsVersion @NonNull ... tlsVersions) {
+        public @NonNull Builder tlsVersions(final @NonNull List<@NonNull TlsVersion> tlsVersions) {
             Objects.requireNonNull(tlsVersions);
             if (!tls) {
                 throw new IllegalArgumentException("no TLS versions for cleartext connections");
             }
-            final var strings = Arrays.stream(tlsVersions)
-                    .map(TlsVersion::getJavaName)
-                    .toArray(String[]::new);
-            return tlsVersions(strings);
-        }
-
-        @Override
-        public @NonNull Builder tlsVersions(final @NonNull String @NonNull ... tlsVersions) {
-            if (!tls) {
-                throw new IllegalArgumentException("no TLS versions for cleartext connections");
-            }
-            if (tlsVersions == null || tlsVersions.length == 0) {
+            if (tlsVersions.isEmpty()) {
                 throw new IllegalArgumentException("At least one TLS version is required");
             }
-            this.tlsVersions = Arrays.copyOf(tlsVersions, tlsVersions.length);
+            this.tlsVersions = List.copyOf(tlsVersions);
             return this;
         }
 

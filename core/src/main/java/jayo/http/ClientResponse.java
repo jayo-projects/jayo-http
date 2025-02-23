@@ -22,15 +22,14 @@
 package jayo.http;
 
 import jayo.http.internal.RealClientResponse;
-import jayo.tls.Protocol;
 import jayo.tls.Handshake;
+import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.io.Closeable;
 import java.time.Instant;
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * An HTTP response. Instances of this class are not immutable: the response body is a one-shot value that may be
@@ -146,11 +145,35 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
     List<String> headers(final @NonNull String name);
 
     /**
-     * @return the trailers after the HTTP response, which may be empty. It is an error to call this before the entire
-     * HTTP response body has been consumed.
+     * @return the trailers after the HTTP response, which may be empty. This blocks until the trailers are available to
+     * read.
+     * <p>
+     * It is not safe to call this concurrently with code processing the response body. If you call this without
+     * consuming the complete response body, any remaining bytes in the response body will be discarded before trailers
+     * are returned.
+     * <p>
+     * If {@link Call#cancel()} is called while this method is blocking, this call will immediately throw.
+     * @throws IllegalStateException if the response is closed.
+     * @throws jayo.JayoException    if the trailers cannot be loaded, such as if the network connection is dropped.
      */
     @NonNull
     Headers trailers();
+
+    /**
+     * @return the trailers after the HTTP response, if they are available to read immediately. Unlike
+     * {@link #trailers()}, this doesn't block if the trailers are not immediately available, and instead returns null.
+     * <p>
+     * This will typically return null until {@link ClientResponseBody#reader()} has buffered the last byte of the
+     * response body. Call {@code body.reader().request(1024 * 1024)} to block until either that's done, or 1 MiB of
+     * response data is loaded into memory. (You could use any size here, though large values risk exhausting memory.)
+     * <p>
+     * This returns an empty value if the trailers are available but have no data.
+     * <p>
+     * It is not safe to call this concurrently with code processing the response body.
+     * @throws jayo.JayoException if the trailers cannot be loaded, such as if the network connection is dropped.
+     */
+    @Nullable
+    Headers peekTrailers();
 
     /**
      * Peeks up to {@code byteCount} bytes from the response body and returns them as a new response body. If fewer than
@@ -170,7 +193,7 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
     Builder newBuilder();
 
     /**
-     * @return true if this response redirects to another resource.
+     * @return {@code true} if this response redirects to another resource.
      */
     boolean isRedirect();
 
@@ -228,7 +251,7 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
         Builder header(final @NonNull String name, final @NonNull String value);
 
         /**
-         * Adds a header with {@code name} to {@code value}. Prefer this method for multiply-valued headers like
+         * Adds a header with {@code name} to {@code value}. Prefer this method for multiply valued headers like
          * "Set-Cookie".
          */
         @NonNull
@@ -265,7 +288,7 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
         Builder receivedResponseAt(final @NonNull Instant receivedResponseAt);
 
         @NonNull
-        Builder trailers(final @NonNull Supplier<Headers> trailersFn);
+        Builder trailers(final @NonNull TrailersSource trailersSource);
 
         @NonNull
         ClientResponse build();

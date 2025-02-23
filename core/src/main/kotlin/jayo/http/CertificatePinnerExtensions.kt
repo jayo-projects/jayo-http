@@ -23,7 +23,7 @@
 
 package jayo.http
 
-import jayo.ByteString
+import jayo.bytestring.ByteString
 import java.security.cert.X509Certificate
 
 @Suppress("UnusedReceiverParameter")

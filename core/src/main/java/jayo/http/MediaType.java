@@ -26,6 +26,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.Charset;
+import java.util.Objects;
 
 /**
  * An <a href="http://tools.ietf.org/html/rfc2045">RFC 2045</a> Media Type, appropriate to describe the content type of
@@ -38,6 +39,7 @@ public sealed interface MediaType permits RealMediaType {
      * @throws IllegalArgumentException if {@code mediaType} is not a well-formed media type.
      */
     static @NonNull MediaType get(final @NonNull String mediaType) {
+        Objects.requireNonNull(mediaType);
         return RealMediaType.get(mediaType);
     }
 
@@ -45,8 +47,9 @@ public sealed interface MediaType permits RealMediaType {
      * @return a media type for {@code mediaType}, or null if {@code mediaType} is not a well-formed media type.
      */
     static @Nullable MediaType parse(final @NonNull String mediaType) {
+        Objects.requireNonNull(mediaType);
         try {
-            return MediaType.get(mediaType);
+            return RealMediaType.get(mediaType);
         } catch (IllegalArgumentException _unused) {
             return null;
         }
@@ -86,7 +89,8 @@ public sealed interface MediaType permits RealMediaType {
     String parameter(final @NonNull String name);
 
     /**
-     * @return the encoded media type, like "text/plain; charset=utf-8", appropriate for use in a Content-Type header.
+     * @return the encoded media type, like "text/plain; charset=utf-8", appropriate for use in a {@code Content-Type}
+     * header.
      */
     @Override
     @NonNull

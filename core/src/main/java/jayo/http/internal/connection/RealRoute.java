@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-present, pull-vert and Jayo contributors.
+ * Copyright (c) 2025-present, pull-vert and Jayo contributors.
  * Use of this source code is governed by the Apache 2.0 license.
  *
  * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
@@ -19,10 +19,12 @@
  * limitations under the License.
  */
 
-package jayo.http.internal;
+package jayo.http.internal.connection;
 
 import jayo.http.Address;
 import jayo.http.Route;
+import jayo.network.Proxy;
+import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -34,7 +36,7 @@ public final class RealRoute implements Route {
     private final @NonNull Address address;
     private final @NonNull InetSocketAddress socketAddress;
 
-    RealRoute(final @NonNull Address address, @NonNull InetSocketAddress socketAddress) {
+    RealRoute(final @NonNull Address address, final @NonNull InetSocketAddress socketAddress) {
         assert address != null;
         assert socketAddress != null;
 
@@ -53,24 +55,36 @@ public final class RealRoute implements Route {
     }
 
     @Override
+    public boolean requiresTunnel() {
+        if (!(address.getProxy() instanceof Proxy.Http)) {
+            return false;
+        }
+        return (address.getClientTlsEndpointBuilder() != null) ||
+                (address.getProtocols().contains(Protocol.H2_PRIOR_KNOWLEDGE));
+    }
+
+    @Override
     public boolean equals(final @Nullable Object other) {
-        return (other instanceof RealRoute otherAsRoute) &&
-                otherAsRoute.address.equals(address)
-                && otherAsRoute.socketAddress.equals(socketAddress);
+        if (!(other instanceof RealRoute that)) {
+            return false;
+        }
+
+        return address.equals(that.address)
+                && socketAddress.equals(that.socketAddress);
     }
 
     @Override
     public int hashCode() {
-        int result = address.hashCode();
+        var result = address.hashCode();
         result = 31 * result + socketAddress.hashCode();
         return result;
     }
 
     /**
-     * Returns a string with the URL hostname, socket IP address, and socket port, like one of these:
+     * @return a string with the URL hostname, socket IP address, and socket port, like one of these:
      * <ul>
      *  <li>{@code example.com:80 at 1.2.3.4:8888}
-     *  <li>{@code example.com:443 at [::1]:8888}
+     *  <li>{@code example.com:443 via proxy [::1]:8888}
      * </ul>
      * This omits duplicate information when possible.
      */
@@ -95,7 +109,11 @@ public final class RealRoute implements Route {
         }
 
         if (!addressHostname.equals(socketHostname)) {
-            sb.append(" at ");
+            if (address.getProxy() != null) {
+                sb.append(" via proxy ");
+            } else {
+                sb.append(" at ");
+            }
             if (socketHostname == null) {
                 sb.append("<unresolved>");
             } else if (socketHostname.contains(":")) {

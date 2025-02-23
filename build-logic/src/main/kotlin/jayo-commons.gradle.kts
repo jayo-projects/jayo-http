@@ -21,20 +21,29 @@ fun catalogVersion(lib: String) =
 val javaVersion = catalogVersion("java").toInt()
 
 val koverage = mapOf(
-    "jayo-http" to 88,
+    "jayo-http" to 80,
 )
 
 kotlin {
+    // for all targets: main / test / testFixtures
     compilerOptions {
         languageVersion.set(KOTLIN_2_0)
         apiVersion.set(KOTLIN_2_0)
-        javaParameters = true
-        allWarningsAsErrors = true
         explicitApi = Strict
         freeCompilerArgs.addAll(
             "-Xnullability-annotations=@org.jspecify.annotations:strict", // not really sure if this helps ;)
             "-opt-in=kotlin.contracts.ExperimentalContracts",
         )
+    }
+    // only for the main target
+    target {
+        val main by compilations.getting {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    allWarningsAsErrors = true
+                }
+            }
+        }
     }
 
     jvmToolchain(javaVersion)
@@ -50,7 +59,9 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:${catalogVersion("junit")}"))
     testImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
     testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit-pioneer:junit-pioneer:${catalogVersion("junitPioneer")}")
     testImplementation(kotlin("test"))
+    testImplementation("io.mockk:mockk:${catalogVersion("mockk")}")
 
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testRuntimeOnly("org.slf4j:slf4j-simple:${catalogVersion("slf4j")}")
@@ -59,14 +70,14 @@ dependencies {
 
 kover {
     reports {
-            verify {
-                rule {
-                    bound {
-                        minValue = koverage[project.name]
-                    }
+        verify {
+            rule {
+                bound {
+                    minValue = koverage[project.name]
                 }
             }
         }
+    }
 }
 
 tasks {

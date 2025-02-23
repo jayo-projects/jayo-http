@@ -94,20 +94,23 @@ public final class RealChallenge implements Challenge {
 
     @Override
     public boolean equals(final @Nullable Object other) {
-        if (!(other instanceof RealChallenge that)) return false;
+        if (!(other instanceof RealChallenge that)) {
+            return false;
+        }
 
-        return scheme.equals(that.scheme) && authParams.equals(that.authParams);
+        return scheme.equals(that.scheme) &&
+                authParams.equals(that.authParams);
     }
 
     @Override
     public int hashCode() {
-        int result = scheme.hashCode();
+        var result = scheme.hashCode();
         result = 31 * result + authParams.hashCode();
         return result;
     }
 
     @Override
     public @NonNull String toString() {
-        return scheme + "authParams=" + authParams;
+        return scheme + " authParams=" + authParams;
     }
 }

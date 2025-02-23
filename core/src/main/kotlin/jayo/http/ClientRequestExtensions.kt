@@ -29,14 +29,14 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.reflect.KClass
 
-@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to reified type
-/** Returns the tag attached with [T] as a key, or null if no tag is attached with that key. */
+@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to a reified type
+/** @return the tag attached with [T] as a key, or null if no tag is attached with that key. */
 public inline fun <reified T : Any> ClientRequest.tag(): T? = tag(T::class.java)
 
-/** Returns the tag attached with [type] as a key, or null if no tag is attached with that key. */
+/** @return the tag attached with [type] as a key, or null if no tag is attached with that key. */
 public fun <T : Any> ClientRequest.tag(type: KClass<T>): T? = tag(type.java)
 
-@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to reified type
+@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to a reified type
 /**
  * Attaches [tag] to the request using [T] as a key. Tags can be read from a request using [ClientRequest.tag]. Use null
  * to remove any existing tag assigned for [T].
@@ -46,7 +46,7 @@ public fun <T : Any> ClientRequest.tag(type: KClass<T>): T? = tag(type.java)
  */
 public inline fun <reified T : Any> ClientRequest.Builder.tag(tag: T?): ClientRequest.Builder = tag(T::class.java, tag)
 
-@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to reified type
+@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to a reified type
 /**
  * Attaches [tag] to the request using [T] as a key. Tags can be read from a request using [ClientRequest.tag]. Use null
  * to remove any existing tag assigned for [T].
@@ -190,5 +190,20 @@ public open class ClientRequestBuilderDsl internal constructor(private val build
         get() = error("unsupported")
         set(value) {
             builder.cacheUrlOverride(value)
+        }
+
+    /**
+     * When set to `true`, configures this request's body to be compressed when it is transmitted. Default is false.
+     * This also adds the `Content-Encoding: gzip` header. If a `Content-Encoding` header was already present, it is
+     * discarded and replaced by `gzip` value.
+     *
+     * * Only use this method if you have prior knowledge that the receiving server supports gzip-compressed requests.
+     * * This option is no-op if this request doesn't have a request body.
+     */
+    public var gzip: Boolean
+        @Deprecated("Getter is unsupported.", level = DeprecationLevel.ERROR)
+        get() = error("unsupported")
+        set(value) {
+            builder.gzip(value)
         }
 }

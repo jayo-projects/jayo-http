@@ -21,9 +21,9 @@
 
 package jayo.http;
 
-import jayo.ByteString;
+import jayo.Buffer;
 import jayo.Reader;
-import jayo.Utf8;
+import jayo.bytestring.ByteString;
 import jayo.http.internal.StandardClientResponseBodies;
 import jayo.http.internal.Utils;
 import org.jspecify.annotations.NonNull;
@@ -31,12 +31,16 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.Closeable;
 import java.io.InputStream;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.Objects;
 
 import static jayo.http.internal.ClientResponseBodyUtils.*;
 
 public abstract class ClientResponseBody implements Closeable {
+    /**
+     * The empty response body.
+     */
+    public static final @NonNull ClientResponseBody EMPTY = new EmptyClientResponseBody();
+
     /**
      * @return a new response body that transmits {@code content} using UTF-8 charset.
      */
@@ -92,7 +96,7 @@ public abstract class ClientResponseBody implements Closeable {
      * @return a new response body that transmits all bytes from {@code reader} using UTF-8 charset.
      */
     public static @NonNull ClientResponseBody create(final @NonNull Reader reader) {
-        return StandardClientResponseBodies.create(reader, null, -1L);
+        return StandardClientResponseBodies.create(reader, (MediaType) null, -1L);
     }
 
     /**
@@ -109,7 +113,7 @@ public abstract class ClientResponseBody implements Closeable {
      * @return a new response body that transmits {@code contentByteSize} bytes from {@code reader} using UTF-8 charset.
      */
     public static @NonNull ClientResponseBody create(final @NonNull Reader reader, final long contentByteSize) {
-        return StandardClientResponseBodies.create(reader, null, contentByteSize);
+        return StandardClientResponseBodies.create(reader, (MediaType) null, contentByteSize);
     }
 
     /**
@@ -141,10 +145,24 @@ public abstract class ClientResponseBody implements Closeable {
 
     public abstract @NonNull Reader reader();
 
+    /**
+     * @return the response as an input stream.
+     */
     public final @NonNull InputStream byteStream() {
         return reader().asInputStream();
     }
 
+    /**
+     * @return the response as a character stream.
+     * <ul>
+     * <li>If the response starts with a
+     * <a href="https://en.wikipedia.org/wiki/Byte_order_mark">Byte Order Mark (BOM)</a>, it is consumed and used to
+     * determine the charset of the response bytes.
+     * <li>Otherwise, if the response has a {@code Content-Type} header that specifies a charset, that is used to
+     * determine the charset of the response bytes.
+     * <li>Otherwise, the response bytes are decoded as UTF-8.
+     * </ul>
+     */
     public final java.io.@NonNull Reader charStream() {
         if (reader == null) {
             reader = new BomAwareReader(this);
@@ -155,8 +173,9 @@ public abstract class ClientResponseBody implements Closeable {
     /**
      * @return the response as a byte array.
      * <p>
-     * This method loads entire response body into memory. If the response body is very large this may trigger an
-     * {@link OutOfMemoryError}. Prefer to stream the response body if this is a possibility for your response.
+     * Note: This method loads the entire response body into memory. If the response body is very large, this may
+     * trigger an {@link OutOfMemoryError}. Prefer to stream the response body if this is a possibility for your
+     * response.
      */
     public final byte @NonNull [] bytes() {
         return consumeToBytes(this);
@@ -165,7 +184,7 @@ public abstract class ClientResponseBody implements Closeable {
     /**
      * @return the response as a {@link ByteString}.
      * <p>
-     * This method loads entire response body into memory. If the response body is very large this may trigger an
+     * This method loads the entire response body into memory. If the response body is very large, this may trigger an
      * {@link OutOfMemoryError}. Prefer to stream the response body if this is a possibility for your response.
      */
     public final @NonNull ByteString byteString() {
@@ -173,37 +192,16 @@ public abstract class ClientResponseBody implements Closeable {
     }
 
     /**
-     * @return the response as a {@link Utf8}.
-     * <p>
-     * If the response starts with a <a href="https://en.wikipedia.org/wiki/Byte_order_mark">Byte Order Mark (BOM)</a>,
-     * it is consumed and used to determine the charset of the response bytes. It must be {@code ASCII} or
-     * {@code UTF-8}.
-     * <p>
-     * Otherwise if the response has a {@code Content-Type} header that specifies a charset, that is used to determine the
-     * charset of the response bytes. It must be {@code ASCII} or {@code UTF-8}.
-     * <p>
-     * Otherwise the response bytes are expected to be UTF-8.
-     * <p>
-     * This method loads entire response body into memory. If the response body is very large this may trigger an
-     * {@link OutOfMemoryError}. Prefer to stream the response body if this is a possibility for your response.
-     * @throws UnsupportedCharsetException if charset is not {@code ASCII} nor {@code UTF-8}.
-     */
-    public final @NonNull Utf8 utf8() {
-        return consumeToUtf8(this);
-    }
-
-    /**
      * @return the response as a string.
-     * <p>
-     * If the response starts with a <a href="https://en.wikipedia.org/wiki/Byte_order_mark">Byte Order Mark (BOM)</a>,
-     * it is consumed and used to determine the charset of the response bytes.
-     * <p>
-     * Otherwise if the response has a {@code Content-Type} header that specifies a charset, that is used to determine
-     * the charset of the response bytes.
-     * <p>
-     * Otherwise the response bytes are decoded as UTF-8.
-     * <p>
-     * This method loads entire response body into memory. If the response body is very large this may trigger an
+     * <ul>
+     * <li>If the response starts with a
+     * <a href="https://en.wikipedia.org/wiki/Byte_order_mark">Byte Order Mark (BOM)</a>, it is consumed and used to
+     * determine the charset of the response bytes.
+     * <li>Otherwise, if the response has a {@code Content-Type} header that specifies a charset, that is used to
+     * determine the charset of the response bytes.
+     * <li>Otherwise, the response bytes are decoded as UTF-8.
+     * </ul>
+     * This method loads the entire response body into memory. If the response body is very large, this may trigger an
      * {@link OutOfMemoryError}. Prefer to stream the response body if this is a possibility for your response.
      */
     public final @NonNull String string() {
@@ -211,7 +209,24 @@ public abstract class ClientResponseBody implements Closeable {
     }
 
     @Override
-    public final void close() {
+    public void close() {
         Utils.closeQuietly(reader());
+    }
+
+    private static final class EmptyClientResponseBody extends ClientResponseBody {
+        @Override
+        public @Nullable MediaType contentType() {
+            return null;
+        }
+
+        @Override
+        public long contentByteSize() {
+            return 0L;
+        }
+
+        @Override
+        public @NonNull Reader reader() {
+            return Buffer.create();
+        }
     }
 }

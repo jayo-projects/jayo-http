@@ -21,7 +21,7 @@
 
 package jayo.http.internal
 
-import jayo.decodeBase64
+import jayo.bytestring.decodeBase64
 import jayo.http.CertificatePinner
 import jayo.http.CertificatePinner.pin
 import jayo.tls.HeldCertificate

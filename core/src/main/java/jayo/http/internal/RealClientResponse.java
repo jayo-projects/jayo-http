@@ -23,19 +23,20 @@ package jayo.http.internal;
 
 import jayo.Buffer;
 import jayo.http.*;
-import jayo.tls.Protocol;
+import jayo.http.internal.connection.Exchange;
+import jayo.http.internal.http.HttpHeaders;
 import jayo.tls.Handshake;
+import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Supplier;
 
 import static java.net.HttpURLConnection.*;
-import static jayo.http.internal.HttpStatusCodes.HTTP_PERM_REDIRECT;
-import static jayo.http.internal.HttpStatusCodes.HTTP_TEMP_REDIRECT;
+import static jayo.http.internal.http.HttpStatusCodes.HTTP_PERM_REDIRECT;
+import static jayo.http.internal.http.HttpStatusCodes.HTTP_TEMP_REDIRECT;
 
 public final class RealClientResponse implements ClientResponse {
     private final @NonNull ClientRequest request;
@@ -49,7 +50,8 @@ public final class RealClientResponse implements ClientResponse {
     private final @Nullable ClientResponse priorResponse;
     private final @NonNull Instant sentRequestAt;
     private final @NonNull Instant receivedResponseAt;
-    private final @NonNull Supplier<Headers> trailerFn;
+    private final @Nullable Exchange exchange;
+    private final @NonNull TrailersSource trailersSource;
 
     private @Nullable CacheControl lazyCacheControl = null;
 
@@ -64,7 +66,17 @@ public final class RealClientResponse implements ClientResponse {
                               final @Nullable ClientResponse priorResponse,
                               final @NonNull Instant sentRequestAt,
                               final @NonNull Instant receivedResponseAt,
-                              final @NonNull Supplier<Headers> trailerFn) {
+                              final @Nullable Exchange exchange,
+                              final @NonNull TrailersSource trailersSource) {
+        assert request != null;
+        assert protocol != null;
+        assert status != null;
+        assert headers != null;
+        assert body != null;
+        assert sentRequestAt != null;
+        assert receivedResponseAt != null;
+        assert trailersSource != null;
+
         this.request = request;
         this.protocol = protocol;
         this.status = status;
@@ -76,7 +88,8 @@ public final class RealClientResponse implements ClientResponse {
         this.priorResponse = priorResponse;
         this.sentRequestAt = sentRequestAt;
         this.receivedResponseAt = receivedResponseAt;
-        this.trailerFn = trailerFn;
+        this.exchange = exchange;
+        this.trailersSource = trailersSource;
     }
 
     @Override
@@ -151,7 +164,12 @@ public final class RealClientResponse implements ClientResponse {
 
     @Override
     public @NonNull Headers trailers() {
-        return trailerFn.get();
+        return trailersSource.get();
+    }
+
+    @Override
+    public @Nullable Headers peekTrailers() {
+        return trailersSource.peek();
     }
 
     @Override
@@ -159,7 +177,7 @@ public final class RealClientResponse implements ClientResponse {
         final var peeked = body.reader().peek();
         final var buffer = Buffer.create();
         peeked.request(byteCount);
-        buffer.write(peeked, Math.min(byteCount, peeked.bytesAvailable()));
+        buffer.writeFrom(peeked, Math.min(byteCount, peeked.bytesAvailable()));
         final var contentType = body.contentType();
         return (contentType != null)
                 ? ClientResponseBody.create(buffer, contentType, buffer.bytesAvailable())
@@ -222,23 +240,20 @@ public final class RealClientResponse implements ClientResponse {
         private @Nullable String message = null;
         private @Nullable Handshake handshake = null;
         private Headers.@NonNull Builder headers;
-        private @NonNull ClientResponseBody body = Utils.EMPTY_RESPONSE;
+        private @NonNull ClientResponseBody body = ClientResponseBody.EMPTY;
         private @Nullable ClientResponse networkResponse = null;
         private @Nullable ClientResponse cacheResponse = null;
         private @Nullable ClientResponse priorResponse = null;
         private @Nullable Instant sentRequestAt = null;
         private @Nullable Instant receivedResponseAt = null;
-        private @NonNull Supplier<Headers> trailerFn = Headers::of;
+        private @Nullable Exchange exchange = null;
+        private @NonNull TrailersSource trailersSource = TrailersSource.EMPTY;
 
         public Builder() {
             headers = Headers.builder();
         }
 
-        private Builder(final @NonNull ClientResponse response) {
-            if (!(response instanceof RealClientResponse _response)) {
-                throw new IllegalArgumentException();
-            }
-
+        private Builder(final @NonNull RealClientResponse response) {
             this.request = response.getRequest();
             this.protocol = response.getProtocol();
             this.code = response.getStatus().code();
@@ -251,7 +266,8 @@ public final class RealClientResponse implements ClientResponse {
             this.priorResponse = response.getPriorResponse();
             this.sentRequestAt = response.getSentRequestAt();
             this.receivedResponseAt = response.getReceivedResponseAt();
-            this.trailerFn = _response.trailerFn;
+            this.exchange = response.exchange;
+            this.trailersSource = response.trailersSource;
         }
 
         @Override
@@ -348,9 +364,15 @@ public final class RealClientResponse implements ClientResponse {
         }
 
         @Override
-        public @NonNull Builder trailers(final @NonNull Supplier<Headers> trailersFn) {
-            this.trailerFn = Objects.requireNonNull(trailersFn);
+        public @NonNull Builder trailers(final @NonNull TrailersSource trailersSource) {
+            this.trailersSource = Objects.requireNonNull(trailersSource);
             return this;
+        }
+
+        public void initExchange(final @NonNull Exchange exchange) {
+            assert exchange != null;
+
+            this.exchange = exchange;
         }
 
         @Override
@@ -374,7 +396,8 @@ public final class RealClientResponse implements ClientResponse {
                     priorResponse,
                     (sentRequestAt != null) ? sentRequestAt : Instant.EPOCH,
                     (receivedResponseAt != null) ? receivedResponseAt : Instant.EPOCH,
-                    trailerFn
+                    exchange,
+                    trailersSource
             );
         }
 

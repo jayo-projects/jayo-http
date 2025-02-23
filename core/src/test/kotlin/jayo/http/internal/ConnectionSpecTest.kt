@@ -21,26 +21,23 @@
 
 package jayo.http.internal
 
+import io.mockk.every
+import io.mockk.mockk
 import jayo.http.ConnectionSpec
 import jayo.tls.CipherSuite
-import jayo.tls.PlatformRule
+import jayo.tls.ClientTlsEndpoint
 import jayo.tls.TlsVersion
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.RegisterExtension
 import java.util.concurrent.CopyOnWriteArraySet
-import javax.net.ssl.SSLContext
 import kotlin.test.assertFailsWith
 
 class ConnectionSpecTest {
-    @RegisterExtension
-    val platform = PlatformRule()
-
     @Test
     fun noTlsVersions() {
         assertFailsWith<IllegalArgumentException> {
             ConnectionSpec.builder(ConnectionSpec.COMPATIBLE_TLS)
-                .tlsVersions(*arrayOf<String>())
+                .tlsVersions(listOf())
                 .build()
         }.also { expected ->
             assertThat(expected.message)
@@ -52,7 +49,7 @@ class ConnectionSpecTest {
     fun noCipherSuites() {
         assertFailsWith<IllegalArgumentException> {
             ConnectionSpec.builder(ConnectionSpec.COMPATIBLE_TLS)
-                .cipherSuites(*arrayOf<CipherSuite>())
+                .cipherSuites(listOf())
                 .build()
         }.also { expected ->
             assertThat(expected.message)
@@ -70,12 +67,12 @@ class ConnectionSpecTest {
     fun tlsBuilder_explicitCiphers() {
         val tlsSpec =
             RealConnectionSpec.Builder(true)
-                .cipherSuites(CipherSuite.TLS_RSA_WITH_RC4_128_MD5)
-                .tlsVersions(TlsVersion.TLS_1_2)
+                .cipherSuites(listOf(CipherSuite.TLS_RSA_WITH_RC4_128_MD5))
+                .tlsVersions(listOf(TlsVersion.TLS_1_2))
                 .build()
-        assertThat(tlsSpec.cipherSuites!!.toList())
+        assertThat(tlsSpec.cipherSuites)
             .containsExactly(CipherSuite.TLS_RSA_WITH_RC4_128_MD5)
-        assertThat(tlsSpec.tlsVersions!!.toList())
+        assertThat(tlsSpec.tlsVersions)
             .containsExactly(TlsVersion.TLS_1_2)
     }
 
@@ -83,222 +80,183 @@ class ConnectionSpecTest {
     fun tlsBuilder_defaultCiphers() {
         val tlsSpec =
             RealConnectionSpec.Builder(true)
-                .tlsVersions(TlsVersion.TLS_1_2)
+                .tlsVersions(listOf(TlsVersion.TLS_1_2))
                 .build()
         assertThat(tlsSpec.cipherSuites).isNull()
-        assertThat(tlsSpec.tlsVersions!!.toList())
+        assertThat(tlsSpec.tlsVersions)
             .containsExactly(TlsVersion.TLS_1_2)
     }
 
     @Test
-    fun tls_defaultCiphers_noFallbackIndicator() {
-        platform.assumeNotConscrypt()
-        platform.assumeNotBouncyCastle()
-        val tlsSpec =
+    fun applyIntersectionToCiphers() {
+        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
+        every { tlsParameterizer.supportedCipherSuites } returns
+                listOf(
+                    CipherSuite.TLS_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_8_SHA256,
+                    CipherSuite.TLS_AES_256_GCM_SHA384,
+                )
+        every { tlsParameterizer.enabledCipherSuites } returns
+                listOf(
+                    CipherSuite.TLS_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_8_SHA256,
+                )
+        var connectionSpec =
             RealConnectionSpec.Builder(true)
-                .tlsVersions(TlsVersion.TLS_1_2)
+                .tlsVersions(listOf(TlsVersion.TLS_1_0))
+                .cipherSuites(listOf(CipherSuite.TLS_AES_128_CCM_SHA256, CipherSuite.TLS_AES_256_GCM_SHA384))
                 .build()
-        val sslEngine = SSLContext.getDefault().createSSLEngine()
-        sslEngine.enabledCipherSuites =
-            arrayOf(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
-        sslEngine.enabledProtocols =
-            arrayOf(
-                TlsVersion.TLS_1_2.javaName,
-                TlsVersion.TLS_1_1.javaName,
-            )
-        assertThat(tlsSpec.isCompatible(sslEngine)).isTrue()
-        tlsSpec.apply(sslEngine, false)
-        assertThat(sslEngine.enabledProtocols).containsExactly(
-            TlsVersion.TLS_1_2.javaName,
-        )
-        assertThat(sslEngine.enabledCipherSuites.toList())
-            .containsExactlyInAnyOrder(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
+
+        assertThat(connectionSpec.isCompatible(tlsParameterizer)).isTrue()
+        connectionSpec = connectionSpec.supportedSpec(tlsParameterizer, false)
+
+        assertThat(connectionSpec.cipherSuites).containsExactly(CipherSuite.TLS_AES_128_CCM_SHA256)
     }
 
     @Test
-    fun tls_defaultCiphers_withFallbackIndicator() {
-        platform.assumeNotConscrypt()
-        platform.assumeNotBouncyCastle()
-        val tlsSpec =
+    fun applyIntersectionToCiphersAddsTlsScsvForFallback() {
+        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
+        every { tlsParameterizer.supportedCipherSuites } returns
+                listOf(
+                    CipherSuite.TLS_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_FALLBACK_SCSV,
+                )
+        every { tlsParameterizer.enabledCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
+        var connectionSpec =
             RealConnectionSpec.Builder(true)
-                .tlsVersions(TlsVersion.TLS_1_2)
+                .tlsVersions(listOf(TlsVersion.TLS_1_0))
+                .cipherSuites(listOf(CipherSuite.TLS_AES_128_GCM_SHA256))
                 .build()
-        val sslEngine = SSLContext.getDefault().createSSLEngine()
-        sslEngine.enabledCipherSuites =
-            arrayOf(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
-        sslEngine.enabledProtocols =
-            arrayOf(
-                TlsVersion.TLS_1_2.javaName,
-                TlsVersion.TLS_1_1.javaName,
-            )
-        assertThat(tlsSpec.isCompatible(sslEngine)).isTrue()
-        tlsSpec.apply(sslEngine, true)
-        assertThat(sslEngine.enabledProtocols).containsExactly(
-            TlsVersion.TLS_1_2.javaName,
-        )
-        val expectedCipherSuites: MutableList<String> = ArrayList()
-        expectedCipherSuites.add(CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName)
-        expectedCipherSuites.add(CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName)
-        if (listOf<String>(*sslEngine.supportedCipherSuites).contains("TLS_FALLBACK_SCSV")) {
-            expectedCipherSuites.add("TLS_FALLBACK_SCSV")
-        }
-        assertThat(sslEngine.enabledCipherSuites)
-            .containsExactly(*expectedCipherSuites.toTypedArray())
+
+        assertThat(connectionSpec.isCompatible(tlsParameterizer)).isTrue()
+        connectionSpec = connectionSpec.supportedSpec(tlsParameterizer, true)
+
+        assertThat(connectionSpec.cipherSuites)
+            .containsExactly(CipherSuite.TLS_AES_128_GCM_SHA256, CipherSuite.TLS_FALLBACK_SCSV)
     }
 
     @Test
-    fun tls_explicitCiphers() {
-        platform.assumeNotConscrypt()
-        platform.assumeNotBouncyCastle()
-        val tlsSpec =
+    fun applyIntersectionToTlsVersions() {
+        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        every { tlsParameterizer.enabledTlsVersions } returns
+                listOf(TlsVersion.TLS_1_1, TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
+        every { tlsParameterizer.supportedCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
+        every { tlsParameterizer.enabledCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
+        var connectionSpec =
             RealConnectionSpec.Builder(true)
-                .cipherSuites(CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
-                .tlsVersions(TlsVersion.TLS_1_2)
+                .tlsVersions(listOf(TlsVersion.TLS_1_0, TlsVersion.TLS_1_2, TlsVersion.TLS_1_3))
+                .cipherSuites(listOf(CipherSuite.TLS_AES_128_GCM_SHA256))
                 .build()
-        val sslEngine = SSLContext.getDefault().createSSLEngine()
-        sslEngine.enabledCipherSuites =
-            arrayOf(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
-        sslEngine.enabledProtocols =
-            arrayOf(
-                TlsVersion.TLS_1_2.javaName,
-                TlsVersion.TLS_1_1.javaName,
-            )
-        assertThat(tlsSpec.isCompatible(sslEngine)).isTrue()
-        tlsSpec.apply(sslEngine, true)
-        assertThat(sslEngine.enabledProtocols).containsExactly(
-            TlsVersion.TLS_1_2.javaName,
-        )
-        val expectedCipherSuites: MutableList<String> = ArrayList()
-        expectedCipherSuites.add(CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName)
-        if (listOf<String>(*sslEngine.supportedCipherSuites).contains("TLS_FALLBACK_SCSV")) {
-            expectedCipherSuites.add("TLS_FALLBACK_SCSV")
-        }
-        assertThat(sslEngine.enabledCipherSuites)
-            .containsExactly(*expectedCipherSuites.toTypedArray())
-    }
 
-    @Test
-    fun tls_stringCiphersAndVersions() {
-        // Supporting arbitrary input strings allows users to enable suites and versions that are not yet known to the
-        // library, but are supported by the platform.
-        ConnectionSpec.builder(ConnectionSpec.COMPATIBLE_TLS)
-            .cipherSuites("MAGIC-CIPHER")
-            .tlsVersions("TLS9k")
-            .build()
+        assertThat(connectionSpec.isCompatible(tlsParameterizer)).isTrue()
+        connectionSpec = connectionSpec.supportedSpec(tlsParameterizer, false)
+
+        assertThat(connectionSpec.tlsVersions).containsExactly(TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
     }
 
     @Test
     fun tls_missingRequiredCipher() {
-        platform.assumeNotConscrypt()
-        platform.assumeNotBouncyCastle()
-        val tlsSpec =
+        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
+        every { tlsParameterizer.supportedCipherSuites } returns
+                listOf(
+                    CipherSuite.TLS_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_SHA256,
+                )
+        every { tlsParameterizer.enabledCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
+        val connectionSpec =
             RealConnectionSpec.Builder(true)
-                .cipherSuites(CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
-                .tlsVersions(TlsVersion.TLS_1_2)
+                .tlsVersions(listOf(TlsVersion.TLS_1_0))
+                .cipherSuites(listOf(CipherSuite.TLS_AES_256_GCM_SHA384))
                 .build()
-        val sslEngine = SSLContext.getDefault().createSSLEngine()
-        sslEngine.enabledProtocols =
-            arrayOf(
-                TlsVersion.TLS_1_2.javaName,
-                TlsVersion.TLS_1_1.javaName,
-            )
-        sslEngine.enabledCipherSuites =
-            arrayOf(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
-        assertThat(tlsSpec.isCompatible(sslEngine)).isTrue()
-        sslEngine.enabledCipherSuites =
-            arrayOf(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
-        assertThat(tlsSpec.isCompatible(sslEngine)).isFalse()
+
+        assertThat(connectionSpec.isCompatible(tlsParameterizer)).isFalse()
     }
 
     @Test
     fun allEnabledCipherSuites() {
-        platform.assumeNotConscrypt()
-        platform.assumeNotBouncyCastle()
-        val tlsSpec =
-            RealConnectionSpec.Builder(RealConnectionSpec.COMPATIBLE_TLS)
+        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
+        every { tlsParameterizer.supportedCipherSuites } returns
+                listOf(
+                    CipherSuite.TLS_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_8_SHA256,
+                    CipherSuite.TLS_AES_256_GCM_SHA384,
+                )
+        every { tlsParameterizer.enabledCipherSuites } returns
+                listOf(
+                    CipherSuite.TLS_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_8_SHA256,
+                )
+        var connectionSpec =
+            RealConnectionSpec.Builder(true)
+                .tlsVersions(listOf(TlsVersion.TLS_1_0))
                 .enableAllCipherSuites(true)
                 .build()
-        assertThat(tlsSpec.cipherSuites).isNull()
-        val sslEngine = SSLContext.getDefault().createSSLEngine()
-        sslEngine.enabledCipherSuites =
-            arrayOf(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
-        tlsSpec.apply(sslEngine, false)
 
-        assertThat(sslEngine.enabledCipherSuites)
-            .containsExactly(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.javaName,
-            )
+        assertThat(connectionSpec.isCompatible(tlsParameterizer)).isTrue()
+        connectionSpec = connectionSpec.supportedSpec(tlsParameterizer, false)
+
+        assertThat(connectionSpec.cipherSuites).containsExactly(
+            CipherSuite.TLS_AES_128_GCM_SHA256,
+            CipherSuite.TLS_AES_128_CCM_SHA256, CipherSuite.TLS_AES_128_CCM_8_SHA256
+        )
     }
 
     @Test
     fun allEnabledTlsVersions() {
-        platform.assumeNotConscrypt()
-        val tlsSpec =
+        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        every { tlsParameterizer.enabledTlsVersions } returns listOf(
+            TlsVersion.SSL_3_0,
+            TlsVersion.TLS_1_1,
+            TlsVersion.TLS_1_2,
+            TlsVersion.TLS_1_3,
+        )
+        every { tlsParameterizer.supportedCipherSuites } returns
+                listOf(
+                    CipherSuite.TLS_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_AES_128_CCM_SHA256,
+                )
+        every { tlsParameterizer.enabledCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
+        var tlsSpec =
             RealConnectionSpec.Builder(RealConnectionSpec.COMPATIBLE_TLS)
                 .enableAllTlsVersions(true)
                 .build()
         assertThat(tlsSpec.tlsVersions).isNull()
-        val sslEngine = SSLContext.getDefault().createSSLEngine()
-        sslEngine.enabledProtocols =
-            arrayOf(
-                TlsVersion.SSL_3_0.javaName,
-                TlsVersion.TLS_1_1.javaName,
-                TlsVersion.TLS_1_2.javaName,
-                TlsVersion.TLS_1_3.javaName,
-            )
-        tlsSpec.apply(sslEngine, false)
-        assertThat(sslEngine.enabledProtocols)
+
+        tlsSpec = tlsSpec.supportedSpec(tlsParameterizer, false)
+
+        assertThat(tlsSpec.tlsVersions)
             .containsExactly(
-                TlsVersion.SSL_3_0.javaName,
-                TlsVersion.TLS_1_1.javaName,
-                TlsVersion.TLS_1_2.javaName,
-                TlsVersion.TLS_1_3.javaName,
+                TlsVersion.SSL_3_0,
+                TlsVersion.TLS_1_1,
+                TlsVersion.TLS_1_2,
+                TlsVersion.TLS_1_3,
             )
     }
 
     @Test
     fun tls_missingTlsVersion() {
-        platform.assumeNotConscrypt()
-        platform.assumeNotBouncyCastle()
-        val tlsSpec =
+        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        every { tlsParameterizer.enabledTlsVersions } returns
+                listOf(TlsVersion.TLS_1_1, TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
+        every { tlsParameterizer.supportedCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
+        every { tlsParameterizer.enabledCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
+        val connectionSpec =
             RealConnectionSpec.Builder(true)
-                .cipherSuites(CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
-                .tlsVersions(TlsVersion.TLS_1_2)
+                .tlsVersions(listOf(TlsVersion.TLS_1_3))
+                .cipherSuites(listOf(CipherSuite.TLS_AES_128_GCM_SHA256))
                 .build()
-        val sslEngine = SSLContext.getDefault().createSSLEngine()
-        sslEngine.enabledCipherSuites =
-            arrayOf(
-                CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256.javaName,
-            )
-        sslEngine.enabledProtocols =
-            arrayOf(
-                TlsVersion.TLS_1_2.javaName,
-                TlsVersion.TLS_1_1.javaName,
-            )
-        assertThat(tlsSpec.isCompatible(sslEngine)).isTrue()
-        sslEngine.enabledProtocols = arrayOf(TlsVersion.TLS_1_1.javaName)
-        assertThat(tlsSpec.isCompatible(sslEngine)).isFalse()
+
+        assertThat(connectionSpec.isCompatible(tlsParameterizer)).isTrue()
+        every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_1)
+        assertThat(connectionSpec.isCompatible(tlsParameterizer)).isFalse()
     }
 
     @Test
@@ -320,8 +278,7 @@ class ConnectionSpecTest {
         allCipherSuites.hashCode()
         assertThat(allCipherSuites.equals(null)).isFalse()
         assertThat(set.remove(ConnectionSpec.COMPATIBLE_TLS)).isTrue()
-        assertThat(set.remove(ConnectionSpec.LEGACY_TLS))
-            .isTrue()
+        assertThat(set.remove(ConnectionSpec.LEGACY_TLS)).isTrue()
         assertThat(set.remove(ConnectionSpec.CLEARTEXT)).isTrue()
         assertThat(set.remove(allTlsVersions)).isTrue()
         assertThat(set.remove(allCipherSuites)).isTrue()
@@ -346,8 +303,8 @@ class ConnectionSpecTest {
     fun simpleToString() {
         val connectionSpec =
             ConnectionSpec.builder(ConnectionSpec.COMPATIBLE_TLS)
-                .tlsVersions(TlsVersion.TLS_1_2)
-                .cipherSuites(CipherSuite.TLS_RSA_WITH_RC4_128_MD5)
+                .tlsVersions(listOf(TlsVersion.TLS_1_2))
+                .cipherSuites(listOf(CipherSuite.TLS_RSA_WITH_RC4_128_MD5))
                 .build()
         assertThat(connectionSpec.toString()).isEqualTo(
             "ConnectionSpec(cipherSuites=[SSL_RSA_WITH_RC4_128_MD5], tlsVersions=[TLSv1.2])",

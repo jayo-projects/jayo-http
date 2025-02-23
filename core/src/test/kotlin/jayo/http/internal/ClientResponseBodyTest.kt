@@ -21,7 +21,13 @@
 
 package jayo.http.internal
 
-import jayo.*
+import jayo.Buffer
+import jayo.JayoException
+import jayo.Reader
+import jayo.buffered
+import jayo.bytestring.ByteString
+import jayo.bytestring.decodeHex
+import jayo.bytestring.encodeToByteString
 import jayo.http.ClientResponseBody
 import jayo.http.MediaType
 import jayo.http.toMediaType
@@ -30,7 +36,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
-import java.nio.charset.UnsupportedCharsetException
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertFailsWith
 
@@ -134,32 +139,6 @@ class ClientResponseBodyTest {
     }
 
     @Test
-    fun unicodeUtf8() {
-        val text = "eile oli oliiviõli".encodeToUtf8()
-        val body = ClientResponseBody.create(text)
-        assertThat(body.utf8()).isEqualTo(text)
-    }
-
-    @Test
-    fun unicodeUtf8WithCharset() {
-        val text = "eile oli oliiviõli".encodeToUtf8()
-        val body = ClientResponseBody.create(text, "text/plain; charset=UTF-8".toMediaType())
-        assertThat(body.utf8()).isEqualTo(text)
-    }
-
-    @Test
-    fun unicodeUtf8WithUnsupportedCharset() {
-        val text = "eile oli oliiviõli".encodeToUtf8()
-        assertFailsWith<IllegalArgumentException> {
-            text.toResponseBody("text/plain; charset=UTF-16".toMediaType())
-        }.also { expected ->
-            assertThat(expected.message).isEqualTo(
-                "Invalid charset for Utf8 byte string: UTF-16",
-            )
-        }
-    }
-
-    @Test
     fun unicodeBytes() {
         val text = "eile oli oliiviõli".encodeToByteArray()
         val body = ClientResponseBody.create(text)
@@ -202,14 +181,6 @@ class ClientResponseBodyTest {
     }
 
     @Test
-    fun stringUnsupportedExplicitCharsetToUtf8() {
-        val body = body("00000068000000650000006c0000006c0000006f", "utf-32be")
-        assertFailsWith<UnsupportedCharsetException> {
-            body.utf8()
-        }
-    }
-
-    @Test
     fun stringBomOverridesExplicitCharset() {
         val body = body("0000feff00000068000000650000006c0000006c0000006f", "utf-8")
         assertThat(body.string()).isEqualTo("hello")
@@ -222,23 +193,9 @@ class ClientResponseBodyTest {
     }
 
     @Test
-    fun stringBomUtf8SupportedToUtf8() {
-        val body = body("efbbbf68656c6c6f")
-        assertThat(body.utf8()).isEqualTo("hello".encodeToUtf8())
-    }
-
-    @Test
     fun stringBomUtf16Be() {
         val body = body("feff00680065006c006c006f")
         assertThat(body.string()).isEqualTo("hello")
-    }
-
-    @Test
-    fun stringBomUtf16BeUnsupportedToUtf8() {
-        val body = body("feff00680065006c006c006f")
-        assertFailsWith<UnsupportedCharsetException> {
-            body.utf8()
-        }
     }
 
     @Test
@@ -661,13 +618,4 @@ class ClientResponseBodyTest {
             return builder.toString()
         }
     }
-}
-
-abstract class ForwardingRawReader(
-    private val delegate: RawReader,
-) : RawReader {
-    final override fun readAtMostTo(writer: Buffer, byteCount: Long) =
-        delegate.readAtMostTo(writer, byteCount)
-
-    override fun close() = delegate.close()
 }
