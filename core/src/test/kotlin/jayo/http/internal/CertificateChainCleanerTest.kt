@@ -21,7 +21,7 @@
 
 package jayo.http.internal
 
-import jayo.tls.HandshakeCertificates
+import jayo.tls.ClientHandshakeCertificates
 import jayo.tls.HeldCertificate
 import jayo.tls.JayoTlsPeerUnverifiedException
 import org.assertj.core.api.Assertions.assertThat
@@ -51,7 +51,7 @@ class CertificateChainCleanerTest {
 
     @Test
     fun equalsFromTrustManager() {
-        val handshakeCertificates = HandshakeCertificates.builder().build()
+        val handshakeCertificates = ClientHandshakeCertificates.builder().build()
         val x509TrustManager = handshakeCertificates.trustManager
         assertThat(CertificateChainCleaner(x509TrustManager)).isEqualTo(
             CertificateChainCleaner(x509TrustManager)
@@ -322,7 +322,7 @@ class CertificateChainCleanerTest {
         }
     }
 
-    /** Returns a chain starting at the leaf certificate and progressing to the root.  */
+    /** @return a chain starting at the leaf certificate and progressing to the root.  */
     private fun chainOfLength(length: Int): List<HeldCertificate> {
         val result = mutableListOf<HeldCertificate>()
         for (i in 1..length) {

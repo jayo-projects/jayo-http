@@ -22,7 +22,7 @@
 package jayo.http.internal
 
 import jayo.Buffer
-import jayo.encodeToUtf8
+import jayo.bytestring.encodeToByteString
 import jayo.http.CacheControl
 import jayo.http.ClientRequest
 import jayo.http.ClientRequestBody
@@ -102,7 +102,7 @@ class ClientRequestTest {
         assertThat(request.url).isEqualTo(httpUrl)
         assertThat(request.headers).isEqualTo(httpHeaders)
         assertThat(request.method).isEqualTo("DELETE")
-        assertThat(request.body).isNull()
+        assertThat(request.body).isEqualTo(ClientRequestBody.EMPTY)
         assertThat(request.tags).isEmpty()
     }
 
@@ -178,7 +178,7 @@ class ClientRequestTest {
     @Test
     fun byteString() {
         val contentType = "text/plain".toMediaType()
-        val body = "Hello".encodeToUtf8().toRequestBody(contentType)
+        val body = "Hello".encodeToByteString().toRequestBody(contentType)
         assertThat(body.contentType()).isEqualTo(contentType)
         assertThat(body.contentByteSize()).isEqualTo(5)
         assertThat(bodyToHex(body)).isEqualTo("48656c6c6f")
@@ -520,7 +520,7 @@ class ClientRequestTest {
                 .add("proxy-authorization", "chocolate")
                 .add("cookie", "drink=coffee")
                 .add("set-cookie", "accessory=sugar")
-                .add("user-agent", "OkHttp")
+                .add("user-agent", "JayoHttp")
                 .build()
         val request =
             ClientRequest.builder()
@@ -534,7 +534,7 @@ class ClientRequestTest {
                     " proxy-authorization:██," +
                     " cookie:██," +
                     " set-cookie:██," +
-                    " user-agent:OkHttp" +
+                    " user-agent:JayoHttp" +
                     "]}",
         )
     }

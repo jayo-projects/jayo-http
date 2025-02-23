@@ -200,7 +200,7 @@ import java.util.Set;
  * String attack = "https://example.com/static/images/../../../../../etc/passwd";
  * System.out.println(new URL(attack).getPath());
  * System.out.println(new URI(attack).getPath());
- * System.out.println(HttpsUrl.parse(attack).encodedPath());
+ * System.out.println(HttpUrl.parse(attack).getEncodedPath());
  * }
  * </pre>
  * By canonicalizing the input paths, they are complicit in directory traversal attacks. Code that checks only the path
@@ -364,12 +364,12 @@ public sealed interface HttpUrl permits RealHttpUrl {
     String getPassword();
 
     /**
-     * @return the host address suitable for use with {@link InetAddress#getAllByName}. May be:
+     * @return the host address suitable for use with {@link InetAddress#getAllByName(String)}. It may be:
      * <ul>
-     *     <li>A regular host name, like {@code android.com}.</li>
-     *     <li>An IPv4 address, like {@code 127.0.0.1}.</li>
-     *     <li>An IPv6 address, like {@code ::1}. Note that there are no square braces.</li>
-     *     <li>An encoded IDN, like {@code xn--n3h.net}.</li>
+     * <li>A regular host name, like {@code android.com}.</li>
+     * <li>An IPv4 address, like {@code 127.0.0.1}.</li>
+     * <li>An IPv6 address, like {@code ::1}. Note that there are no square braces.</li>
+     * <li>An encoded IDN, like {@code xn--n3h.net}.</li>
      * </ul>
      *
      * <table>
@@ -399,7 +399,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
     String getHost();
 
     /**
-     * @return the explicitly-specified port if one was provided, or the default port 443 for HTTPS.
+     * @return the explicitly specified port if one was provided, or the default port 443 for HTTPS.
      * For example, this returns 8443 for {@code https://jayo.dev:8443/} and 443 for {@code https://jayo.dev/}.
      * The result is in the {@code [1..65535]} range.
      *
@@ -422,7 +422,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
 
     /**
      * @return a list of path segments like {@code ["a", "b", "c"]} for the URL {@code https://host/a/b/c}. This list is
-     * never empty though it may contain a single empty string.
+     * never empty, though it may contain a single empty string.
      *
      * <table>
      *     <tr>
@@ -475,6 +475,12 @@ public sealed interface HttpUrl permits RealHttpUrl {
      */
     @Nullable
     String getFragment();
+
+    /**
+     * @return this URL as a {@linkplain URL java.net.URL}.
+     */
+    @NonNull
+    URL toUrl();
 
     /**
      * @return this URL as a {@linkplain URI java.net.URI}. Because {@code URI} is stricter than this class, the
@@ -635,8 +641,8 @@ public sealed interface HttpUrl permits RealHttpUrl {
     String getEncodedQuery();
 
     /**
-     * @return the number of segments in this URL's path. This is also the number of slashes in this URL's path, like 3
-     * in {@code https://host/a/b/c}. This is always at least 1.
+     * @return the number of segments in this URL's path. This is also the number of slashes in this URL's path, like
+     * '3' in {@code https://host/a/b/c}. This is always at least '1'.
      *
      * <table>
      *     <tr>
@@ -695,8 +701,8 @@ public sealed interface HttpUrl permits RealHttpUrl {
     String getQuery();
 
     /**
-     * @return the number of query parameters in this URL, like 2 for {@code https://host/?a=apple&b=banana}. If this URL
-     * has no query this is 0. Otherwise, it is one more than the number of {@code "&"} separators in the query.
+     * @return the number of query parameters in this URL, like '2' for {@code https://host/?a=apple&b=banana}. If this
+     * URL has no query, this is '0'. Otherwise, it is one more than the number of {@code &} separators in the query.
      *
      * <table>
      *     <tr>
@@ -763,7 +769,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
 
     /**
      * @return the distinct query parameter names in this URL, like {@code ["a", "b"]} for
-     * {@code https://host/?a=apple&b=banana}. If this URL has no query this is the empty set.
+     * {@code https://host/?a=apple&b=banana}. If this URL has no query, this is the empty set.
      *
      * <table>
      *     <tr>
@@ -796,8 +802,9 @@ public sealed interface HttpUrl permits RealHttpUrl {
     Set<@NonNull String> getQueryParameterNames();
 
     /**
-     * @return all values for the query parameter {@code name} ordered by their appearance in this URL. For example this
-     * returns {@code ["banana"]} for {@code getQueryParameterValues("b")} on {@code https://host/?a=apple&b=banana}.
+     * @return all values for the query parameter {@code name} ordered by their appearance in this URL. For example,
+     * this returns {@code ["banana"]} for {@code getQueryParameterValues("b")} on
+     * {@code https://host/?a=apple&b=banana}.
      *
      * <table>
      *     <tr>
@@ -836,7 +843,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
     List<@Nullable String> queryParameterValues(final @NonNull String name);
 
     /**
-     * @return the name of the query parameter at {@code index}. For example this returns {@code "a"} for
+     * @return the name of the query parameter at {@code index}. For example, this returns {@code "a"} for
      * {@code getQueryParameterName(0)} on {@code https://host/?a=apple&b=banana}. This throws if {@code index} is not
      * less than the {@linkplain #getQuerySize query size}.
      *
@@ -877,7 +884,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
     String queryParameterName(final int index);
 
     /**
-     * @return the value of the query parameter at {@code index}. For example this returns {@code "apple"} for
+     * @return the value of the query parameter at {@code index}. For example, this returns {@code "apple"} for
      * {@code getQueryParameterValue(0)} on {@code https://host/?a=apple&b=banana}. This throws if {@code index} is not
      * less than the {@linkplain #getQuerySize query size}.
      *
@@ -1063,7 +1070,7 @@ public sealed interface HttpUrl permits RealHttpUrl {
 
         /**
          * Adds a set of encoded path segments separated by a slash (either {@code \} or {@code /}). If
-         * {@code encodedPathSegments} starts with a slash, the resulting URL will have empty path segment.
+         * {@code encodedPathSegments} starts with a slash, the resulting URL will have an empty path segment.
          */
         @NonNull
         Builder addEncodedPathSegments(final @NonNull String encodedPathSegments);

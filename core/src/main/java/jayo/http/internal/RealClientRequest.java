@@ -22,6 +22,7 @@
 package jayo.http.internal;
 
 import jayo.http.*;
+import jayo.http.tools.HttpMethodUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -40,13 +41,16 @@ public final class RealClientRequest implements ClientRequest {
     private @Nullable CacheControl lazyCacheControl = null;
 
     RealClientRequest(final @NonNull AbstractBuilder<?> builder) {
-        this.builder = Objects.requireNonNull(builder);
+        assert builder != null;
+
+        this.builder = builder;
         this.tags = Map.copyOf(builder.tags);
     }
 
     @Override
     public @NonNull HttpUrl getUrl() {
-        return Objects.requireNonNull(builder.url, "url == null");
+        assert builder.url != null;
+        return builder.url;
     }
 
     @Override
@@ -152,6 +156,7 @@ public final class RealClientRequest implements ClientRequest {
         HttpUrl cacheUrlOverride = null;
         @NonNull
         Map<Class<?>, Object> tags = new HashMap<>();
+        boolean gzip = false;
 
         AbstractBuilder() {
             this.headers = Headers.builder();
@@ -169,6 +174,18 @@ public final class RealClientRequest implements ClientRequest {
         public final @NonNull T url(final @NonNull String url) {
             url(HttpUrl.get(canonicalUrl(url)));
             return getThis();
+        }
+
+        private static @NonNull String canonicalUrl(final @NonNull String url) {
+            assert url != null;
+            // Silently replace web socket URLs with HTTP URLs.
+            if (startsWithIgnoreCase(url, "ws:")) {
+                return "http:" + url.substring(3);
+            }
+            if (startsWithIgnoreCase(url, "wss:")) {
+                return "https:" + url.substring(4);
+            }
+            return url;
         }
 
         @Override
@@ -192,6 +209,13 @@ public final class RealClientRequest implements ClientRequest {
         @Override
         public final @NonNull T removeHeader(final @NonNull String name) {
             headers.removeAll(name);
+            return getThis();
+        }
+
+        @Override
+        public final @NonNull T headers(final @NonNull Headers headers) {
+            Objects.requireNonNull(headers);
+            this.headers = headers.newBuilder();
             return getThis();
         }
 
@@ -229,31 +253,42 @@ public final class RealClientRequest implements ClientRequest {
             return getThis();
         }
 
-        final @NonNull ClientRequest buildInternal() {
-            return new RealClientRequest(this);
+        @Override
+        public final @NonNull T gzip(boolean gzip) {
+            this.gzip = gzip;
+            return getThis();
         }
 
-        private static @NonNull String canonicalUrl(final @NonNull String url) {
-            assert url != null;
-            // Silently replace web socket URLs with HTTP URLs.
-            if (startsWithIgnoreCase(url, "ws:")) {
-                return "http:" + url.substring(3);
+        @Override
+        public final @NonNull ClientRequest method(final @NonNull String method,
+                                                   final @Nullable ClientRequestBody body) {
+            Objects.requireNonNull(method);
+
+            if (body == null) {
+                if (HttpMethodUtils.requiresRequestBody(method)) {
+                    throw new IllegalArgumentException("method " + method + " must have a request body.");
+                }
+            } else if (!HttpMethodUtils.permitsRequestBody(method)) {
+                throw new IllegalArgumentException("method " + method + " must not have a request body.");
             }
-            if (startsWithIgnoreCase(url, "wss:")) {
-                return "https:" + url.substring(4);
+            this.method = method;
+            this.body = body;
+            return buildInternal();
+        }
+
+        final @NonNull ClientRequest buildInternal() {
+            Objects.requireNonNull(url, "url == null");
+            assert method != null;
+
+            if (gzip && body != null) {
+                headers.set("Content-Encoding", "gzip");
+                body = new GzipClientRequestBody(body);
             }
-            return url;
+            return new RealClientRequest(this);
         }
     }
 
     public static final class Builder extends AbstractBuilder<ClientRequest.Builder> implements ClientRequest.Builder {
-        @Override
-        public @NonNull Builder headers(final @NonNull Headers headers) {
-            Objects.requireNonNull(headers);
-            this.headers = headers.newBuilder();
-            return this;
-        }
-
         @Override
         public @NonNull ClientRequest get() {
             method = "GET";
@@ -276,8 +311,7 @@ public final class RealClientRequest implements ClientRequest {
 
         @Override
         public @NonNull ClientRequest delete() {
-            method = "DELETE";
-            return buildInternal();
+            return delete(ClientRequestBody.EMPTY);
         }
 
         @Override
@@ -301,6 +335,12 @@ public final class RealClientRequest implements ClientRequest {
             Objects.requireNonNull(requestBody);
             method = "PATCH";
             body = requestBody;
+            return buildInternal();
+        }
+
+        @Override
+        public @NonNull ClientRequest connect() {
+            method = "CONNECT";
             return buildInternal();
         }
 

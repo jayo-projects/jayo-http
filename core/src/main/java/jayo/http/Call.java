@@ -23,6 +23,8 @@ package jayo.http;
 
 import org.jspecify.annotations.NonNull;
 
+import java.time.Duration;
+
 /**
  * A call is a request that has been prepared for execution. A call can be canceled. As this object represents a single
  * request/response pair (stream), it cannot be executed twice.
@@ -35,8 +37,8 @@ public interface Call extends Cloneable {
     ClientRequest request();
 
     /**
-     * Invokes the request immediately, and blocks until the response can be processed or is in error.
-     * <h3>Don't forget to close the response</h3>
+     * Invokes the request immediately and blocks until the response can be processed or is in error.
+     * <h3>Remember to close the response</h3>
      * To avoid leaking resources, callers should close the {@link ClientResponse response} which in turn will close the
      * underlying {@linkplain ClientResponseBody response body}.
      * <pre>
@@ -49,14 +51,14 @@ public interface Call extends Cloneable {
      * }
      * </pre>
      * The caller may read the response body with the response's {@link ClientResponse#getBody()} method. To avoid
-     * leaking resources callers must {@linkplain ClientResponseBody close the response body} or the response.
+     * leaking resources callers must {@linkplain ClientResponseBody#close() close the response body} or the response.
      * <h3>Receiving a response does not mean your call is a success</h3>
-     * Note that transport-layer success (receiving a HTTP response code, headers and body) does not necessarily
+     * Note that transport-layer success (receiving HTTP response code, headers and body) does not necessarily
      * indicate application-layer success: the {@linkplain ClientResponse#getStatus() response status} may still
      * indicate an unhappy HTTP response code like {@code 404} or {@code 500}.
      * <h3>Cancellation and timeout</h3>
-     * You can use Jayo's cancellation support to configure specific timeout, deadlines and manually cancel the
-     * cancellable scope.
+     * You can use Jayo's cancellation support to configure timeout and manually cancel this call using the cancellable
+     * scope.
      * <pre>
      * {@code
      * Call call = client.newCall(request);
@@ -67,17 +69,50 @@ public interface Call extends Cloneable {
      * }
      * </pre>
      * If a specific timeout was defined, it will be used. Otherwise, this execution will use the client's default
-     * timeout configured with {@link JayoHttpClient.Builder#callTimeout(java.time.Duration)}. This timeout spans the
-     * entire call: resolving DNS, connecting, writing the request body, server processing, and reading the response
-     * body. If the call requires redirects or retries, all must complete within one timeout period.
+     * timeout configured with {@link JayoHttpClient.Builder#callTimeout(java.time.Duration)}, if any. This timeout
+     * spans the entire call: resolving DNS, connecting, writing the request body, server processing, and reading the
+     * response body. If the call requires redirects or retries, all must be complete within one timeout period.
      *
      * @throws jayo.JayoException    if the request could not be executed due to cancellation, a connectivity problem or
      *                               timeout. Because networks can fail during an exchange, it is possible that the
      *                               remote server accepted the request before the failure.
-     * @throws IllegalStateException when the call has already been executed.
+     * @throws IllegalStateException if the call has already been executed.
      */
     @NonNull
     ClientResponse execute();
+
+    /**
+     * Schedules the request to be executed at some point in the future.
+     * <p>
+     * The {@linkplain JayoHttpClient#getDispatcher() dispatcher} defines when the request will run: usually immediately
+     * unless there are several other requests currently being executed.
+     * <p>
+     * This client will later call back {@code responseCallback} with either an HTTP response or a failure exception.
+     * <h3>Timeout</h3>
+     * This execution will use the client's default timeout configured with
+     * {@link JayoHttpClient.Builder#callTimeout(java.time.Duration)}, if any. This timeout spans the entire call:
+     * resolving DNS, connecting, writing the request body, server processing, and reading the response body. If the
+     * call requires redirects or retries, all must be complete within one timeout period.
+     *
+     * @throws IllegalStateException if the call has already been executed.
+     */
+    void enqueue(final @NonNull Callback responseCallback);
+
+    /**
+     * Schedules the request to be executed at some point in the future, with a specific timeout.
+     * <p>
+     * The {@linkplain JayoHttpClient#getDispatcher() dispatcher} defines when the request will run: usually immediately
+     * unless there are several other requests currently being executed.
+     * <p>
+     * This client will later call back {@code responseCallback} with either an HTTP response or a failure exception.
+     * <h3>Timeout</h3>
+     * This execution will use the provided timeout. This timeout spans the entire call: resolving DNS, connecting,
+     * writing the request body, server processing, and reading the response body. If the call requires redirects or
+     * retries, all must be complete within one timeout period.
+     *
+     * @throws IllegalStateException if the call has already been executed.
+     */
+    void enqueueWithTimeout(final @NonNull Duration timeout, final @NonNull Callback responseCallback);
 
     /**
      * Cancels the request, if possible. Requests that are already executed cannot be canceled.
@@ -90,7 +125,7 @@ public interface Call extends Cloneable {
      */
     boolean isExecuted();
 
-    boolean isCancelled();
+    boolean isCanceled();
 
     /**
      * Create a new, identical call to this one which can be executed even if this call has already been.

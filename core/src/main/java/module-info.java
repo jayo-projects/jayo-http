@@ -5,9 +5,11 @@
 
 module jayo.http {
     requires transitive jayo;
-    
+    requires transitive jayo.scheduler;
+
     requires static kotlin.stdlib;
     requires static org.jspecify;
 
     exports jayo.http;
+    exports jayo.http.tools;
 }

@@ -23,9 +23,10 @@
 
 package jayo.http
 
-import jayo.ByteString
+import jayo.bytestring.ByteString
 import jayo.http.internal.StandardClientRequestBodies
 import java.io.File
+import java.io.FileDescriptor
 import java.nio.file.Path
 
 /**
@@ -54,6 +55,13 @@ public fun ByteArray.toRequestBody(
 ): ClientRequestBody = StandardClientRequestBodies.create(this, contentType, offset, byteCount)
 
 /**
+ * @return a new request body that transmits the content of this file path. If [contentType] is null or lacks a charset,
+ * it will use UTF-8.
+ */
+public fun Path.asRequestBody(contentType: MediaType? = null): ClientRequestBody =
+    StandardClientRequestBodies.create(this, contentType)
+
+/**
  * @return a new request body that transmits the content of this file. If [contentType] is null or lacks a charset, it
  * will use UTF-8.
  */
@@ -61,8 +69,9 @@ public fun File.asRequestBody(contentType: MediaType? = null): ClientRequestBody
     StandardClientRequestBodies.create(this, contentType)
 
 /**
- * @return a new request body that transmits the content of this file path. If [contentType] is null or lacks a charset,
- * it will use UTF-8.
+ * @return a new request body that transmits the content of the file associated with this file descriptor. If
+ * [contentType] is null or lacks a charset, it will use UTF-8. This file descriptor represents an existing connection
+ * to an actual file in the file system.
  */
-public fun Path.asRequestBody(contentType: MediaType? = null): ClientRequestBody =
+public fun FileDescriptor.asRequestBody(contentType: MediaType? = null): ClientRequestBody =
     StandardClientRequestBodies.create(this, contentType)

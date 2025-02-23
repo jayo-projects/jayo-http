@@ -22,10 +22,10 @@
 package jayo.http.internal
 
 import jayo.Buffer
-import jayo.ByteString.EMPTY
 import jayo.JayoClosedResourceException
 import jayo.RawReader
 import jayo.buffered
+import jayo.bytestring.ByteString.EMPTY
 import jayo.http.*
 import jayo.tls.Protocol
 import org.assertj.core.api.Assertions.assertThat
@@ -41,25 +41,10 @@ class ClientResponseTest {
     }
 
     @Test
-    fun testFailsIfTrailersNotSet() {
-        val response =
-            newResponse("".toResponseBody()) {
-                // All live paths (Http1, Http2) in OkHttp do this
-                trailers { error("trailers not available") }
-            }
-
-        assertFailsWith<IllegalStateException>(message = "trailers not available") {
-            response.trailers()
-        }
-    }
-
-    @Test
     fun worksIfTrailersSet() {
         val response =
             newResponse("".toResponseBody()) {
-                trailers {
-                    Headers.of("a", "b")
-                }
+                trailers { Headers.of("a", "b") }
             }
 
         assertThat(response.trailers()["a"]).isEqualTo("b")
@@ -133,8 +118,8 @@ class ClientResponseTest {
     }
 
     /**
-     * Returns a new response body that refuses to be read once it has been closed. This is true of
-     * most [jayo.Reader] instances, but not of [Buffer].
+     * @return a new response body that refuses to be read once it has been closed. This is true of most [jayo.Reader]
+     * instances, but not of [Buffer].
      */
     private fun responseBody(content: String): ClientResponseBody {
         val data = Buffer().write(content)

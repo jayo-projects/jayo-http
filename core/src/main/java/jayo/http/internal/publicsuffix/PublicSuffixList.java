@@ -21,9 +21,12 @@
 
 package jayo.http.internal.publicsuffix;
 
-import jayo.ByteString;
+import jayo.bytestring.ByteString;
 import org.jspecify.annotations.NonNull;
 
+/**
+ * Basic I/O for {@code PublicSuffixDatabase.list}
+ */
 interface PublicSuffixList {
     void ensureLoaded();
 

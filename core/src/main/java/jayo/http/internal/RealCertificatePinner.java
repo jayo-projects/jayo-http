@@ -21,7 +21,7 @@
 
 package jayo.http.internal;
 
-import jayo.ByteString;
+import jayo.bytestring.ByteString;
 import jayo.http.CertificatePinner;
 import jayo.tls.JayoTlsPeerUnverifiedException;
 import org.jspecify.annotations.NonNull;
@@ -54,7 +54,7 @@ public final class RealCertificatePinner implements CertificatePinner {
     }
 
     @Override
-    public void check(final @NonNull String hostname, final @NonNull List<Certificate> peerCertificates) {
+    public void check(final @NonNull String hostname, final @NonNull List<@NonNull Certificate> peerCertificates) {
         Objects.requireNonNull(hostname);
         Objects.requireNonNull(peerCertificates);
 
@@ -71,7 +71,7 @@ public final class RealCertificatePinner implements CertificatePinner {
         });
     }
 
-    void check(final @NonNull String hostname,
+    public void check(final @NonNull String hostname,
                final @NonNull Supplier<List<X509Certificate>> cleanedPeerCertificatesFn) {
         final var pins = findMatchingPins(hostname);
         if (pins.isEmpty()) {
@@ -130,7 +130,7 @@ public final class RealCertificatePinner implements CertificatePinner {
      * @return a certificate pinner that uses {@code certificateChainCleaner}.
      */
     @NonNull
-    RealCertificatePinner withCertificateChainCleaner(
+    public RealCertificatePinner withCertificateChainCleaner(
             final @NonNull CertificateChainCleaner certificateChainCleaner) {
         assert certificateChainCleaner != null;
 
@@ -143,20 +143,23 @@ public final class RealCertificatePinner implements CertificatePinner {
 
     @Override
     public boolean equals(final @Nullable Object other) {
-        if (!(other instanceof RealCertificatePinner _other)) {
+        if (!(other instanceof RealCertificatePinner that)) {
             return false;
         }
 
-        return pins.equals(_other.pins)
-                && Objects.equals(certificateChainCleaner, _other.certificateChainCleaner);
+        return pins.equals(that.pins) &&
+                Objects.equals(certificateChainCleaner, that.certificateChainCleaner);
     }
 
     @Override
     public int hashCode() {
-        var result = 37;
-        result = 41 * result + pins.hashCode();
-        result = 41 * result + Objects.hashCode(certificateChainCleaner);
+        var result = pins.hashCode();
+        result = 31 * result + Objects.hashCode(certificateChainCleaner);
         return result;
+    }
+
+    public @Nullable CertificateChainCleaner getCertificateChainCleaner() {
+        return certificateChainCleaner;
     }
 
     public static final class Pin implements CertificatePinner.Pin {
@@ -250,16 +253,18 @@ public final class RealCertificatePinner implements CertificatePinner {
 
         @Override
         public boolean equals(final @Nullable Object other) {
-            if (!(other instanceof Pin _other)) {
+            if (!(other instanceof Pin that)) {
                 return false;
             }
 
-            return pattern.equals(_other.pattern) && hashAlgorithm.equals(_other.hashAlgorithm) && hash.equals(_other.hash);
+            return pattern.equals(that.pattern) &&
+                    hashAlgorithm.equals(that.hashAlgorithm) &&
+                    hash.equals(that.hash);
         }
 
         @Override
         public int hashCode() {
-            int result = pattern.hashCode();
+            var result = pattern.hashCode();
             result = 31 * result + hashAlgorithm.hashCode();
             result = 31 * result + hash.hashCode();
             return result;

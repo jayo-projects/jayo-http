@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2024-present, pull-vert and Jayo contributors.
+ * Copyright (c) 2025-present, pull-vert and Jayo contributors.
  * Use of this source code is governed by the Apache 2.0 license.
  *
  * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
  *
- * Copyright (C) 2013 Square, Inc.
+ * Copyright (C) 2012 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,10 @@
 
 package jayo.http;
 
-import jayo.http.internal.RealAddress;
+import jayo.http.internal.connection.RealAddress;
+import jayo.network.NetworkEndpoint;
+import jayo.network.Proxy;
+import jayo.tls.ClientTlsEndpoint;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -30,13 +33,13 @@ import javax.net.ssl.HostnameVerifier;
 import java.util.List;
 
 /**
- * A specification for a connection to an origin server. For simple connections, this is the server's hostname and port.
- * For secure connections the address also includes the hostname verifier, and certificate pinner.
+ * A specification for a connection to an origin server. For simple connections, this is the
+ * {@linkplain #getUrl() HTTP URL} that contains the server's hostname and port.
+ * If an explicit proxy is requested, this also includes that {@linkplain #getProxy() proxy} information. For secure
+ * connections the address also includes the {@linkplain #getHostnameVerifier() hostname verifier} and the
+ * {@linkplain #getCertificatePinner() certificate pinner}.
  * <p>
  * HTTP requests that share the same {@link Address} may also share the same {@link Connection}.
- * <p>
- * TODO: If an explicit proxy is requested (or {@linkplain java.net.Proxy#NO_PROXY no proxy} is explicitly requested),
- * this also includes that proxy information.
  */
 public sealed interface Address permits RealAddress {
     /**
@@ -47,14 +50,18 @@ public sealed interface Address permits RealAddress {
     HttpUrl getUrl();
 
     /**
-     * The protocols the client supports. This method always returns a non-null list that contains minimally
+     * The protocols the client supports. This method always returns a non-null list that contains at least
      * {@link Protocol#HTTP_1_1}.
      */
     @NonNull
-    List<Protocol> getProtocols();
+    List<@NonNull Protocol> getProtocols();
+
+    NetworkEndpoint.@NonNull Builder getNetworkEndpointBuilder();
+
+    ClientTlsEndpoint.@Nullable Builder getClientTlsEndpointBuilder();
 
     @NonNull
-    List<ConnectionSpec> getConnectionSpecs();
+    List<@NonNull ConnectionSpec> getConnectionSpecs();
 
     /**
      * @return the service that will be used to resolve IP addresses for hostnames.
@@ -74,6 +81,15 @@ public sealed interface Address permits RealAddress {
     @Nullable
     CertificatePinner getCertificatePinner();
 
-    // todo socketFactory: SocketFactory + sslSocketFactory: SSLSocketFactory? + proxyAuthenticator: Authenticator
-    // todo proxy: Proxy? + proxySelector: ProxySelector
+    /**
+     * @return this address's explicitly specified {@link Proxy}. If null, a direct connection will be attempted.
+     */
+    @Nullable
+    Proxy getProxy();
+
+    /**
+     * @return the client's proxy authenticator.
+     */
+    @NonNull
+    Authenticator getProxyAuthenticator();
 }

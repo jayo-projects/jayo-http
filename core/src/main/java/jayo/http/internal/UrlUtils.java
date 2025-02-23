@@ -19,9 +19,10 @@
  * limitations under the License.
  */
 
-package jayo.http.internal.url;
+package jayo.http.internal;
 
 import jayo.Buffer;
+import jayo.http.HttpUrl;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -29,6 +30,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
+import static jayo.http.HttpUrl.defaultPort;
 import static jayo.http.internal.Utils.parseHexDigit;
 
 public final class UrlUtils {
@@ -36,41 +38,36 @@ public final class UrlUtils {
     private UrlUtils() {
     }
 
-    private final static char[] HEX_DIGITS =
+    private static final char[] HEX_DIGITS =
             new char[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-    public final static String USERNAME_ENCODE_SET = " \"':;<=>@[]^`{}|/\\?#";
-    public final static String PASSWORD_ENCODE_SET = " \"':;<=>@[]^`{}|/\\?#";
-    public final static String PATH_SEGMENT_ENCODE_SET = " \"<>^`{}|/\\?#";
-    public final static String PATH_SEGMENT_ENCODE_SET_URI = "[]";
-    public final static String QUERY_ENCODE_SET = " \"'<>#";
-    public final static String QUERY_COMPONENT_REENCODE_SET = " \"'<>#&=";
-    public final static String QUERY_COMPONENT_ENCODE_SET = " !\"#$&'(),/:;<=>?@[]\\^`{|}~";
-    public final static String QUERY_COMPONENT_ENCODE_SET_URI = "\\^`{|}";
-    public final static String FORM_ENCODE_SET = " !\"#$&'()+,/:;<=>?@[\\]^`{|}~";
-    public final static String FRAGMENT_ENCODE_SET = "";
-    public final static String FRAGMENT_ENCODE_SET_URI = " \"#<>\\^`{|}";
+    static final String USERNAME_ENCODE_SET = " \"':;<=>@[]^`{}|/\\?#";
+    static final String PASSWORD_ENCODE_SET = " \"':;<=>@[]^`{}|/\\?#";
+    static final String PATH_SEGMENT_ENCODE_SET = " \"<>^`{}|/\\?#";
+    static final String PATH_SEGMENT_ENCODE_SET_URI = "[]";
+    static final String QUERY_ENCODE_SET = " \"'<>#";
+    static final String QUERY_COMPONENT_REENCODE_SET = " \"'<>#&=";
+    static final String QUERY_COMPONENT_ENCODE_SET = " !\"#$&'(),/:;<=>?@[]\\^`{|}~";
+    static final String QUERY_COMPONENT_ENCODE_SET_URI = "\\^`{|}";
+    static final String FORM_ENCODE_SET = " !\"#$&'()+,/:;<=>?@[\\]^`{|}~";
+    static final String FRAGMENT_ENCODE_SET = "";
+    static final String FRAGMENT_ENCODE_SET_URI = " \"#<>\\^`{|}";
 
     /**
-     * @return a substring of `input` on the range `[pos..limit)` with the following
-     * transformations:
-     * <p>
-     * * Tabs, newlines, form feeds and carriage returns are skipped.
-     * <p>
-     * * In queries, ' ' is encoded to '+' and '+' is encoded to "%2B".
-     * <p>
-     * * Characters in `encodeSet` are percent-encoded.
-     * <p>
-     * * Control characters and non-ASCII characters are percent-encoded.
-     * <p>
-     * * All other characters are copied without transformation.
-     *
-     * @param alreadyEncoded true to leave '%' as-is; false to convert it to '%25'.
-     * @param strict         true to encode '%' if it is not the prefix of a valid percent encoding.
-     * @param plusIsSpace    true to encode '+' as "%2B" if it is not already encoded.
+     * @param alreadyEncoded true to leave {@code '%'} as-is; false to convert it to {@code "%25"}.
+     * @param strict         true to encode {@code '%'} if it is not the prefix of a valid percent encoding.
+     * @param plusIsSpace    true to encode {@code '+'} as {@code "%2B"} if it is not already encoded.
      * @param unicodeAllowed true to leave non-ASCII codepoint unencoded.
      * @param charset        which charset to use, null equals UTF-8.
+     * @return a substring of {@code input} on the range {@code [pos..limit)} with the following transformations:
+     * <ul>
+     * <li>Tabs, newlines, form feeds and carriage returns are skipped.
+     * <li>In queries, {@code ' '} is encoded to {@code "+"} and {@code '+'} is encoded to {@code "%2B"}.
+     * <li>Characters in {@code encodeSet} are percent-encoded.
+     * <li>Control characters and non-ASCII characters are percent-encoded.
+     * <li>All other characters are copied without transformation.
+     * </ul>
      */
-    public static @NonNull String canonicalizeWithCharset(
+    static @NonNull String canonicalizeWithCharset(
             final @NonNull String input,
             final @NonNull String encodeSet,
             final boolean alreadyEncoded,
@@ -79,8 +76,7 @@ public final class UrlUtils {
             final boolean strict,
             final boolean plusIsSpace,
             final boolean unicodeAllowed,
-            final @Nullable Charset charset
-    ) {
+            final @Nullable Charset charset) {
         int codePoint;
         var i = pos;
         while (i < limit) {
@@ -91,11 +87,10 @@ public final class UrlUtils {
                     (encodeSet.indexOf(codePoint) >= 0) ||
                     codePoint == ((int) '%') &&
                             (!alreadyEncoded || strict && !isPercentEncoded(input, i, limit)) ||
-                    codePoint == ((int) '+') && plusIsSpace
-            ) {
+                    codePoint == ((int) '+') && plusIsSpace) {
                 // Slow path: the character at i requires encoding!
                 final var out = Buffer.create();
-                out.write(input, pos, i);
+                out.write(input.substring(pos, i));
                 writeCanonicalized(
                         out,
                         input,
@@ -117,7 +112,7 @@ public final class UrlUtils {
         return input.substring(pos, limit);
     }
 
-    private static void writeCanonicalized(
+    static void writeCanonicalized(
             final @NonNull Buffer buffer,
             final @NonNull String input,
             final @NonNull String encodeSet,
@@ -161,7 +156,7 @@ public final class UrlUtils {
                     if (charset == null || charset.equals(StandardCharsets.UTF_8)) {
                         encodedCharBuffer.writeUtf8CodePoint(codePoint);
                     } else {
-                        encodedCharBuffer.write(input, i, i + Character.charCount(codePoint), charset);
+                        encodedCharBuffer.write(input.substring(i, i + Character.charCount(codePoint)), charset);
                     }
 
                     while (!encodedCharBuffer.exhausted()) {
@@ -178,7 +173,7 @@ public final class UrlUtils {
         }
     }
 
-    private static void writePercentDecoded(
+    static void writePercentDecoded(
             final @NonNull Buffer buffer,
             final @NonNull String encoded,
             final int pos,
@@ -208,7 +203,7 @@ public final class UrlUtils {
         }
     }
 
-    public static @NonNull String canonicalize(
+    static @NonNull String canonicalize(
             final @NonNull String input,
             final @NonNull String encodeSet,
             final boolean alreadyEncoded
@@ -216,7 +211,7 @@ public final class UrlUtils {
         return canonicalize(input, encodeSet, alreadyEncoded, 0, input.length(), false, false, false);
     }
 
-    public static @NonNull String canonicalize(
+    static @NonNull String canonicalize(
             final @NonNull String input,
             final @NonNull String encodeSet,
             final boolean alreadyEncoded,
@@ -239,11 +234,11 @@ public final class UrlUtils {
         );
     }
 
-    public static @NonNull String percentDecode(final @NonNull String encoded) {
+    static @NonNull String percentDecode(final @NonNull String encoded) {
         return percentDecode(encoded, 0, encoded.length(), false);
     }
 
-    public static @NonNull String percentDecode(
+    static @NonNull String percentDecode(
             final @NonNull String encoded,
             final int pos,
             final int limit,
@@ -253,9 +248,9 @@ public final class UrlUtils {
         for (var i = pos; i < limit; i++) {
             final var c = encoded.charAt(i);
             if (c == '%' || c == '+' && plusIsSpace) {
-                // Slow path: the character at i requires decoding!
+                // Slow path: the character at 'i' requires decoding!
                 final var out = Buffer.create();
-                out.write(encoded, pos, i);
+                out.write(encoded.substring(pos, i));
                 writePercentDecoded(out, encoded, i, limit, plusIsSpace);
                 return out.readString();
             }
@@ -274,5 +269,28 @@ public final class UrlUtils {
                 input.charAt(pos) == '%' &&
                 parseHexDigit(input.charAt(pos + 1)) != -1 &&
                 parseHexDigit(input.charAt(pos + 2)) != -1;
+    }
+
+    public static @NonNull String toHostHeader(final @NonNull HttpUrl url, final boolean includeDefaultPort) {
+        assert url != null;
+
+        final var host = (url.getHost().contains(":")) ? "[" + url.getHost() + "]" : url.getHost();
+
+        if (includeDefaultPort || url.getPort() != defaultPort(url.getScheme())) {
+            return host + ":" + url.getPort();
+        }
+        return host;
+    }
+
+    /**
+     * @return true if an HTTP request for {@code url} and {@code other} can reuse a connection.
+     */
+    public static boolean canReuseConnection(final @NonNull HttpUrl url, final @NonNull HttpUrl other) {
+        assert url != null;
+        assert other != null;
+
+        return url.getHost().equals(other.getHost()) &&
+                url.getPort() == other.getPort() &&
+                url.getScheme().equals(other.getScheme());
     }
 }

@@ -71,8 +71,11 @@ final class TrustRootIndex {
 
     @Override
     public boolean equals(final @Nullable Object other) {
-        return other == this ||
-                (other instanceof TrustRootIndex that && subjectToCaCerts.equals(that.subjectToCaCerts));
+        if (!(other instanceof TrustRootIndex that)) {
+            return false;
+        }
+
+        return subjectToCaCerts.equals(that.subjectToCaCerts);
     }
 
     @Override

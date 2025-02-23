@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import java.util.Locale;
-import java.util.Objects;
 
 import static java.time.ZoneOffset.UTC;
 
@@ -77,8 +76,9 @@ public final class DateFormatting {
     private static final @Nullable DateTimeFormatter @NonNull [] BROWSER_COMPATIBLE_DATE_FORMATS =
             new DateTimeFormatter[BROWSER_COMPATIBLE_DATE_FORMAT_STRINGS.length];
 
-    static @Nullable Instant toHttpInstantOrNull(final @NonNull String instantAsString) {
-        Objects.requireNonNull(instantAsString);
+    public static @Nullable Instant toHttpInstantOrNull(final @NonNull String instantAsString) {
+        assert instantAsString != null;
+
         if (instantAsString.isBlank()) {
             return null;
         }
@@ -116,7 +116,7 @@ public final class DateFormatting {
      * @return the string for this date.
      */
     static @NonNull String toHttpInstantString(final @NonNull Instant instant) {
-        Objects.requireNonNull(instant);
+        assert instant != null;
         return STANDARD_DATE_FORMAT.format(instant);
     }
 }

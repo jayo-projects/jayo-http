@@ -23,11 +23,11 @@ package jayo.http;
 
 import jayo.http.internal.RealConnectionSpec;
 import jayo.tls.CipherSuite;
+import jayo.tls.ClientTlsEndpoint;
 import jayo.tls.TlsVersion;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import javax.net.ssl.SSLEngine;
 import java.util.List;
 import java.util.Objects;
 
@@ -35,12 +35,12 @@ import java.util.Objects;
  * Specifies configuration for the socket connection that HTTP traffic travels through. For {@code https:} URLs, this
  * includes the TLS version and cipher suites to use when negotiating a secure connection.
  * <p>
- * The TLS versions configured in a connection spec are only be used if they are also enabled in the SSL engine.
- * For example, if a SSL engine does not have TLS 1.3 enabled, it will not be used even if it is present on the
+ * The TLS versions configured in a connection spec are only used if they are also enabled in the TLS client.
+ * For example, if a TLS client does not have TLS 1.3 enabled, it will not be used even if it is present on the
  * connection spec. The same policy also applies to cipher suites.
  * <p>
- * Use {@link Builder#enableAllTlsVersions(boolean)} and {@link Builder#enableAllCipherSuites(boolean)} to defer all
- * feature selection to the underlying SSL engine.
+ * Set {@link Builder#enableAllTlsVersions(boolean)} and {@link Builder#enableAllCipherSuites(boolean)} to true to defer
+ * all feature selections to the underlying TLS client.
  */
 public sealed interface ConnectionSpec permits RealConnectionSpec {
     static @NonNull Builder builder(final @NonNull ConnectionSpec connectionSpec) {
@@ -80,31 +80,31 @@ public sealed interface ConnectionSpec permits RealConnectionSpec {
     boolean isTls();
 
     /**
-     * @return the cipher suites to use for a connection. Returns null if all the SSL engine's enabled cipher suites
+     * @return the cipher suites to use for a connection. Returns null if all the TLS client's enabled cipher suites
      * should be used.
      */
     @Nullable
-    List<CipherSuite> getCipherSuites();
+    List<@NonNull CipherSuite> getCipherSuites();
 
     /**
-     * @return the TLS versions to use when negotiating a connection. Returns null if all the SSL engine's enabled TLS
+     * @return the TLS versions to use when negotiating a connection. Returns null if all the TLS client's enabled TLS
      * versions should be used.
      */
     @Nullable
-    List<TlsVersion> getTlsVersions();
+    List<@NonNull TlsVersion> getTlsVersions();
 
     /**
-     * @return {@code true} if the SSL engine, as currently configured, supports this connection spec. In order for a
-     * SSL engine to be compatible the enabled cipher suites and protocols must intersect.
+     * @return {@code true} if the TLS client, as currently configured, supports this connection spec. In order for a
+     * TLS client parameterizer to be compatible, the enabled cipher suites and protocols must intersect.
      * <p>
      * For cipher suites, at least one of the {@linkplain #getCipherSuites() required cipher suites} must match the
-     * SSL engine's enabled cipher suites. If there are no required cipher suites the SSL engine must have at least
+     * TLS client's enabled cipher suites. If there are no required cipher suites, the TLS client must have at least
      * one cipher suite enabled.
      * <p>
      * For protocols, at least one of the {@linkplain #getTlsVersions() required protocols} must match the TLS
-     * endpoint's enabled protocols.
+     * client's enabled protocols.
      */
-    boolean isCompatible(final @NonNull SSLEngine sslEngine);
+    boolean isCompatible(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer);
 
     /**
      * The builder used to create a {@link ConnectionSpec} instance.
@@ -114,19 +114,13 @@ public sealed interface ConnectionSpec permits RealConnectionSpec {
         Builder enableAllCipherSuites(final boolean enableAllCipherSuites);
 
         @NonNull
-        Builder cipherSuites(final @NonNull CipherSuite @NonNull ... cipherSuites);
-
-        @NonNull
-        Builder cipherSuites(final @NonNull String @NonNull ... cipherSuites);
+        Builder cipherSuites(final @NonNull List<@NonNull CipherSuite> cipherSuites);
 
         @NonNull
         Builder enableAllTlsVersions(final boolean enableAllTlsVersions);
 
         @NonNull
-        Builder tlsVersions(final @NonNull TlsVersion @NonNull ... tlsVersions);
-
-        @NonNull
-        Builder tlsVersions(final @NonNull String @NonNull ... tlsVersions);
+        Builder tlsVersions(final @NonNull List<@NonNull TlsVersion> tlsVersions);
 
         @NonNull
         ConnectionSpec build();

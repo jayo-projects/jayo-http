@@ -102,8 +102,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
 
     @Override
     public long byteCount() {
-        // Each header name has 2 bytes of overhead for ': ' and every header value has 2 bytes of
-        // overhead for '\r\n'.
+        // Each header name has 2 bytes of overhead for ': ' and every header value has 2 bytes of overhead for '\r\n'.
         var result = namesAndValues.length * 2L;
 
         for (String namesAndValue : namesAndValues) {
@@ -129,8 +128,11 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
 
     @Override
     public boolean equals(final @Nullable Object other) {
-        return (other instanceof RealHeaders otherAsHeaders)
-                && Arrays.equals(namesAndValues, otherAsHeaders.namesAndValues);
+        if (!(other instanceof RealHeaders that)) {
+            return false;
+        }
+
+        return Arrays.equals(namesAndValues, that.namesAndValues);
     }
 
     @Override
@@ -176,7 +178,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
             if (nameAndValue == null) {
                 throw new IllegalArgumentException("Headers cannot be null");
             }
-            namesAndValues[i++] = nameAndValue.trim();
+            namesAndValues[i++] = nameAndValue.strip();
         }
 
         // Check for malformed headers.
@@ -196,8 +198,8 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         final var namesAndValues = new String[inputNamesAndValues.size() * 2];
         var i = 0;
         for (final var nameAndValueEntry : inputNamesAndValues.entrySet()) {
-            final var name = nameAndValueEntry.getKey().trim();
-            final var value = nameAndValueEntry.getValue().trim();
+            final var name = nameAndValueEntry.getKey().strip();
+            final var value = nameAndValueEntry.getValue().strip();
             headersCheckName(name);
             headersCheckValue(value, name);
             namesAndValues[i++] = name;
@@ -249,7 +251,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
             if (index == -1) {
                 throw new IllegalArgumentException("Unexpected header: " + line);
             }
-            return add(line.substring(0, index).trim(), line.substring(index + 1));
+            return add(line.substring(0, index).strip(), line.substring(index + 1));
         }
 
         @Override
@@ -335,7 +337,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         /**
          * Add a header line without any validation. Only appropriate for headers from the remote peer or cache.
          */
-        Headers.@NonNull Builder addLenient(final @NonNull String line) {
+        public Headers.@NonNull Builder addLenient(final @NonNull String line) {
             Objects.requireNonNull(line);
             final var index = line.indexOf(':', 1);
             if (index != -1) {
@@ -351,11 +353,11 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
             return this;
         }
 
-        Headers.@NonNull Builder addLenient(final @NonNull String name, final @NonNull String value) {
+        public Headers.@NonNull Builder addLenient(final @NonNull String name, final @NonNull String value) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(value);
             namesAndValues.add(name);
-            namesAndValues.add(value.trim());
+            namesAndValues.add(value.strip());
             return this;
         }
     }

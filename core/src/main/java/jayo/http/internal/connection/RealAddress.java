@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2024-present, pull-vert and Jayo contributors.
+ * Copyright (c) 2025-present, pull-vert and Jayo contributors.
  * Use of this source code is governed by the Apache 2.0 license.
  *
  * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
  *
- * Copyright (C) 2013 Square, Inc.
+ * Copyright (C) 2012 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,12 @@
  * limitations under the License.
  */
 
-package jayo.http.internal;
+package jayo.http.internal.connection;
 
 import jayo.http.*;
+import jayo.network.NetworkEndpoint;
+import jayo.network.Proxy;
+import jayo.tls.ClientTlsEndpoint;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -33,34 +36,48 @@ import java.util.Objects;
 public final class RealAddress implements Address {
     private final @NonNull HttpUrl url;
     private final @NonNull Dns dns;
+    private final NetworkEndpoint.@NonNull Builder networkEndpointBuilder;
+    private final ClientTlsEndpoint.@Nullable Builder clientTlsEndpointBuilder;
     private final @Nullable HostnameVerifier hostnameVerifier;
     private final @Nullable CertificatePinner certificatePinner;
-    private final @NonNull List<Protocol> protocols;
+    private final @NonNull List<@NonNull Protocol> protocols;
     private final @NonNull List<ConnectionSpec> connectionSpecs;
+    private final @Nullable Proxy proxy;
+    private final @NonNull Authenticator proxyAuthenticator;
 
     RealAddress(final @NonNull String uriHost,
                 final int uriPort,
                 final @NonNull Dns dns,
+                final NetworkEndpoint.@NonNull Builder networkEndpointBuilder,
+                final ClientTlsEndpoint.@Nullable Builder clientTlsEndpointBuilder,
                 final @Nullable HostnameVerifier hostnameVerifier,
                 final @Nullable CertificatePinner certificatePinner,
-                final @NonNull List<Protocol> protocols,
-                final @NonNull List<ConnectionSpec> connectionSpecs) {
+                final @NonNull List<@NonNull Protocol> protocols,
+                final @NonNull List<@NonNull ConnectionSpec> connectionSpecs,
+                final @Nullable Proxy proxy,
+                final @NonNull Authenticator proxyAuthenticator) {
         assert uriHost != null;
         assert uriPort > 0;
         assert dns != null;
+        assert networkEndpointBuilder != null;
         assert protocols != null;
         assert connectionSpecs != null;
+        assert proxyAuthenticator != null;
 
         this.url = HttpUrl.builder()
-                .scheme((hostnameVerifier != null) ? "https" : "http")
+                .scheme((clientTlsEndpointBuilder != null) ? "https" : "http")
                 .host(uriHost)
                 .port(uriPort)
                 .build();
         this.dns = dns;
+        this.networkEndpointBuilder = networkEndpointBuilder;
+        this.clientTlsEndpointBuilder = clientTlsEndpointBuilder;
         this.hostnameVerifier = hostnameVerifier;
         this.certificatePinner = certificatePinner;
         this.protocols = List.copyOf(protocols);
         this.connectionSpecs = List.copyOf(connectionSpecs);
+        this.proxy = proxy;
+        this.proxyAuthenticator = proxyAuthenticator;
     }
 
     @Override
@@ -69,12 +86,22 @@ public final class RealAddress implements Address {
     }
 
     @Override
-    public @NonNull List<Protocol> getProtocols() {
+    public @NonNull List<@NonNull Protocol> getProtocols() {
         return protocols;
     }
 
     @Override
-    public @NonNull List<ConnectionSpec> getConnectionSpecs() {
+    public NetworkEndpoint.@NonNull Builder getNetworkEndpointBuilder() {
+        return networkEndpointBuilder;
+    }
+
+    @Override
+    public ClientTlsEndpoint.@Nullable Builder getClientTlsEndpointBuilder() {
+        return clientTlsEndpointBuilder;
+    }
+
+    @Override
+    public @NonNull List<@NonNull ConnectionSpec> getConnectionSpecs() {
         return connectionSpecs;
     }
 
@@ -94,29 +121,49 @@ public final class RealAddress implements Address {
     }
 
     @Override
+    public @Nullable Proxy getProxy() {
+        return proxy;
+    }
+
+    @Override
+    public @NonNull Authenticator getProxyAuthenticator() {
+        return proxyAuthenticator;
+    }
+
+    @Override
     public boolean equals(final @Nullable Object other) {
-        return (other instanceof RealAddress otherAsAddress) &&
-                url.equals(otherAsAddress.url) &&
-                equalsNonHost(otherAsAddress);
+        if (!(other instanceof RealAddress that)) {
+            return false;
+        }
+
+        return url.equals(that.url) &&
+                equalsNonHost(that);
     }
 
     @Override
     public int hashCode() {
         var result = url.hashCode();
         result = 31 * result + dns.hashCode();
+        result = 31 * result + proxyAuthenticator.hashCode();
         result = 31 * result + protocols.hashCode();
         result = 31 * result + connectionSpecs.hashCode();
+        result = 31 * result + (proxy != null ? proxy.hashCode() : 0);
+        result = 31 * result + Objects.hashCode(clientTlsEndpointBuilder);
         result = 31 * result + Objects.hashCode(hostnameVerifier);
         result = 31 * result + Objects.hashCode(certificatePinner);
         return result;
     }
 
-    boolean equalsNonHost(final @NonNull RealAddress that) {
-        assert that != null;
+    boolean equalsNonHost(final @NonNull Address other) {
+        assert other != null;
+        final var that = (RealAddress) other;
 
         return this.dns.equals(that.dns) &&
+                this.proxyAuthenticator.equals(that.proxyAuthenticator) &&
                 this.protocols.equals(that.protocols) &&
                 this.connectionSpecs.equals(that.connectionSpecs) &&
+                Objects.equals(this.proxy, that.proxy) &&
+                Objects.equals(this.clientTlsEndpointBuilder, that.clientTlsEndpointBuilder) &&
                 Objects.equals(this.hostnameVerifier, that.hostnameVerifier) &&
                 Objects.equals(this.certificatePinner, that.certificatePinner) &&
                 this.url.getPort() == that.url.getPort();
@@ -126,6 +173,7 @@ public final class RealAddress implements Address {
     public @NonNull String toString() {
         return "Address{" +
                 url.getHost() + ":" + url.getPort() + ", " +
+                "proxy=" + (proxy != null ? proxy : "no proxy") +
                 "}";
     }
 }

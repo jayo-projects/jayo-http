@@ -22,7 +22,7 @@
 package jayo.http.internal.idn;
 
 import jayo.Buffer;
-import jayo.ByteString;
+import jayo.bytestring.ByteString;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -34,16 +34,16 @@ public final class Punycode {
     private Punycode() {
     }
 
-    public final static String PREFIX_STRING = "xn--";
-    private final static ByteString PREFIX = ByteString.encode(PREFIX_STRING);
+    public static final String PREFIX_STRING = "xn--";
+    private static final ByteString PREFIX = ByteString.encode(PREFIX_STRING);
 
-    private final static int BASE = 36;
-    private final static int TMIN = 1;
-    private final static int TMAX = 26;
-    private final static int SKEW = 38;
-    private final static int DAMP = 700;
-    private final static int INITIAL_BIAS = 72;
-    private final static int INITIAL_N = 0x80;
+    private static final int BASE = 36;
+    private static final int TMIN = 1;
+    private static final int TMAX = 26;
+    private static final int SKEW = 38;
+    private static final int DAMP = 700;
+    private static final int INITIAL_BIAS = 72;
+    private static final int INITIAL_N = 0x80;
 
     /**
      * @return null if any label is oversized so much that the encoder cannot encode it without integer overflow. This
@@ -83,7 +83,7 @@ public final class Punycode {
             final @NonNull Buffer result
     ) {
         if (!requiresEncode(string, pos, limit)) {
-            result.write(string, pos, limit);
+            result.write(string.substring(pos, limit));
             return true;
         }
 
@@ -196,8 +196,8 @@ public final class Punycode {
     /**
      * Converts a single label from Punycode to Unicode.
      *
-     * @return true if the range of [string] from [pos] to [limit] was valid and decoded successfully.
-     * Otherwise, the decode failed.
+     * @return true if the range of {@code string} from {@code pos} to {@code limit} was valid and decoded successfully.
+     * Otherwise, the decoding failed.
      */
     private static boolean decodeLabel(
             final @NonNull String string,
@@ -206,7 +206,7 @@ public final class Punycode {
             final @NonNull Buffer result
     ) {
         if (!string.regionMatches(true, pos, PREFIX_STRING, 0, 4)) {
-            result.write(string, pos, limit);
+            result.write(string.substring(pos, limit));
             return true;
         }
 

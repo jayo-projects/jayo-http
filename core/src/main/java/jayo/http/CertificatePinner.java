@@ -21,7 +21,7 @@
 
 package jayo.http;
 
-import jayo.ByteString;
+import jayo.bytestring.ByteString;
 import jayo.http.internal.RealCertificatePinner;
 import org.jspecify.annotations.NonNull;
 
@@ -48,14 +48,14 @@ import static jayo.crypto.JdkDigest.SHA_256;
  * <pre>
  * {@code
  * String hostname = "publicobject.com";
- * CertificatePinner certificatePinner = new CertificatePinner.builder()
+ * CertificatePinner certificatePinner = CertificatePinner.builder()
  * .add(hostname, "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
  * .build();
  * JayoHttpClient client = JayoHttpClient.builder()
  * .certificatePinner(certificatePinner)
  * .build();
- * <p>
- * Request request = new Request.builder()
+ *
+ * ClientRequest request = ClientRequest.builder()
  * .url("https://" + hostname)
  * .build();
  * client.newCall(request).execute();
@@ -72,16 +72,13 @@ import static jayo.crypto.JdkDigest.SHA_256;
  * sha256/lCppFqbkrlJ3EcVFAkeip0+44VaoJUymbnOaEUk7tEU=: CN=AddTrust External CA Root
  * Pinned certificates for publicobject.com:
  * sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
- * at jayo.http.CertificatePinner.check(CertificatePinner.java)
- * at jayo.http.Connection.upgradeToTls(Connection.java)
- * at jayo.http.Connection.connect(Connection.java)
- * at jayo.http.Connection.connectAndSetOwner(Connection.java)
+ * at jayo.http ...
  * }
  * </pre>
  * Follow up by pasting the public key hashes from the exception into the certificate pinner's configuration:
  * <pre>
  * {@code
- * CertificatePinner certificatePinner = new CertificatePinner.builder()
+ * CertificatePinner certificatePinner = CertificatePinner.builder()
  * .add("publicobject.com", "sha256/afwiKY3RxoMmLkuRW1l7QsPZTJPwDS2pdDROQjXw8ig=")
  * .add("publicobject.com", "sha256/klO23nT2ehFDXCfx3eHTDRESMz3asj1muO+4aIdjiuY=")
  * .add("publicobject.com", "sha256/grX4Ta9HpZx6tSHkmCrvpApTQGo67CYDnvprLg5yRME=")
@@ -116,10 +113,12 @@ import static jayo.crypto.JdkDigest.SHA_256;
  * {@link CertificatePinner} cannot be used to pin self-signed certificate if such certificate is not accepted by
  * {@link javax.net.ssl.TrustManager}.
  *
- * @see <a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning">OWASP:
- * Certificate and Public Key Pinning</a>.
+ * @see <a href="https://www.owasp.org/index.php/Certificate_and_Public_Key_Pinning">OWASP: Certificate and Public Key
+ * Pinning</a>.
  */
 public sealed interface CertificatePinner permits RealCertificatePinner {
+    @NonNull CertificatePinner DEFAULT = builder().build();
+
     static @NonNull Builder builder() {
         return new RealCertificatePinner.Builder();
     }
@@ -134,13 +133,13 @@ public sealed interface CertificatePinner permits RealCertificatePinner {
      */
     static @NonNull String pin(final @NonNull Certificate certificate) {
         if (!(certificate instanceof X509Certificate x509Certificate)) {
-            throw new IllegalArgumentException("Certificate pinning requires X509 certificates");
+            throw new IllegalArgumentException("Certificate pinning requires non-null X509 certificates");
         }
         return "sha256/" + sha256Hash(x509Certificate).base64();
     }
 
     @NonNull
-    Set<Pin> getPins();
+    Set<@NonNull Pin> getPins();
 
     /**
      * Confirms that at least one of the certificates pinned for {@code hostname} is in {@code peerCertificates}. Does
@@ -150,7 +149,7 @@ public sealed interface CertificatePinner permits RealCertificatePinner {
      * @throws jayo.tls.JayoTlsPeerUnverifiedException if {@code peerCertificates} don't match the certificates pinned
      *                                                 for {@code hostname}.
      */
-    void check(final @NonNull String hostname, final @NonNull List<Certificate> peerCertificates);
+    void check(final @NonNull String hostname, final @NonNull List<@NonNull Certificate> peerCertificates);
 
     /**
      * @return the list of matching certificates' pins for the hostname. Returns an empty list if the hostname does not

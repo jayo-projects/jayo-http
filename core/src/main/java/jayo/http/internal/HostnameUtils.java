@@ -28,12 +28,11 @@ import org.jspecify.annotations.Nullable;
 
 import java.text.Normalizer;
 import java.util.Arrays;
-import java.util.Objects;
-import java.util.regex.Pattern;
 
 import static java.text.Normalizer.Form.NFC;
 import static jayo.http.internal.Utils.parseHexDigit;
 import static jayo.http.internal.idn.IdnaMappingTable.IDNA_MAPPING_TABLE;
+import static jayo.tools.HostnameUtils.canParseAsIpAddress;
 
 @SuppressWarnings("resource")
 public final class HostnameUtils {
@@ -41,118 +40,18 @@ public final class HostnameUtils {
     private HostnameUtils() {
     }
 
-    private final static Pattern VERIFY_AS_IP_ADDRESS = Pattern.compile(
-            "([0-9a-fA-F]*:[0-9a-fA-F:.]*)|([\\d.]+)");
-
-    static boolean canParseAsIpAddress(final @NonNull String maybeIpAddress) {
-        Objects.requireNonNull(maybeIpAddress);
-        return VERIFY_AS_IP_ADDRESS.matcher(maybeIpAddress).matches();
-    }
-
-    /**
-     * Encodes an IPv6 address in canonical form according to RFC 5952.
-     */
-    private static @NonNull String inet6AddressToAscii(final byte @NonNull [] address) {
-        // Go through the address looking for the longest run of 0s. Each group is 2-bytes.
-        // A run must be longer than one group (section 4.2.2).
-        // If there are multiple equal runs, the first one must be used (section 4.2.3).
-        var longestRunOffset = -1;
-        var longestRunLength = 0;
-        var i = 0;
-        while (i < address.length) {
-            final var currentRunOffset = i;
-            while ((i < 16) && ((int) address[i] == 0) && (((int) address[i + 1]) == 0)) {
-                i += 2;
-            }
-            final var currentRunLength = i - currentRunOffset;
-            if (currentRunLength > longestRunLength && currentRunLength >= 4) {
-                longestRunOffset = currentRunOffset;
-                longestRunLength = currentRunLength;
-            }
-            i += 2;
-        }
-
-        // Emit each 2-byte group in hex, separated by ':'. The longest run of zeroes is "::".
-        final var result = Buffer.create();
-        var j = 0;
-        while (j < address.length) {
-            if (j == longestRunOffset) {
-                result.writeByte((byte) ((int) ':'));
-                j += longestRunLength;
-                if (j == 16) result.writeByte((byte) ((int) ':'));
-            } else {
-                if (j > 0) {
-                    result.writeByte((byte) ((int) ':'));
-                }
-                final var group = ((address[j] & 0xff) << 8) | (address[j + 1] & 0xff);
-                result.writeHexadecimalUnsignedLong(group);
-                j += 2;
-            }
-        }
-        return result.readString();
-    }
-
-    /**
-     * @return the canonical address for {@code address}. If {@code address} is an IPv6 address that is mapped to an
-     * IPv4 address, this returns the IPv4-mapped address. Otherwise, this returns {@code address} as is.
-     * <p>
-     * <a href="https://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses">IPv4-mapped_IPv6_addresses</a>
-     */
-    private static byte @NonNull [] canonicalizeInetAddress(final byte @NonNull [] address) {
-        if (isMappedIpv4Address(address)) {
-            return Arrays.copyOfRange(address, 12, 16);
-        }
-        return address;
-    }
-
-    /**
-     * @return true for IPv6 addresses like {@code 0000:0000:0000:0000:0000:ffff:XXXX:XXXX}.
-     */
-    private static boolean isMappedIpv4Address(final byte @NonNull [] address) {
-        if (address.length != 16) {
-            return false;
-        }
-
-        for (var i = 0; i < 10; i++) {
-            if (address[i] != (byte) 0) {
-                return false;
-            }
-        }
-
-        if (address[10] != (byte) 255) {
-            return false;
-        }
-        return address[11] == (byte) 255;
-    }
-
-    /**
-     * Encodes an IPv4 address in canonical form according to RFC 4001.
-     */
-    static @NonNull String inet4AddressToAscii(final byte @NonNull [] address) {
-        if (address.length != 4) {
-            throw new IllegalArgumentException("IPv4 byte length must be 4, was " + address.length);
-        }
-        return Buffer.create()
-                .writeDecimalLong((address[0] & 0xff))
-                .writeByte((byte) ((int) '.'))
-                .writeDecimalLong((address[1] & 0xff))
-                .writeByte((byte) ((int) '.'))
-                .writeDecimalLong((address[2] & 0xff))
-                .writeByte((byte) ((int) '.'))
-                .writeDecimalLong((address[3] & 0xff))
-                .readString();
-    }
-
     /**
      * If this is an IP address, this returns the IP address in canonical form.
      * <p>
-     * Otherwise, this performs IDN ToASCII encoding and canonicalize the result to lowercase. For
-     * example this converts `☃.net` to `xn--n3h.net`, and `WwW.GoOgLe.cOm` to `www.google.com`.
-     * `null` will be returned if the host cannot be ToASCII encoded or if the result contains
-     * unsupported ASCII characters.
+     * Otherwise, this performs IDN ToASCII encoding and canonicalizes the result to lowercase. For example, this
+     * converts {@code ☃.net} to {@code xn--n3h.net}, and {@code WwW.GoOgLe.cOm} to {@code www.google.com}.
+     * {@code null} will be returned if the host cannot be ASCII encoded or if the result contains unsupported ASCII
+     * characters.
      */
     public static @Nullable String toCanonicalHost(final @NonNull String host) {
-        // If the input contains a :, it’s an IPv6 address.
+        assert host != null;
+
+        // If the input contains an ":", it’s an IPv6 address.
         if (host.indexOf(':') >= 0) {
             // If the input is encased in square braces "[...]", drop 'em.
             final byte[] inetAddressByteArray;
@@ -186,7 +85,113 @@ public final class HostnameUtils {
         return result;
     }
 
+    /**
+     * @return the canonical address for {@code address}. If {@code address} is an IPv6 address mapped to an IPv4
+     * address, this returns the IPv4-mapped address. Otherwise, this returns {@code address} as is.
+     * <p>
+     * <a href="https://en.wikipedia.org/wiki/IPv6#IPv4-mapped_IPv6_addresses">IPv4-mapped_IPv6_addresses</a>
+     */
+    static byte @NonNull [] canonicalizeInetAddress(final byte @NonNull [] address) {
+        assert address != null;
+
+        if (isMappedIpv4Address(address)) {
+            return Arrays.copyOfRange(address, 12, 16);
+        }
+        return address;
+    }
+
+    /**
+     * @return true for IPv6 addresses like {@code 0000:0000:0000:0000:0000:ffff:XXXX:XXXX}.
+     */
+    private static boolean isMappedIpv4Address(final byte @NonNull [] address) {
+        assert address != null;
+
+        if (address.length != 16) {
+            return false;
+        }
+
+        for (var i = 0; i < 10; i++) {
+            if (address[i] != (byte) 0) {
+                return false;
+            }
+        }
+
+        if (address[10] != (byte) 255) {
+            return false;
+        }
+        return address[11] == (byte) 255;
+    }
+
+    /**
+     * Encodes an IPv6 address in canonical form according to RFC 5952.
+     */
+    private static @NonNull String inet6AddressToAscii(final byte @NonNull [] address) {
+        assert address != null;
+
+        // Go through the address looking for the longest run of 0s. Each group is 2-bytes.
+        // A run must be longer than one group (section 4.2.2).
+        // If there are multiple equal runs, the first one must be used (section 4.2.3).
+        var longestRunOffset = -1;
+        var longestRunLength = 0;
+        var i = 0;
+        while (i < address.length) {
+            final var currentRunOffset = i;
+            while ((i < 16) && ((int) address[i] == 0) && (((int) address[i + 1]) == 0)) {
+                i += 2;
+            }
+            final var currentRunLength = i - currentRunOffset;
+            if (currentRunLength > longestRunLength && currentRunLength >= 4) {
+                longestRunOffset = currentRunOffset;
+                longestRunLength = currentRunLength;
+            }
+            i += 2;
+        }
+
+        // Emit each 2-byte group in HEX format, separated by ':'. The longest run of zeroes is "::".
+        final var buffer = Buffer.create();
+        i = 0;
+        while (i < address.length) {
+            if (i == longestRunOffset) {
+                buffer.writeByte((byte) ((int) ':'));
+                i += longestRunLength;
+                if (i == 16) {
+                    buffer.writeByte((byte) ((int) ':'));
+                }
+            } else {
+                if (i > 0) {
+                    buffer.writeByte((byte) ((int) ':'));
+                }
+                final var group = ((address[i] & 0xff) << 8) | (address[i + 1] & 0xff);
+                buffer.writeHexadecimalUnsignedLong(group);
+                i += 2;
+            }
+        }
+        return buffer.readString();
+    }
+
+    /**
+     * Encodes an IPv4 address in canonical form according to RFC 4001.
+     */
+    static @NonNull String inet4AddressToAscii(final byte @NonNull [] address) {
+        assert address != null;
+
+        if (address.length != 4) {
+            throw new IllegalArgumentException("IPv4 byte length must be 4, was " + address.length);
+        }
+        return Buffer.create()
+                .writeDecimalLong((address[0] & 0xff))
+                .writeByte((byte) ((int) '.'))
+                .writeDecimalLong((address[1] & 0xff))
+                .writeByte((byte) ((int) '.'))
+                .writeDecimalLong((address[2] & 0xff))
+                .writeByte((byte) ((int) '.'))
+                .writeDecimalLong((address[3] & 0xff))
+                .readString();
+    }
+
     private static @Nullable String idnToAscii(final @NonNull String host) {
+        assert host != null;
+
         final var bufferA = Buffer.create().write(host);
         final var bufferB = Buffer.create();
 
@@ -224,11 +229,13 @@ public final class HostnameUtils {
     }
 
     private static boolean containsInvalidHostnameAsciiCodes(final @NonNull String input) {
+        assert input != null;
+
         for (var i = 0; i < input.length(); i++) {
             final var c = input.charAt(i);
-            // The WHATWG Host parsing rules accepts some character codes which are invalid by
-            // definition for OkHttp's host header checks (and the WHATWG Host syntax definition). Here
-            // we rule out characters that would cause problems in host headers.
+            // The WHATWG Host parsing rules accept some character codes that are invalid by definition for Jayo HTTP's
+            // host header checks (and the WHATWG Host syntax definition). Here we rule out characters that would cause
+            // problems in host headers.
             if (c <= '\u001f' || c >= '\u007f') {
                 return true;
             }
@@ -243,10 +250,12 @@ public final class HostnameUtils {
     }
 
     /**
-     * @return true if the length is not valid for DNS (empty or greater than 253 characters), or if any
-     * label is longer than 63 characters. Trailing dots are okay.
+     * @return true if the length is not valid for DNS (empty or greater than 253 characters), or if any label is longer
+     * than 63 characters. Trailing dots are okay.
      */
     private static boolean containsInvalidLabelLengths(final @NonNull String input) {
+        assert input != null;
+
         final var length = input.length();
         if (length < 1 || length > 253) {
             return true;
@@ -277,13 +286,13 @@ public final class HostnameUtils {
     }
 
     /**
-     * Decodes an IPv6 address like 1111:2222:3333:4444:5555:6666:7777:8888 or ::1.
+     * Decodes an IPv6 address like {@code 1111:2222:3333:4444:5555:6666:7777:8888} or {@code ::1}.
      */
-    static byte @Nullable [] decodeIpv6(
-            final @NonNull String input,
-            final int pos,
-            final int limit
-    ) {
+    static byte @Nullable [] decodeIpv6(final @NonNull String input,
+                                        final int pos,
+                                        final int limit) {
+        assert input != null;
+
         final var address = new byte[16];
         var b = 0;
         var compress = -1;
@@ -344,9 +353,7 @@ public final class HostnameUtils {
             address[b++] = (byte) (value & 0xff);
         }
 
-        // All done. If compression happened, we need to move bytes to the right place in the
-        // address. Here's a sample:
-        //
+        // All done. If compression happened, we need to move bytes to the right place in the address. Here's a sample:
         //      input: "1111:2222:3333::7777:8888"
         //     before: { 11, 11, 22, 22, 33, 33, 00, 00, 77, 77, 88, 88, 00, 00, 00, 00  }
         //   compress: 6
@@ -365,15 +372,16 @@ public final class HostnameUtils {
     }
 
     /**
-     * Decodes an IPv4 address suffix of an IPv6 address, like 1111::5555:6666:192.168.0.1.
+     * Decodes an IPv4 address suffix of an IPv6 address, like {@code 1111::5555:6666:192.168.0.1}.
      */
-    private static boolean decodeIpv4Suffix(
-            final @NonNull String input,
-            final int pos,
-            final int limit,
-            final byte @NonNull [] address,
-            final int addressOffset
-    ) {
+    private static boolean decodeIpv4Suffix(final @NonNull String input,
+                                            final int pos,
+                                            final int limit,
+                                            final byte @NonNull [] address,
+                                            final int addressOffset) {
+        assert input != null;
+        assert address != null;
+
         var b = addressOffset;
 
         var i = pos;
@@ -418,5 +426,18 @@ public final class HostnameUtils {
 
         // Check for too few groups. We wanted exactly four.
         return b == addressOffset + 4;
+    }
+
+    static boolean domainMatch(final @NonNull String urlHost, final @NonNull String domain) {
+        assert urlHost != null;
+        assert domain != null;
+
+        if (urlHost.equals(domain)) { // As in 'example.com' matching 'example.com'.
+            return true;
+        }
+
+        return urlHost.endsWith(domain) &&
+                urlHost.charAt(urlHost.length() - domain.length() - 1) == '.' &&
+                !canParseAsIpAddress(urlHost);
     }
 }

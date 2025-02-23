@@ -219,7 +219,7 @@ public final class RealCacheControl implements CacheControl {
             while (pos < value.length()) {
                 final var tokenStart = pos;
                 pos = indexOfElement(value, "=,;", pos);
-                final var directive = value.substring(tokenStart, pos).trim().toLowerCase(Locale.US);
+                final var directive = value.substring(tokenStart, pos).strip().toLowerCase(Locale.US);
                 final String parameter;
 
                 if (pos == value.length() || value.charAt(pos) == ',' || value.charAt(pos) == ';') {
@@ -240,7 +240,7 @@ public final class RealCacheControl implements CacheControl {
                         // Unquoted string.
                         final var parameterStart = pos;
                         pos = indexOfElement(value, ",;", pos);
-                        parameter = value.substring(parameterStart, pos).trim();
+                        parameter = value.substring(parameterStart, pos).strip();
                     }
                 }
 
@@ -283,8 +283,8 @@ public final class RealCacheControl implements CacheControl {
     }
 
     /**
-     * Returns the next index in this at or after [startIndex] that is a character from
-     * [characters]. Returns the input length if none of the requested characters can be found.
+     * @return the next index in this at or after {@code startIndex} that is a character from {@code characters}.
+     * Returns the input length if none of the requested characters can be found.
      */
     private static int indexOfElement(
             final @NonNull String string,

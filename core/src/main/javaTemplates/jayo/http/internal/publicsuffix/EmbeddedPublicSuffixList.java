@@ -1,4 +1,9 @@
 /*
+ * Copyright (c) 2024-present, pull-vert and Jayo contributors.
+ * Use of this source code is governed by the Apache 2.0 license.
+ *
+ * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
+ *
  * Copyright (C) 2024 Block, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,36 +28,29 @@ package jayo.http.internal.publicsuffix;
 //https://mozilla.org/MPL/2.0/
 
 import jayo.Buffer;
-import jayo.ByteString;
+import jayo.bytestring.ByteString;
 import jayo.Jayo;
+import jayo.RawReader;
 import org.jspecify.annotations.NonNull;
 
-final class EmbeddedPublicSuffixList implements PublicSuffixList {
-    private static EmbeddedPublicSuffixList INSTANCE;
+enum EmbeddedPublicSuffixList implements PublicSuffixList {
+    INSTANCE;
 
     private final ByteString bytes;
     private final ByteString exceptionBytes;
 
-    private EmbeddedPublicSuffixList() {
+    EmbeddedPublicSuffixList() {
         final var buffer = Buffer.create();
         final var publicSuffixListString = ByteString.decodeBase64($publicSuffixListBytes);
         assert publicSuffixListString != null;
         buffer.write(publicSuffixListString);
-        try (final var source = Jayo.buffer(Jayo.gzip(buffer))) {
-            final var totalBytes = source.readInt();
-            bytes = source.readByteString(totalBytes);
+        try (final var gzipedSrc = Jayo.buffer(Jayo.gzip((RawReader) buffer))) {
+            final var totalBytes = gzipedSrc.readInt();
+            bytes = gzipedSrc.readByteString(totalBytes);
 
-            final var totalExceptionBytes = source.readInt();
-            exceptionBytes = source.readByteString(totalExceptionBytes);
+            final var totalExceptionBytes = gzipedSrc.readInt();
+            exceptionBytes = gzipedSrc.readByteString(totalExceptionBytes);
         }
-    }
-
-    static EmbeddedPublicSuffixList getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new EmbeddedPublicSuffixList();
-        }
-
-        return INSTANCE;
     }
 
     @Override

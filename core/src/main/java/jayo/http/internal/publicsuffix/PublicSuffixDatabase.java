@@ -21,7 +21,7 @@
 
 package jayo.http.internal.publicsuffix;
 
-import jayo.ByteString;
+import jayo.bytestring.ByteString;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -33,8 +33,6 @@ import java.util.stream.Collectors;
 
 public final class PublicSuffixDatabase {
     private static PublicSuffixDatabase INSTANCE;
-
-    private static final System.Logger LOGGER = System.getLogger("jayo.http.PublicSuffixDatabase");
 
     private final @NonNull PublicSuffixList publicSuffixList;
 
@@ -50,7 +48,7 @@ public final class PublicSuffixDatabase {
 
     public static PublicSuffixDatabase getInstance() {
         if (INSTANCE == null) {
-            INSTANCE = new PublicSuffixDatabase(EmbeddedPublicSuffixList.getInstance());
+            INSTANCE = new PublicSuffixDatabase(EmbeddedPublicSuffixList.INSTANCE);
         }
 
         return INSTANCE;
@@ -62,14 +60,15 @@ public final class PublicSuffixDatabase {
      * the domain is a public suffix or a private address.
      * <p>
      * Here are some examples:
-     * <p>
-     * ```java
+     * <pre>
+     * {@code
      * assertEquals("google.com", getEffectiveTldPlusOne("google.com"));
      * assertEquals("google.com", getEffectiveTldPlusOne("www.google.com"));
      * assertNull(getEffectiveTldPlusOne("com"));
      * assertNull(getEffectiveTldPlusOne("localhost"));
      * assertNull(getEffectiveTldPlusOne("mymacbook"));
-     * ```
+     * }
+     * </pre>
      */
     public @Nullable String getEffectiveTldPlusOne(final @NonNull String domain) {
         // We use UTF-8 in the list, so we need to convert to Unicode.

@@ -21,20 +21,23 @@
 
 package jayo.http.internal;
 
+import jayo.JayoException;
 import jayo.http.HttpUrl;
 import jayo.http.internal.publicsuffix.PublicSuffixDatabase;
-import jayo.http.internal.url.UrlUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.*;
 
 import static jayo.http.HttpUrl.defaultPort;
 import static jayo.http.internal.HostnameUtils.toCanonicalHost;
+import static jayo.http.internal.UrlUtils.*;
 import static jayo.http.internal.Utils.*;
-import static jayo.http.internal.url.UrlUtils.*;
+import static jayo.tools.HostnameUtils.canParseAsIpAddress;
 
 public final class RealHttpUrl implements HttpUrl {
     private final @NonNull String scheme;
@@ -114,6 +117,15 @@ public final class RealHttpUrl implements HttpUrl {
     @Override
     public @Nullable String getFragment() {
         return fragment;
+    }
+
+    @Override
+    public @NonNull URL toUrl() {
+        try {
+            return new URL(url);
+        } catch (MalformedURLException e) {
+            throw JayoException.buildJayoException(e);
+        }
     }
 
     @Override
@@ -294,7 +306,7 @@ public final class RealHttpUrl implements HttpUrl {
 
     @Override
     public @Nullable String topPrivateDomain() {
-        if (HostnameUtils.canParseAsIpAddress(host)) {
+        if (canParseAsIpAddress(host)) {
             return null;
         }
         return PublicSuffixDatabase.getInstance().getEffectiveTldPlusOne(host);
@@ -327,13 +339,17 @@ public final class RealHttpUrl implements HttpUrl {
     }
 
     @Override
-    public int hashCode() {
-        return url.hashCode();
+    public boolean equals(final @Nullable Object other) {
+        if (!(other instanceof RealHttpUrl that)) {
+            return false;
+        }
+
+        return url.equals(that.url);
     }
 
     @Override
-    public boolean equals(final @Nullable Object other) {
-        return other instanceof RealHttpUrl objHttpUrl && objHttpUrl.url.equals(url);
+    public int hashCode() {
+        return url.hashCode();
     }
 
     @Override
