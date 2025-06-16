@@ -57,15 +57,15 @@ dependencies {
     compileOnly("org.jspecify:jspecify:${catalogVersion("jspecify")}")
 
     testImplementation(platform("org.junit:junit-bom:${catalogVersion("junit")}"))
-    testImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit-pioneer:junit-pioneer:${catalogVersion("junitPioneer")}")
     testImplementation(kotlin("test"))
+    testImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
     testImplementation("io.mockk:mockk:${catalogVersion("mockk")}")
 
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
-    testRuntimeOnly("org.slf4j:slf4j-simple:${catalogVersion("slf4j")}")
     testRuntimeOnly("org.slf4j:slf4j-jdk-platform-logging:${catalogVersion("slf4j")}")
+    testRuntimeOnly("ch.qos.logback:logback-classic:${catalogVersion("logback")}")
 }
 
 kover {
