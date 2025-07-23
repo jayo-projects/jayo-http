@@ -29,7 +29,7 @@ import jayo.http.ClientResponse;
 import jayo.http.Headers;
 import jayo.http.Interceptor;
 import jayo.http.TrailersSource;
-import jayo.http.internal.http2.JayoConnectionShutdownException;
+import jayo.http.http2.JayoConnectionShutdownException;
 import jayo.http.tools.HttpMethodUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;

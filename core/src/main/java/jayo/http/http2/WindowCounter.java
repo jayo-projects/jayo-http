@@ -19,18 +19,25 @@
  * limitations under the License.
  */
 
-package jayo.http.internal.http2;
+package jayo.http.http2;
 
-import jayo.JayoException;
-
-import java.io.IOException;
+import jayo.http.internal.http2.RealWindowCounter;
 
 /**
- * Thrown when an HTTP/2 connection is shutdown (either explicitly or if the peer has sent a GOAWAY frame) and an
- * attempt is made to use the connection.
+ * Flow control window counter.
  */
-public class JayoConnectionShutdownException extends JayoException {
-    JayoConnectionShutdownException() {
-        super(new IOException("HTTP2 connection shutdown."));
-    }
+public sealed interface WindowCounter permits RealWindowCounter {
+    int getStreamId();
+
+    /**
+     * The total number of bytes consumed.
+     */
+    long getTotal();
+
+    /**
+     * The total number of bytes acknowledged by outgoing {@code WINDOW_UPDATE} frames.
+     */
+    long getAcknowledged();
+
+    long getUnacknowledged();
 }

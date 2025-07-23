@@ -27,7 +27,7 @@ import jayo.http.ClientResponse;
 import jayo.http.Interceptor;
 import jayo.http.internal.UrlUtils;
 import jayo.http.internal.Utils;
-import jayo.http.internal.http2.JayoConnectionShutdownException;
+import jayo.http.http2.JayoConnectionShutdownException;
 import jayo.http.tools.HttpMethodUtils;
 import jayo.network.Proxy;
 import jayo.tls.JayoTlsHandshakeException;

@@ -20,33 +20,18 @@
  * limitations under the License.
  */
 
-package jayo.http.internal
+package jayo.http.internal.connection
 
 import jayo.JayoException
-import jayo.http.Call
-import jayo.http.Callback
-import jayo.http.CertificatePinner
-import jayo.http.ClientRequest
-import jayo.http.ClientResponse
-import jayo.http.Connection
-import jayo.http.Dns
-import jayo.http.EventListener
-import jayo.http.FakeDns
-import jayo.http.HttpUrl
-import jayo.http.Interceptor
-import jayo.http.JayoHttpClient
-import jayo.http.JayoHttpClientTestRule
+import jayo.http.*
+import jayo.http.internal.sslSocketFactory
+import jayo.http.internal.toJayo
+import jayo.network.JayoUnknownHostException
 import jayo.network.Proxy
-import jayo.tls.ClientHandshakeCertificates
-import jayo.tls.ClientTlsEndpoint
-import jayo.tls.HeldCertificate
-import jayo.tls.JssePlatformRule
-import jayo.tls.Protocol
-import jayo.tls.ServerHandshakeCertificates
+import jayo.tls.*
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.junit5.StartStop
-import okhttp3.CertificatePinner.Companion.pin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
@@ -60,17 +45,12 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.SSLPeerUnverifiedException
 import javax.net.ssl.SSLSession
 import javax.net.ssl.X509TrustManager
 import kotlin.test.assertFailsWith
 import kotlin.test.fail
 
-@Disabled
 class ConnectionCoalescingTest {
-    @RegisterExtension
-    val platform = JssePlatformRule()
-
     @RegisterExtension
     val clientTestRule = JayoHttpClientTestRule()
 
@@ -176,7 +156,7 @@ class ConnectionCoalescingTest {
     /**
      * This is an extraordinary test case. Here's what it's trying to simulate.
      * - 2 requests happen concurrently to a host that can be coalesced onto a single connection.
-     * - Both request discover no existing connection. They both make a connection.
+     * - Both requests discover no existing connection. They both make a connection.
      * - The first request "wins the race".
      * - The second request discovers it "lost the race" and closes the connection it just opened.
      * - The second request uses the coalesced connection from request1.
@@ -302,7 +282,7 @@ class ConnectionCoalescingTest {
         server.enqueue(MockResponse())
         assert200Http2Response(execute(url), server.hostName)
         val differentDnsUrl = url.newBuilder().host("differentdns.com").build()
-        assertFailsWith<IOException> {
+        assertFailsWith<JayoUnknownHostException> {
             execute(differentDnsUrl)
         }
     }
@@ -322,7 +302,7 @@ class ConnectionCoalescingTest {
                 .body("unexpected call")
                 .build(),
         )
-        assertFailsWith<IOException> {
+        assertFailsWith<JayoUnknownHostException> {
             val response = execute(url)
             response.close()
         }
@@ -335,7 +315,7 @@ class ConnectionCoalescingTest {
         server.enqueue(MockResponse())
         assert200Http2Response(execute(url), server.hostName)
         val nonsanUrl = url.newBuilder().host("nonsan.com").build()
-        assertFailsWith<SSLPeerUnverifiedException> {
+        assertFailsWith<JayoTlsPeerUnverifiedException> {
             execute(nonsanUrl)
         }
     }
@@ -350,7 +330,7 @@ class ConnectionCoalescingTest {
                 .build(),
         )
         server.enqueue(MockResponse())
-        assertFailsWith<SSLPeerUnverifiedException> {
+        assertFailsWith<JayoTlsPeerUnverifiedException> {
             val response = execute(url)
             response.close()
         }
@@ -360,8 +340,8 @@ class ConnectionCoalescingTest {
     @Test
     fun coalescesWhenCertificatePinsMatch() {
         val pinner = CertificatePinner.builder()
-                .add("san.com", pin(certificate.certificate))
-                .build()
+            .add("san.com", CertificatePinner.pin(certificate.certificate))
+            .build()
         client = client.newBuilder().certificatePinner(pinner).build()
         server.enqueue(MockResponse())
         server.enqueue(MockResponse())
@@ -375,13 +355,13 @@ class ConnectionCoalescingTest {
     @Test
     fun skipsWhenCertificatePinningFails() {
         val pinner = CertificatePinner.builder()
-                .add("san.com", "sha1/afwiKY3RxoMmLkuRW1l7QsPZTJPwDS2pdDROQjXw8ig=")
-                .build()
+            .add("san.com", "sha256/grX4Ta9HpZx6tSHkmCrvpApTQGo67CYDnvprLg5yRME=")
+            .build()
         client = client.newBuilder().certificatePinner(pinner).build()
         server.enqueue(MockResponse())
         assert200Http2Response(execute(url), server.hostName)
         val sanUrl = url.newBuilder().host("san.com").build()
-        assertFailsWith<IOException> {
+        assertFailsWith<JayoTlsPeerUnverifiedException> {
             execute(sanUrl)
         }
     }
@@ -389,8 +369,8 @@ class ConnectionCoalescingTest {
     @Test
     fun skipsOnRedirectWhenCertificatePinningFails() {
         val pinner = CertificatePinner.builder()
-                .add("san.com", "sha1/afwiKY3RxoMmLkuRW1l7QsPZTJPwDS2pdDROQjXw8ig=")
-                .build()
+            .add("san.com", "sha256/grX4Ta9HpZx6tSHkmCrvpApTQGo67CYDnvprLg5yRME=")
+            .build()
         client = client.newBuilder().certificatePinner(pinner).build()
         server.enqueue(
             MockResponse
@@ -400,7 +380,7 @@ class ConnectionCoalescingTest {
                 .build(),
         )
         server.enqueue(MockResponse())
-        assertFailsWith<SSLPeerUnverifiedException> {
+        assertFailsWith<JayoTlsPeerUnverifiedException> {
             execute(url)
         }
     }
@@ -411,7 +391,7 @@ class ConnectionCoalescingTest {
      */
     @Test
     fun skipsWhenHostnameVerifierUsed() {
-        val verifier = HostnameVerifier { name: String?, session: SSLSession? -> true }
+        val verifier = HostnameVerifier { _: String?, _: SSLSession? -> true }
         client = client.newBuilder().hostnameVerifier(verifier).build()
         server.enqueue(MockResponse())
         server.enqueue(MockResponse())
@@ -423,7 +403,7 @@ class ConnectionCoalescingTest {
 
     @Test
     fun skipsOnRedirectWhenHostnameVerifierUsed() {
-        val verifier = HostnameVerifier { name: String?, session: SSLSession? -> true }
+        val verifier = HostnameVerifier { _: String?, _: SSLSession? -> true }
         client = client.newBuilder().hostnameVerifier(verifier).build()
         server.enqueue(
             MockResponse
@@ -580,8 +560,11 @@ class ConnectionCoalescingTest {
         client =
             client
                 .newBuilder()
-                // fixme use the false trustManager
-                .tlsClientBuilder(ClientTlsEndpoint.builder(ClientHandshakeCertificates.create()))
+                .tlsClientBuilder(
+                    ClientTlsEndpoint.builder(
+                        ClientHandshakeCertificates.create(trustManager)
+                    )
+                )
                 .build()
         server.enqueue(MockResponse())
         server.enqueue(MockResponse())
@@ -599,7 +582,7 @@ class ConnectionCoalescingTest {
     ) {
         assertThat(response.status.code).isEqualTo(200)
         assertThat(response.request.url.host).isEqualTo(expectedHost)
-        assertThat(response.protocol).isEqualTo(Protocol.HTTP_1_1) // todo Protocol.HTTP_2
+        assertThat(response.protocol).isEqualTo(Protocol.HTTP_2)
         response.body.close()
     }
 }

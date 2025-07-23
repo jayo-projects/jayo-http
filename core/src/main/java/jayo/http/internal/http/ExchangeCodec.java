@@ -30,6 +30,7 @@ import jayo.http.Headers;
 import jayo.http.Route;
 import jayo.http.internal.connection.RealCall;
 import jayo.http.internal.http1.Http1ExchangeCodec;
+import jayo.http.internal.http2.Http2ExchangeCodec;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -38,7 +39,7 @@ import java.time.Duration;
 /**
  * Encodes HTTP requests and decodes HTTP responses.
  */
-public sealed interface ExchangeCodec permits Http1ExchangeCodec {
+public sealed interface ExchangeCodec permits Http1ExchangeCodec, Http2ExchangeCodec {
     /**
      * The timeout to use while discarding a stream of input data. Since this is used for connection reuse, this timeout
      * should be significantly less than the time it takes to establish a new connection.
