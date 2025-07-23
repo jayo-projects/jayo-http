@@ -904,7 +904,7 @@ class CallTest {
         bodySource.use {
             assertFailsWith<JayoException> {
                 bodySource.readByte()
-            }.also { expected ->
+            }.also { _ ->
                 // Timed out as expected.
                 val elapsedNanos = System.nanoTime() - startNanos
                 val elapsedMillis = TimeUnit.NANOSECONDS.toMillis(elapsedNanos)
@@ -3151,7 +3151,6 @@ class CallTest {
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(0)
     }
 
-    @Disabled // todo HTTP2
     @Test
     fun unsuccessfulExpectContinuePermitsConnectionReuseWithHttp2() {
         enableProtocol(Protocol.HTTP_2)
@@ -3203,7 +3202,6 @@ class CallTest {
         dns.assertRequests("android.com")
     }
 
-    @Disabled // fixme throws OutOfMemoryError: Java heap space
     @Test
     fun dnsReturnsZeroIpAddresses() {
         // Configure a DNS that returns our local MockWebServer for android.com.
@@ -3228,11 +3226,10 @@ class CallTest {
         dns.assertRequests("android.com")
     }
 
-    @Disabled // todo HTTP2
     /** Failed HTTP/2 calls could break the entire connection.  */
     @Test
     fun failingCallsDoNotInterfereWithConnection() {
-        //platform.assumeConscrypt() // whatever assertion on platform works, it is required for eventSequence check
+        platform.assumeConscrypt() // whatever assertion on platform works, it is required for eventSequence check
 
         enableProtocol(Protocol.HTTP_2)
         server.enqueue(MockResponse(body = "Response 1"))
@@ -3648,7 +3645,6 @@ class CallTest {
         }
     }
 
-    @Disabled // todo HTTP2
     @Test
     fun interceptorGetsHttp2() {
         enableProtocol(Protocol.HTTP_2)
@@ -3865,7 +3861,6 @@ class CallTest {
         assertThat(get.url).isEqualTo(url)
     }
 
-    @Disabled // todo HTTP2
     @Test
     fun ipv6HostHasSquareBracesHttp2() {
         configureClientAndServerProxies(http2 = true)
@@ -3892,7 +3887,7 @@ class CallTest {
         )
         assertThat(connect.headers[":authority"]).isNull()
         val get = server.takeRequest()
-        assertThat(get.requestLine).isEqualTo("GET / HTTP/1.1")
+        assertThat(get.requestLine).isEqualTo("GET / HTTP/2")
         assertThat(get.headers["Host"]).isNull()
         assertThat(get.headers[":authority"]).isEqualTo(
             "[::1]:$port",
@@ -3934,7 +3929,6 @@ class CallTest {
         assertThat(get.url).isEqualTo(url)
     }
 
-    @Disabled // todo HTTP2
     @Test
     fun ipv4IpHostHasNoSquareBracesHttp2() {
         configureClientAndServerProxies(http2 = true)
@@ -3957,7 +3951,7 @@ class CallTest {
         assertThat(connect.headers["Host"]).isEqualTo("127.0.0.1:$port")
         assertThat(connect.headers[":authority"]).isNull()
         val get = server.takeRequest()
-        assertThat(get.requestLine).isEqualTo("GET / HTTP/1.1")
+        assertThat(get.requestLine).isEqualTo("GET / HTTP/2")
         assertThat(get.headers["Host"]).isNull()
         assertThat(get.headers[":authority"]).isEqualTo("127.0.0.1:$port")
         assertThat(get.url).isEqualTo(url)
@@ -3991,7 +3985,6 @@ class CallTest {
         assertThat(get.url).isEqualTo(url)
     }
 
-    @Disabled // todo HTTP2
     @Test
     fun hostnameRequestHostHasNoSquareBracesHttp2() {
         configureClientAndServerProxies(http2 = true)
@@ -4014,7 +4007,7 @@ class CallTest {
         assertThat(connect.headers["Host"]).isEqualTo("any-host-name:$port")
         assertThat(connect.headers[":authority"]).isNull()
         val get = server.takeRequest()
-        assertThat(get.requestLine).isEqualTo("GET / HTTP/1.1")
+        assertThat(get.requestLine).isEqualTo("GET / HTTP/2")
         assertThat(get.headers["Host"]).isNull()
         assertThat(get.headers[":authority"]).isEqualTo("any-host-name:$port")
         assertThat(get.url).isEqualTo(url)
@@ -4038,6 +4031,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
+                .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
                 .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .proxies(server.proxyAddress.toJayo())
@@ -4258,7 +4252,6 @@ class CallTest {
         assertThat(response.trailers()).isEqualTo(Headers.of("trailers", "boom"))
     }
 
-    @Disabled // todo HTTP2
     @Test
     fun clientReadsHeadersDataTrailersHttp2() {
         server.enqueue(

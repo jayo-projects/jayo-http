@@ -23,22 +23,28 @@
 package jayo.http.internal.connection;
 
 import jayo.*;
-import jayo.http.Address;
-import jayo.http.Connection;
-import jayo.http.JayoHttpClient;
-import jayo.http.Route;
+import jayo.http.*;
+import jayo.http.http2.ErrorCode;
+import jayo.http.http2.JayoConnectionShutdownException;
+import jayo.http.http2.JayoStreamResetException;
+import jayo.http.internal.JayoHostnameVerifier;
 import jayo.http.internal.Utils;
 import jayo.http.internal.http.ExchangeCodec;
 import jayo.http.internal.http1.Http1ExchangeCodec;
-import jayo.http.internal.http2.JayoConnectionShutdownException;
+import jayo.http.internal.http2.Http2Connection;
+import jayo.http.internal.http2.Http2ExchangeCodec;
+import jayo.http.internal.http2.Http2Stream;
+import jayo.http.internal.http2.Settings;
 import jayo.network.NetworkEndpoint;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.Handshake;
+import jayo.tls.JayoTlsPeerUnverifiedException;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.ref.Reference;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +57,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Connections are shared in a connection pool. Accesses to the connection's state must be guarded by holding a lock on
  * the connection.
  */
-public final class RealConnection implements Connection, ExchangeCodec.Carrier {
+public final class RealConnection extends Http2Connection.Listener implements Connection, ExchangeCodec.Carrier {
     private final @NonNull TaskRunner taskRunner;
     private final @NonNull RealConnectionPool connectionPool;
     private final @NonNull Route route;
@@ -69,8 +75,9 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
     private final int pingIntervalMillis;
     // todo (maybe) : ConnectionListener
 
-    final @NonNull Lock lock = new ReentrantLock();
+    private @Nullable Http2Connection http2Connection = null;
 
+    final @NonNull Lock lock = new ReentrantLock();
     // These properties are guarded by lock
 
     /**
@@ -144,7 +151,7 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
      * simultaneously.
      */
     boolean isMultiplexed() {
-        return false; // todo http2Connection != null;
+        return http2Connection != null;
     }
 
     @Override
@@ -187,14 +194,26 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
     }
 
     private void startHttp2() {
-        // todo http2Connection stuff
+        // HTTP/2 connection timeouts are set per-stream.
+        rawEndpoint.setReadTimeout(Duration.ZERO);
+        rawEndpoint.setWriteTimeout(Duration.ZERO);
+
+        // todo (maybe) : flowControlListener from ConnectionListener
+        final var http2Connection = new Http2Connection.Builder(true, taskRunner)
+                .endpoint(endpoint, route.getAddress().getUrl().getHost())
+                .listener(this)
+                .pingIntervalMillis(pingIntervalMillis)
+                .build();
+        this.http2Connection = http2Connection;
+        this.allocationLimit = Http2Connection.DEFAULT_SETTINGS.maxConcurrentStreams();
+        http2Connection.start(true);
     }
 
     /**
      * @return true if this connection can carry a stream allocation to {@code address}. If non-null {@code route} is
      * the resolved route for a connection.
      */
-    boolean isEligible(final @NonNull Address address, final @Nullable List<Route> routes) {
+    boolean isEligible(final @NonNull Address address, final @Nullable List<@NonNull Route> routes) {
         assert address != null;
 
         // If this connection is not accepting new exchanges, we're done.
@@ -217,20 +236,84 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
         // https://hpbn.co/optimizing-application-delivery/#eliminate-domain-sharding
         // https://daniel.haxx.se/blog/2016/08/18/http2-connection-coalescing/
 
-        // 1. This connection must be HTTP/2. (todo)
-//        if (http2Connection == null) {
-        return false;
-//        }
+        // 1. This connection must be HTTP/2.
+        if (http2Connection == null) {
+            return false;
+        }
+
+        // 2. The routes must share an IP address.
+        if (routes == null || !routeMatchesAny(routes)) {
+            return false;
+        }
+
+        // 3. This connection's server certificates must cover the new host.
+        if (address.getHostnameVerifier() != JayoHostnameVerifier.INSTANCE) {
+            return false;
+        }
+        if (!supportsUrl(address.getUrl())) {
+            return false;
+        }
+
+        // 4. Certificate pinning must match the host.
+        try {
+            assert address.getCertificatePinner() != null;
+            assert handshake != null;
+            address.getCertificatePinner().check(address.getUrl().getHost(), handshake.getPeerCertificates());
+        } catch (JayoTlsPeerUnverifiedException ignored) {
+            return false;
+        }
+
+        return true; // This connection can carry the caller's address.
+    }
+
+    /**
+     * Returns true if this connection's route has the same address as any of {@code candidates}. This requires us to
+     * have a DNS address for both hosts, which only happens after route planning. We can't coalesce connections that
+     * use a proxy, since proxies don't tell us the origin server's IP address.
+     */
+    private boolean routeMatchesAny(final @NonNull List<@NonNull Route> candidates) {
+        assert candidates != null;
+
+        return candidates.stream().anyMatch(candidate ->
+                candidate.getAddress().getProxy() == null &&
+                        route.getAddress().getProxy() == null &&
+                        route.getSocketAddress().equals(candidate.getSocketAddress()));
+    }
+
+    private boolean supportsUrl(final @NonNull HttpUrl url) {
+        assert url != null;
+
+        final var routeUrl = route.getAddress().getUrl();
+
+        if (url.getPort() != routeUrl.getPort()) {
+            return false; // Port mismatch.
+        }
+
+        if (url.getHost().equals(routeUrl.getHost())) {
+            return true; // Host match. The URL is supported.
+        }
+
+        // We have a host mismatch. But if the certificate matches, we're still good.
+        return !noCoalescedConnections && handshake != null && certificateSupportHost(url, handshake);
+    }
+
+    private static boolean certificateSupportHost(final @NonNull HttpUrl url, final @Nullable Handshake handshake) {
+        assert url != null;
+        assert handshake != null;
+
+        final var peerCertificates = handshake.getPeerCertificates();
+        return !peerCertificates.isEmpty() &&
+                JayoHostnameVerifier.verify(url.getHost(), (X509Certificate) peerCertificates.get(0));
     }
 
     @NonNull
     ExchangeCodec newCodec(final @NonNull JayoHttpClient client) {
         assert client != null;
 
-//        if (http2Connection != null) {
-//            // use HTTP/2
-//            return new Http2ExchangeCodec(client, this, chain, http2Connection);
-//        }
+        if (http2Connection != null) {
+            // use HTTP/2
+            return new Http2ExchangeCodec(client, this, http2Connection);
+        }
 
         // use HTTP/1
         rawEndpoint.setReadTimeout(client.getReadTimeout());
@@ -250,9 +333,9 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
             return false;
         }
 
-//        if (http2Connection != null) {
-//            return http2Connection.isHealthy(nowNs);
-//        }
+        if (http2Connection != null) {
+            return http2Connection.isHealthy(nowNs);
+        }
 
         if (doExtensiveChecks) {
             final long idleDurationNs;
@@ -295,6 +378,40 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
     }
 
     /**
+     * Refuse incoming streams.
+     */
+    @Override
+    protected void onStream(final @NonNull Http2Stream stream) {
+        assert stream != null;
+        stream.close(ErrorCode.REFUSED_STREAM, null);
+    }
+
+    /**
+     * When settings are received, adjust the allocation limit.
+     */
+    @Override
+    protected void onSettings(final @NonNull Http2Connection connection, final @NonNull Settings settings) {
+        assert connection != null;
+        assert settings != null;
+
+        lock.lock();
+        try {
+            var oldLimit = allocationLimit;
+            allocationLimit = settings.maxConcurrentStreams();
+
+            if (allocationLimit < oldLimit) {
+                // We might need new connections to keep policies satisfied
+                connectionPool.scheduleOpener(route.getAddress());
+            } else if (allocationLimit > oldLimit) {
+                // We might no longer need some connections
+                connectionPool.scheduleCloser();
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
      * Track a failure using this connection. This may prevent both the connection and its route from
      * being used for future exchanges.
      */
@@ -302,28 +419,27 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
     public void trackFailure(final @NonNull RealCall call, final @Nullable JayoException e) {
         assert call != null;
 
-        boolean noNewExchangesEvent = false;
+//        boolean noNewExchangesEvent = false;
         lock.lock();
         try {
-            /*if (e instanceof StreamResetException sre) {
-                if (sre.getErrorCode() == ErrorCode.REFUSED_STREAM) {
+            if (e instanceof JayoStreamResetException jsre) {
+                if (jsre.errorCode == ErrorCode.REFUSED_STREAM) {
                     // Stop using this connection on the 2nd REFUSED_STREAM error.
                     refusedStreamCount++;
                     if (refusedStreamCount > 1) {
-                        noNewExchangesEvent = !noNewExchanges;
+//                        noNewExchangesEvent = !noNewExchanges;
                         noNewExchanges = true;
                         routeFailureCount++;
                     }
-                } else if (sre.getErrorCode() == ErrorCode.CANCEL && call.isCanceled()) {
+                } else if (jsre.errorCode == ErrorCode.CANCEL && call.isCanceled()) {
                     // Permit any number of CANCEL errors on locally canceled calls.
                 } else {
                     // Everything else wants a fresh connection.
-                    noNewExchangesEvent = !noNewExchanges;
+//                    noNewExchangesEvent = !noNewExchanges;
                     noNewExchanges = true;
                     routeFailureCount++;
                 }
-            } else*/
-            if (!isMultiplexed() || e instanceof JayoConnectionShutdownException) {
+            } else if (!isMultiplexed() || e instanceof JayoConnectionShutdownException) {
 //                noNewExchangesEvent = !noNewExchanges;
                 noNewExchanges = true;
 
@@ -419,7 +535,7 @@ public final class RealConnection implements Connection, ExchangeCodec.Carrier {
                 networkEndpoint,
                 endpoint,
                 null,
-                Protocol.HTTP_1_1, // todo replace with HTTP_2
+                Protocol.HTTP_2,
                 0
         );
         result.idleAtNs = idleAtNs;

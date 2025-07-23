@@ -1,0 +1,347 @@
+/*
+ * Copyright (c) 2025-present, pull-vert and Jayo contributors.
+ * Use of this source code is governed by the Apache 2.0 license.
+ *
+ * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
+ *
+ * Copyright (C) 2013 Square, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package jayo.http.internal.http2
+
+import jayo.Buffer
+import jayo.JayoException
+import jayo.Reader
+import jayo.bytestring.ByteString
+import jayo.http.http2.ErrorCode
+import jayo.http.internal.TestUtils.threadFactory
+import jayo.http.internal.Utils
+import jayo.network.NetworkEndpoint
+import jayo.network.NetworkServer
+import java.io.Closeable
+import java.lang.System.Logger.Level.INFO
+import java.net.InetSocketAddress
+import java.net.ServerSocket
+import java.util.concurrent.BlockingQueue
+import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+
+/** Replays prerecorded outgoing frames and records incoming frames.  */
+class MockHttp2Peer : Closeable {
+    private var frameCount = 0
+    private var client = false
+    private val bytesOut = Buffer()
+    private var writer = Http2Writer(bytesOut, client)
+    private val outFrames: MutableList<OutFrame> = kotlin.collections.ArrayList()
+    private val inFrames: BlockingQueue<InFrame> = LinkedBlockingQueue()
+    private var port = 0
+    private val executor = Executors.newSingleThreadExecutor(threadFactory("MockHttp2Peer"))
+    private var networkServer: NetworkServer? = null
+    private var networkEndpoint: NetworkEndpoint? = null
+
+    fun setClient(client: Boolean) {
+        if (this.client == client) return
+        this.client = client
+        writer = Http2Writer(bytesOut, client)
+    }
+
+    fun acceptFrame() {
+        frameCount++
+    }
+
+    /** Maximum length of an outbound data frame.  */
+    fun maxOutboundDataLength(): Int = writer.maxDataLength()
+
+    /** Count of frames sent or received.  */
+    fun frameCount(): Int = frameCount
+
+    internal fun sendFrame(): Http2Writer {
+        outFrames.add(OutFrame(frameCount++, bytesOut.bytesAvailable(), false))
+        return writer
+    }
+
+    /**
+     * Shortens the last frame from its original length to `length`. This will cause the peer to
+     * close the socket as soon as this frame has been written; otherwise the peer stays open until
+     * explicitly closed.
+     */
+    internal fun truncateLastFrame(length: Int): Http2Writer {
+        val lastFrame = outFrames.removeAt(outFrames.size - 1)
+        require(length < bytesOut.bytesAvailable() - lastFrame.start)
+
+        // Move everything from bytesOut into a new buffer.
+        val fullBuffer = Buffer()
+        bytesOut.readAtMostTo(fullBuffer, bytesOut.bytesAvailable())
+
+        // Copy back all but what we're truncating.
+        fullBuffer.readAtMostTo(bytesOut, lastFrame.start + length)
+        outFrames.add(OutFrame(lastFrame.sequence, lastFrame.start, true))
+        return writer
+    }
+
+    internal fun takeFrame(): InFrame = inFrames.take()
+
+    fun play() {
+        check(networkServer == null)
+        networkServer = NetworkServer.builder()
+            .useNio(false)
+            .maxPendingConnections(1)
+            .bindTcp(InetSocketAddress("localhost", 0))
+        (networkServer!!.underlying as ServerSocket).reuseAddress = false
+        port = networkServer!!.localAddress.port
+        executor.execute {
+            try {
+                readAndWriteFrames()
+            } catch (e: JayoException) {
+                Utils.closeQuietly(this@MockHttp2Peer)
+                logger.log(INFO, "${this@MockHttp2Peer} done: ${e.message}")
+            }
+        }
+    }
+
+    private fun readAndWriteFrames() {
+        check(this@MockHttp2Peer.networkEndpoint == null)
+        val networkEndpoint = networkServer!!.accept()
+        this.networkEndpoint = networkEndpoint
+
+        // Bail out now if this instance was closed while waiting for the socket to accept.
+        synchronized(this) {
+            if (executor.isShutdown) {
+                networkEndpoint.close()
+                return
+            }
+        }
+        val networkWriter = networkEndpoint.writer
+        val networkReader = networkEndpoint.reader
+        val reader = Http2Reader(networkReader, client)
+        val outFramesIterator: Iterator<OutFrame> = outFrames.iterator()
+        val outBytes = bytesOut.readByteArray()
+        var nextOutFrame: OutFrame? = null
+        for (i in 0 until frameCount) {
+            if (nextOutFrame == null && outFramesIterator.hasNext()) {
+                nextOutFrame = outFramesIterator.next()
+            }
+
+            if (nextOutFrame != null && nextOutFrame.sequence == i) {
+                val start = nextOutFrame.start
+                var truncated: Boolean
+                var end: Long
+                if (outFramesIterator.hasNext()) {
+                    nextOutFrame = outFramesIterator.next()
+                    end = nextOutFrame.start
+                    truncated = false
+                } else {
+                    end = outBytes.size.toLong()
+                    truncated = nextOutFrame.truncated
+                }
+
+                // Write a frame.
+                val length = (end - start).toInt()
+                networkWriter.write(outBytes, start.toInt(), length)
+                networkWriter.flush()
+
+                // If the last frame was truncated, immediately close the connection.
+                if (truncated) {
+                    networkEndpoint.close()
+                }
+            } else {
+                // read a frame
+                val inFrame = InFrame()
+                reader.nextFrame(false, inFrame)
+                inFrames.add(inFrame)
+            }
+        }
+    }
+
+    fun openNetworkClient(): NetworkEndpoint =
+        NetworkEndpoint.builder()
+            .useNio(false)
+            .connectTcp(InetSocketAddress("localhost", port))
+
+    @Synchronized
+    override fun close() {
+        executor.shutdownNow()
+        networkEndpoint?.let { Utils.closeQuietly(it) }
+        networkServer?.let { Utils.closeQuietly(it) }
+    }
+
+    override fun toString(): String = "MockHttp2Peer[$port]"
+
+    private class OutFrame(
+        val sequence: Int,
+        val start: Long,
+        val truncated: Boolean,
+    )
+
+    internal class InFrame : Http2Reader.Handler {
+        @JvmField
+        var type = -1
+        var clearPrevious = false
+
+        @JvmField
+        var outFinished = false
+
+        @JvmField
+        var inFinished = false
+
+        @JvmField
+        var streamId = 0
+
+        @JvmField
+        var associatedStreamId = 0
+
+        @JvmField
+        var errorCode: ErrorCode? = null
+
+        @JvmField
+        var windowSizeIncrement: Long = 0
+
+        @JvmField
+        var headerBlock: List<RealBinaryHeader>? = null
+
+        @JvmField
+        var data: ByteArray? = null
+
+        @JvmField
+        var settings: Settings? = null
+
+        @JvmField
+        var ack = false
+
+        @JvmField
+        var payload1 = 0
+
+        @JvmField
+        var payload2 = 0
+
+        override fun settings(
+            clearPrevious: Boolean,
+            settings: Settings,
+        ) {
+            check(type == -1)
+            this.type = Http2.TYPE_SETTINGS
+            this.clearPrevious = clearPrevious
+            this.settings = settings
+        }
+
+        override fun ackSettings() {
+            check(type == -1)
+            this.type = Http2.TYPE_SETTINGS
+            this.ack = true
+        }
+
+        override fun headers(
+            inFinished: Boolean,
+            streamId: Int,
+            associatedStreamId: Int,
+            headerBlock: List<RealBinaryHeader>,
+        ) {
+            check(type == -1)
+            this.type = Http2.TYPE_HEADERS
+            this.inFinished = inFinished
+            this.streamId = streamId
+            this.associatedStreamId = associatedStreamId
+            this.headerBlock = headerBlock
+        }
+
+        override fun data(
+            inFinished: Boolean,
+            streamId: Int,
+            source: Reader,
+            length: Int,
+        ) {
+            check(type == -1)
+            this.type = Http2.TYPE_DATA
+            this.inFinished = inFinished
+            this.streamId = streamId
+            this.data = source.readByteString(length.toLong()).toByteArray()
+        }
+
+        override fun rstStream(
+            streamId: Int,
+            errorCode: ErrorCode,
+        ) {
+            check(type == -1)
+            this.type = Http2.TYPE_RST_STREAM
+            this.streamId = streamId
+            this.errorCode = errorCode
+        }
+
+        override fun ping(
+            ack: Boolean,
+            payload1: Int,
+            payload2: Int,
+        ) {
+            check(type == -1)
+            type = Http2.TYPE_PING
+            this.ack = ack
+            this.payload1 = payload1
+            this.payload2 = payload2
+        }
+
+        override fun goAway(
+            lastGoodStreamId: Int,
+            errorCode: ErrorCode,
+            debugData: ByteString,
+        ) {
+            check(type == -1)
+            this.type = Http2.TYPE_GOAWAY
+            this.streamId = lastGoodStreamId
+            this.errorCode = errorCode
+            this.data = debugData.toByteArray()
+        }
+
+        override fun windowUpdate(
+            streamId: Int,
+            windowSizeIncrement: Long,
+        ) {
+            check(type == -1)
+            this.type = Http2.TYPE_WINDOW_UPDATE
+            this.streamId = streamId
+            this.windowSizeIncrement = windowSizeIncrement
+        }
+
+        override fun priority(
+            streamId: Int,
+            streamDependency: Int,
+            weight: Int,
+            exclusive: Boolean,
+        ): Unit = throw kotlin.UnsupportedOperationException()
+
+        override fun pushPromise(
+            streamId: Int,
+            associatedStreamId: Int,
+            headerBlock: List<RealBinaryHeader>,
+        ) {
+            this.type = Http2.TYPE_PUSH_PROMISE
+            this.streamId = streamId
+            this.associatedStreamId = associatedStreamId
+            this.headerBlock = headerBlock
+        }
+
+        override fun alternateService(
+            streamId: Int,
+            origin: String,
+            protocol: ByteString,
+            host: String,
+            port: Int,
+            maxAge: Long,
+        ): Unit = throw kotlin.UnsupportedOperationException()
+    }
+
+    companion object {
+        private val logger = System.getLogger(MockHttp2Peer::class.java.name)
+    }
+}

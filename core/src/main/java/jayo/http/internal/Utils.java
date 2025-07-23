@@ -33,6 +33,7 @@ import java.io.Closeable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Locale;
 
 public final class Utils {
     // un-instantiable
@@ -344,5 +345,12 @@ public final class Utils {
                 .body(new UnreadableResponseBody(
                         response.getBody().contentType(),
                         response.getBody().contentByteSize()));
+    }
+
+    /**
+     * @return a {@link Locale#US} formatted {@link String}.
+     */
+    public static @NonNull String format(final @NonNull String format, final Object... args) {
+        return String.format(Locale.US, format, args);
     }
 }

@@ -401,6 +401,10 @@ public final class RealClientResponse implements ClientResponse {
             );
         }
 
+        public int code() {
+            return code;
+        }
+
         private static void checkSupportResponse(final @NonNull String name, final @Nullable ClientResponse response) {
             assert name != null;
 

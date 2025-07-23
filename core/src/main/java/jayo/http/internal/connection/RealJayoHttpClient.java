@@ -322,7 +322,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private static final @NonNull List<@NonNull ConnectionSpec> DEFAULT_CONNECTION_SPECS =
                 List.of(ConnectionSpec.MODERN_TLS, ConnectionSpec.CLEARTEXT);
         private static final @NonNull List<@NonNull Protocol> DEFAULT_PROTOCOLS =
-                List.of(Protocol.HTTP_1_1/*, Protocol.HTTP_2*/);
+                List.of(Protocol.HTTP_1_1, Protocol.HTTP_2);
         private static final @NonNull Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
         private static final @NonNull Duration DEFAULT_WEB_SOCKET_CLOSE_TIMEOUT = Duration.ofSeconds(60);
         private static final @NonNull Duration NO_TIMEOUT = Duration.ZERO;

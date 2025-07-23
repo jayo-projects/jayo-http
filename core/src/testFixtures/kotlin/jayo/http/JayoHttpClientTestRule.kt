@@ -23,6 +23,7 @@ package jayo.http
 
 import jayo.http.JayoHttpClientTestRule.Companion.plus
 import jayo.http.internal.connection.RealConnectionPool
+import jayo.http.internal.http2.Http2Connection
 import jayo.http.testing.Flaky
 import jayo.scheduler.TaskRunner
 import jayo.scheduler.internal.activeQueues
@@ -80,7 +81,7 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
             val recorded =
                 when (record.loggerName) {
                     TaskRunner::class.java.name -> recordTaskRunner
-                    //Http2::class.java.name -> recordFrames
+                    Http2Connection::class.java.name -> recordFrames
                     "javax.net.ssl" -> recordTlsDebug && !tlsExcludeFilter.matches(record.message)
                     else -> false
                 }
@@ -112,7 +113,7 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
     private fun applyLogger(fn: Logger.() -> Unit) {
         Logger.getLogger(JayoHttpClient::class.java.`package`.name).fn()
         Logger.getLogger(JayoHttpClient::class.java.name).fn()
-        //Logger.getLogger(Http2::class.java.name).fn()
+        Logger.getLogger(Http2Connection::class.java.name).fn()
         Logger.getLogger(TaskRunner::class.java.name).fn()
         Logger.getLogger("javax.net.ssl").fn()
     }
