@@ -21,14 +21,8 @@
 
 package jayo.http.internal.http2;
 
-import jayo.JayoException;
-import jayo.JayoProtocolException;
-import jayo.RawReader;
-import jayo.RawWriter;
-import jayo.http.ClientRequest;
-import jayo.http.ClientResponse;
-import jayo.http.Headers;
-import jayo.http.JayoHttpClient;
+import jayo.*;
+import jayo.http.*;
 import jayo.http.http2.ErrorCode;
 import jayo.http.internal.RealClientResponse;
 import jayo.http.internal.RealHeaders;
@@ -86,6 +80,13 @@ public final class Http2ExchangeCodec implements ExchangeCodec {
     public boolean isResponseComplete() {
         final var currentStream = stream;
         return currentStream != null && currentStream.isSourceComplete();
+    }
+
+    @Override
+    public @NonNull RawSocket getSocket() {
+        final var currentStream = stream;
+        assert currentStream != null;
+        return currentStream;
     }
 
     @Override

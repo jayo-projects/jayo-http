@@ -164,14 +164,30 @@ public final class Exchange {
         return codec.peekTrailers();
     }
 
-//    RealWebSocket.Streams newWebSocketStreams() { todo websockets
-//        call.timeoutEarlyExit();
-//        return ((RealConnection) codec.getCarrier()).newWebSocketStreams(this);
-//    }
-//
-//    void webSocketUpgradeFailed() {
-//        bodyComplete(-1L, true, true, null);
-//    }
+    @NonNull
+    RawSocket upgradeToSocket() {
+        call.timeoutEarlyExit();
+        ((RealConnection) codec.getCarrier()).useAsSocket();
+
+        eventListener.requestBodyStart(call);
+
+        return new RawSocket() {
+            @Override
+            public @NonNull RawReader getReader() {
+                return new ResponseBodyRawReader(codec.getSocket().getReader(), -1L);
+            }
+
+            @Override
+            public @NonNull RawWriter getWriter() {
+                return new RequestBodyRawWriter(codec.getSocket().getWriter(), -1L);
+            }
+
+            @Override
+            public void cancel() {
+                Exchange.this.cancel();
+            }
+        };
+    }
 
     void noNewExchangesOnConnection() {
         codec.getCarrier().noNewExchanges();

@@ -22,9 +22,9 @@
 package jayo.http;
 
 import jayo.http.internal.connection.RealAddress;
-import jayo.network.NetworkEndpoint;
+import jayo.network.NetworkSocket;
 import jayo.network.Proxy;
-import jayo.tls.ClientTlsEndpoint;
+import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -56,9 +56,9 @@ public sealed interface Address permits RealAddress {
     @NonNull
     List<@NonNull Protocol> getProtocols();
 
-    NetworkEndpoint.@NonNull Builder getNetworkEndpointBuilder();
+    NetworkSocket.@NonNull Builder getNetworkSocketBuilder();
 
-    ClientTlsEndpoint.@Nullable Builder getClientTlsEndpointBuilder();
+    ClientTlsSocket.@Nullable Builder getClientTlsSocketBuilder();
 
     @NonNull
     List<@NonNull ConnectionSpec> getConnectionSpecs();

@@ -23,6 +23,7 @@ package jayo.http.internal.http;
 
 import jayo.JayoException;
 import jayo.RawReader;
+import jayo.RawSocket;
 import jayo.RawWriter;
 import jayo.http.ClientRequest;
 import jayo.http.ClientResponse;
@@ -57,6 +58,12 @@ public sealed interface ExchangeCodec permits Http1ExchangeCodec, Http2ExchangeC
      * @return true if the response body and (possibly empty) trailers have been received.
      */
     boolean isResponseComplete();
+
+    /**
+     * @return the socket that carries this exchange.
+     */
+    @NonNull
+    RawSocket getSocket();
 
     /**
      * @return a RawWriter where the request body can be streamed.

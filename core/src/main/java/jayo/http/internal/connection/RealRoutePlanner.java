@@ -21,11 +21,11 @@
 
 package jayo.http.internal.connection;
 
-import jayo.Endpoint;
+import jayo.Jayo;
 import jayo.JayoException;
+import jayo.Socket;
 import jayo.http.*;
 import jayo.http.internal.UrlUtils;
-import jayo.http.internal.Utils;
 import jayo.network.JayoUnknownServiceException;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.Protocol;
@@ -152,7 +152,7 @@ final class RealRoutePlanner implements RoutePlanner {
         // on the hook to close it.
         final var healthy = candidate.isHealthy(connectionUser.doExtensiveHealthChecks());
         var noNewExchangesEvent = false;
-        final Endpoint toClose;
+        final Socket toClose;
         candidate.lock.lock();
         try {
             if (!healthy) {
@@ -179,7 +179,7 @@ final class RealRoutePlanner implements RoutePlanner {
 
         // The call's connection was released.
         if (toClose != null) {
-            Utils.closeQuietly(toClose);
+            Jayo.closeQuietly(toClose);
         }
         connectionUser.connectionReleased(candidate);
         connectionUser.connectionConnectionReleased(candidate);
@@ -242,7 +242,7 @@ final class RealRoutePlanner implements RoutePlanner {
     ConnectPlan planConnectToRoute(final @NonNull Route route, final @Nullable List<Route> routes) {
         assert route != null;
 
-        if (route.getAddress().getClientTlsEndpointBuilder() == null) {
+        if (route.getAddress().getClientTlsSocketBuilder() == null) {
             if (!route.getAddress().getConnectionSpecs().contains(ConnectionSpec.CLEARTEXT)) {
                 throw new JayoUnknownServiceException("CLEARTEXT communication not enabled for client");
             }

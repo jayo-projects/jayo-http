@@ -94,7 +94,7 @@ public final class CacheInterceptor implements Interceptor {
         if (networkRequest == null) {
             final var response = cacheResponse
                     .newBuilder()
-                    .cacheResponse(stripBody(cacheResponse))
+                    .cacheResponse(stripBody(cacheResponse).build())
                     .build();
             listener.cacheHit(call, response);
             return response;
@@ -124,8 +124,8 @@ public final class CacheInterceptor implements Interceptor {
                         .headers(combine(cacheResponse.getHeaders(), networkResponse.getHeaders()))
                         .sentRequestAt(networkResponse.getSentRequestAt())
                         .receivedResponseAt(networkResponse.getReceivedResponseAt())
-                        .cacheResponse(stripBody(cacheResponse))
-                        .networkResponse(stripBody(networkResponse))
+                        .cacheResponse(stripBody(cacheResponse).build())
+                        .networkResponse(stripBody(networkResponse).build())
                         .build();
 
                 networkResponse.getBody().close();
@@ -143,8 +143,8 @@ public final class CacheInterceptor implements Interceptor {
         }
 
         final var response = networkResponse.newBuilder()
-                .cacheResponse(cacheResponse != null ? stripBody(cacheResponse) : null)
-                .networkResponse(stripBody(networkResponse))
+                .cacheResponse(cacheResponse != null ? stripBody(cacheResponse).build() : null)
+                .networkResponse(stripBody(networkResponse).build())
                 .build();
 
         if (cache != null) {

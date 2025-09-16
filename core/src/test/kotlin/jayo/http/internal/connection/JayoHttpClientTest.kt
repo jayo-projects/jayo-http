@@ -24,7 +24,7 @@ package jayo.http.internal.connection
 import jayo.http.*
 import jayo.network.Proxy
 import jayo.tls.ClientHandshakeCertificates
-import jayo.tls.ClientTlsEndpoint
+import jayo.tls.ClientTlsSocket
 import jayo.tls.Protocol
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -272,8 +272,8 @@ class JayoHttpClientTest {
                 .builder()
                 .build() as RealJayoHttpClient
 
-        val clientTlsEndpointBuilder =
-            ClientTlsEndpoint.builder(ClientHandshakeCertificates.create())
+        val clientTlsSocketBuilder =
+            ClientTlsSocket.builder(ClientHandshakeCertificates.create())
 
         // a new client, it may share some fields but likely different connection pool
         assertThat(
@@ -337,7 +337,7 @@ class JayoHttpClientTest {
         assertThat(
             (client
                 .newBuilder()
-                .tlsClientBuilder(clientTlsEndpointBuilder)
+                .tlsClientBuilder(clientTlsSocketBuilder)
                 .build() as RealJayoHttpClient)
                 .routeDatabase
         ).isNotSameAs(client.routeDatabase)

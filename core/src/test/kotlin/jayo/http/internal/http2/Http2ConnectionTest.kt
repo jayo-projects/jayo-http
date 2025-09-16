@@ -34,9 +34,11 @@ import jayo.scheduler.internal.activeQueues
 import jayo.tools.AsyncTimeout
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
-import java.net.Socket
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -503,15 +505,15 @@ class Http2ConnectionTest {
         peer.acceptFrame() // SYN_STREAM.
         peer.play()
         val longString = repeat('a', Http2.INITIAL_MAX_FRAME_SIZE + 1)
-        val networkClient = peer.openNetworkClient()
+        val networkClient = peer.openSocket()
         val connection =
             Http2Connection
                 .Builder(true, JayoHttpClient.DEFAULT_TASK_RUNNER)
-                .endpoint(networkClient, "peer")
+                .socket(networkClient, "peer")
                 .pushObserver(IGNORE)
                 .build()
         connection.start(false)
-        (networkClient.underlying as Socket).shutdownOutput()
+        (networkClient.underlying as java.net.Socket).shutdownOutput()
         assertFailsWith<JayoException> {
             connection.newStream(headerEntries("a", longString), false)
         }
@@ -1500,7 +1502,6 @@ class Http2ConnectionTest {
     }
 
     @Test
-    @Disabled
     fun getResponseHeadersTimesOut() {
         // Write the mocking script.
         peer.sendFrame().settings(Settings())
@@ -1518,7 +1519,7 @@ class Http2ConnectionTest {
             stream.takeHeaders(false)
         }
         val elapsedNanos = System.nanoTime() - startNanos
-        awaitWatchdogIdle()
+        awaitWatchdogIdle(600.milliseconds.inWholeNanoseconds)
         // 200ms delta
         assertThat(TimeUnit.NANOSECONDS.toMillis(elapsedNanos).toDouble())
             .isCloseTo(500.0, Offset.offset(200.0))
@@ -1534,7 +1535,6 @@ class Http2ConnectionTest {
      * considered healthy while we await the degraded pong. When that doesn't arrive, the connection goes unhealthy.
      */
     @Test
-    @Disabled
     fun readTimesOut() {
         // Write the mocking script.
         peer.sendFrame().settings(Settings())
@@ -1560,7 +1560,7 @@ class Http2ConnectionTest {
             source.require(4)
         }
         val elapsedNanos = System.nanoTime() - startNanos
-        awaitWatchdogIdle()
+        awaitWatchdogIdle(600.milliseconds.inWholeNanoseconds)
         // 200ms delta
         assertThat(TimeUnit.NANOSECONDS.toMillis(elapsedNanos).toDouble())
             .isCloseTo(500.0, Offset.offset(200.0))
@@ -1585,7 +1585,6 @@ class Http2ConnectionTest {
     }
 
     @Test
-    @Disabled
     fun writeTimesOutAwaitingStreamWindow() {
         // Set the peer's receive window to 5 bytes!
         val peerSettings = Settings().set(Settings.INITIAL_WINDOW_SIZE, 5)
@@ -1628,7 +1627,6 @@ class Http2ConnectionTest {
     }
 
     @Test
-    @Disabled
     fun writeTimesOutAwaitingConnectionWindow() {
         // Set the peer's receive window to 5 bytes. Give the stream 5 bytes back, so only the connection-level window
         // is applicable.
@@ -1948,7 +1946,7 @@ class Http2ConnectionTest {
         val connection =
             Http2Connection
                 .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
-                .endpoint(peer.openNetworkClient(), "peer")
+                .socket(peer.openSocket(), "peer")
                 .build()
         connection.start(false)
         val stream = connection.newStream(headerEntries("b", "banana"), false)
@@ -1975,7 +1973,7 @@ class Http2ConnectionTest {
             val connection =
                 Http2Connection
                     .Builder(true, taskRunner)
-                    .endpoint(peer.openNetworkClient(), "peer")
+                    .socket(peer.openSocket(), "peer")
                     .pushObserver(IGNORE)
                     .build()
             connection.start(false)
@@ -1999,12 +1997,12 @@ class Http2ConnectionTest {
      * for the watchdog and waits for that work to be executed. When it is, we know the work that preceded this call is
      * complete.
      */
-    private fun awaitWatchdogIdle() {
+    private fun awaitWatchdogIdle(waitNanos: Long = 1L) {
         val latch = CountDownLatch(1)
         val watchdogJob: AsyncTimeout = AsyncTimeout.create {
             latch.countDown()
         }
-        val node = watchdogJob.enter(1L) // Due immediately!
+        val node = watchdogJob.enter(waitNanos)
         try {
             latch.await()
         } finally {
@@ -2032,7 +2030,7 @@ class Http2ConnectionTest {
         val connection =
             Http2Connection
                 .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
-                .endpoint(peer.openNetworkClient(), "peer")
+                .socket(peer.openSocket(), "peer")
                 .pushObserver(pushObserver)
                 .listener(listener)
                 .build()

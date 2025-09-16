@@ -47,6 +47,11 @@ public final class HttpStatusCodes {
     public static final int HTTP_CONTINUE = 100;
 
     /**
+     * {@code 101 Switching Protocols} (HTTP/1.1 - RFC 9110)
+     */
+    public static final int HTTP_SWITCHING_PROTOCOLS = 101;
+
+    /**
      * {@code 102 Processing} (WebDAV - RFC 2518)
      */
     public static final int HTTP_PROCESSING = 102;

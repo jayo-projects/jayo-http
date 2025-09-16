@@ -21,10 +21,7 @@
 
 package jayo.http.internal.connection;
 
-import jayo.Endpoint;
-import jayo.JayoException;
-import jayo.JayoInterruptedIOException;
-import jayo.JayoTimeoutException;
+import jayo.*;
 import jayo.http.*;
 import jayo.http.internal.Utils;
 import jayo.http.internal.cache.CacheInterceptor;
@@ -230,7 +227,7 @@ public final class RealCall implements Call {
         if (!forWebSocket) {
             interceptors.addAll(client.getNetworkInterceptors());
         }
-        interceptors.add(new CallServerInterceptor(forWebSocket));
+        interceptors.add(CallServerInterceptor.INSTANCE);
 
         final var chain = new RealInterceptorChain(
                 this,
@@ -460,7 +457,7 @@ public final class RealCall implements Call {
     private <E extends JayoException> @Nullable E callDone(final @Nullable E e) {
         final var connection = this.connection;
         if (connection != null) {
-            final Endpoint toClose;
+            final Socket toClose;
             connection.lock.lock();
             try {
                 // Sets this.connection to null.
@@ -470,7 +467,7 @@ public final class RealCall implements Call {
             }
             if (this.connection == null) {
                 if (toClose != null) {
-                    Utils.closeQuietly(toClose);
+                    Jayo.closeQuietly(toClose);
                 }
                 eventListener.connectionReleased(this, connection);
 //                connection.connectionListener.connectionReleased(connection, this);
@@ -478,7 +475,7 @@ public final class RealCall implements Call {
 //                    connection.connectionListener.connectionClosed(connection);
 //                }
             } else if (toClose != null) {
-                // If we still have a connection, we shouldn't be closing any endpoints.
+                // If we still have a connection, we shouldn't be closing any sockets.
                 throw new IllegalStateException();
             }
         }
@@ -494,13 +491,14 @@ public final class RealCall implements Call {
     }
 
     /**
-     * Remove this call from the connection's list of allocations. Returns a endpoint that the caller should close.
+     * Remove this call from the connection's list of allocations. Returns a socket that the caller should close.
      */
-    Endpoint releaseConnectionNoEvents() {
-        final var connection = this.connection;
-        assert connection != null;
+    @Nullable
+    Socket releaseConnectionNoEvents() {
+        final var _connection = this.connection;
+        assert _connection != null;
 
-        final var calls = connection.calls;
+        final var calls = _connection.calls;
         var index = -1;
 
         // Find the index of this call in the connection's calls
@@ -518,9 +516,9 @@ public final class RealCall implements Call {
         this.connection = null;
 
         if (calls.isEmpty()) {
-            connection.idleAtNs = System.nanoTime();
-            if (connectionPool.connectionBecameIdle(connection)) {
-                return connection.endpoint();
+            _connection.idleAtNs = System.nanoTime();
+            if (connectionPool.connectionBecameIdle(_connection)) {
+                return _connection.socket();
             }
         }
 

@@ -1132,7 +1132,7 @@ class CallTest {
             client
                 .newBuilder()
                 .hostnameVerifier(RecordingHostnameVerifier())
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .connectionSpecs(
                     // Attempt MODERN_TLS then fall back to COMPATIBLE_TLS.
                     listOf(
@@ -1153,7 +1153,7 @@ class CallTest {
             client
                 .newBuilder()
                 .hostnameVerifier(RecordingHostnameVerifier())
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .connectionSpecs(
                     // Attempt MODERN_TLS then fall back to COMPATIBLE_TLS.
                     listOf(
@@ -1175,7 +1175,7 @@ class CallTest {
             client
                 .newBuilder()
                 .hostnameVerifier(RecordingHostnameVerifier())
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .connectionSpecs(
                     // Attempt MODERN_TLS then fall back to CLEARTEXT.
                     listOf(
@@ -1208,7 +1208,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(clientCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(clientCertificates))
                 .build()
         server.useHttps(serverCertificates.sslSocketFactory())
         executeSynchronously("/")
@@ -3282,7 +3282,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .hostnameVerifier(hostnameVerifier)
                 .build()
@@ -3321,7 +3321,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .hostnameVerifier(hostnameVerifier)
                 .build()
@@ -3358,7 +3358,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .proxyAuthenticator(RecordingJayoAuthenticator("password", "Basic"))
                 .hostnameVerifier(RecordingHostnameVerifier())
@@ -3441,7 +3441,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .proxyAuthenticator(RecordingJayoAuthenticator("password", "Basic"))
                 .hostnameVerifier(RecordingHostnameVerifier())
@@ -3484,7 +3484,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .proxyAuthenticator(RecordingJayoAuthenticator("password", "Basic"))
                 .hostnameVerifier(RecordingHostnameVerifier())
@@ -3514,7 +3514,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
@@ -3546,7 +3546,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .proxyAuthenticator { _: Route?, response: ClientResponse? ->
@@ -3599,7 +3599,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .proxyAuthenticator { _: Route?, response: ClientResponse ->
@@ -3636,7 +3636,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .proxies(server.proxyAddress.toJayo())
                 .build()
         val request = ClientRequest.get(server.url("/").toJayo())
@@ -4032,7 +4032,7 @@ class CallTest {
             client
                 .newBuilder()
                 .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .proxies(server.proxyAddress.toJayo())
                 .build()
@@ -4182,7 +4182,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .protocols(listOf(Protocol.HTTP_1_1))
                 .build()
@@ -4285,7 +4285,7 @@ class CallTest {
                     call: Call,
                     connection: Connection,
                 ) {
-                    connection.endpoint().close()
+                    connection.socket().closeQuietly()
                 }
             }
         client =
@@ -4489,7 +4489,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
         server.useHttps(handshakeCertificates.sslSocketFactory())

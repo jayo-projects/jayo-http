@@ -21,10 +21,7 @@
 
 package jayo.http.internal.http2;
 
-import jayo.Buffer;
-import jayo.JayoException;
-import jayo.RawReader;
-import jayo.Reader;
+import jayo.*;
 import jayo.bytestring.ByteString;
 import jayo.http.http2.ErrorCode;
 import org.jspecify.annotations.NonNull;
@@ -85,7 +82,9 @@ final class Http2Reader implements Closeable {
     boolean nextFrame(final boolean requireSettings, final @NonNull Handler handler) {
         assert handler != null;
 
-        if (!reader.request(9)) { // Frame header size.
+        try {
+            reader.require(9); // Frame header size.
+        } catch (JayoEOFException ignored) {
             return false; // This might be a normal socket close.
         }
 

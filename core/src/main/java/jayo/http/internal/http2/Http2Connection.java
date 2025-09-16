@@ -171,7 +171,7 @@ public final class Http2Connection implements Closeable {
      */
     long writeBytesMaximum;
 
-    final @NonNull Endpoint endpoint;
+    final @NonNull Socket socket;
     final @NonNull Http2Writer writer;
 
     final @NonNull ReaderRunnable readerRunnable;
@@ -207,11 +207,11 @@ public final class Http2Connection implements Closeable {
         readBytes = new RealWindowCounter(0);
         writeBytesMaximum = peerSettings.initialWindowSize();
 
-        this.endpoint = builder.endpoint;
+        this.socket = builder.socket;
         assert builder.connectionName != null;
         this.connectionName = builder.connectionName;
-        writer = new Http2Writer(endpoint.getWriter(), client);
-        readerRunnable = new ReaderRunnable(new Http2Reader(endpoint.getReader(), client));
+        writer = new Http2Writer(socket.getWriter(), client);
+        readerRunnable = new ReaderRunnable(new Http2Reader(socket.getReader(), client));
 
         if (builder.pingIntervalMillis != 0) {
             initializePingIntervalMillis(builder.pingIntervalMillis);
@@ -588,8 +588,8 @@ public final class Http2Connection implements Closeable {
             writer.close();
 
 
-            // Close the socket to break out the reader thread, which will clean up after itself.
-            endpoint.close();
+            // Cancel the socket to break out the reader thread, which will clean up after itself.
+            socket.cancel();
         } catch (JayoException ignored) {
         }
 
@@ -696,7 +696,7 @@ public final class Http2Connection implements Closeable {
          */
         private final boolean client;
         private final @NonNull TaskRunner taskRunner;
-        private /* lateinit */ Endpoint endpoint;
+        private /* lateinit */ Socket socket;
         private /* lateinit */ String connectionName;
         private @NonNull Listener listener = Listener.REFUSE_INCOMING_STREAMS;
         private @NonNull PushObserver pushObserver = PushObserver.CANCEL;
@@ -710,10 +710,10 @@ public final class Http2Connection implements Closeable {
             this.taskRunner = taskRunner;
         }
 
-        public @NonNull Builder endpoint(final @NonNull Endpoint endpoint, final @NonNull String peerName) {
-            assert endpoint != null;
+        public @NonNull Builder socket(final @NonNull Socket socket, final @NonNull String peerName) {
+            assert socket != null;
             assert peerName != null;
-            this.endpoint = endpoint;
+            this.socket = socket;
             this.connectionName = JAYO_HTTP_NAME + (client ? " Client " : " Server ") + peerName;
             return this;
         }

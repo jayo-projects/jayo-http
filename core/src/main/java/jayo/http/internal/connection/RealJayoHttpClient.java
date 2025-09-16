@@ -26,10 +26,10 @@ import jayo.http.internal.CertificateChainCleaner;
 import jayo.http.internal.JayoHostnameVerifier;
 import jayo.http.internal.RealCertificatePinner;
 import jayo.http.internal.ws.RealWebSocket;
-import jayo.network.NetworkEndpoint;
+import jayo.network.NetworkSocket;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.ClientHandshakeCertificates;
-import jayo.tls.ClientTlsEndpoint;
+import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -48,7 +48,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final @NonNull Duration callTimeout;
     private final @Nullable CertificateChainCleaner certificateChainCleaner;
     private final @NonNull CertificatePinner certificatePinner;
-    private final ClientTlsEndpoint.@Nullable Builder clientTlsEndpointBuilderOrNull;
+    private final ClientTlsSocket.@Nullable Builder clientTlsSocketBuilderOrNull;
     private final @NonNull ConnectionPool connectionPool;
     private final @NonNull List<@NonNull ConnectionSpec> connectionSpecs;
     private final @NonNull Duration connectTimeout;
@@ -63,7 +63,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final @NonNull List<@NonNull Interceptor> interceptors;
     private final long minWebSocketMessageToCompress;
     private final @NonNull List<@NonNull Interceptor> networkInterceptors;
-    private final NetworkEndpoint.@NonNull Builder networkEndpointBuilder;
+    private final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final int pingIntervalMillis;
     private final @NonNull List<@NonNull Protocol> protocols;
     private final @NonNull Proxies proxies;
@@ -121,25 +121,25 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             builder.connectionPool = connectionPool;
         }
 
-        this.networkEndpointBuilder = NetworkEndpoint.builder()
+        this.networkSocketBuilder = NetworkSocket.builder()
                 .connectTimeout(builder.connectTimeout);
 
         // TLS
         if (connectionSpecs.stream().noneMatch(ConnectionSpec::isTls)) {
-            this.clientTlsEndpointBuilderOrNull = null;
+            this.clientTlsSocketBuilderOrNull = null;
             this.certificateChainCleaner = null;
             this.certificatePinner = CertificatePinner.DEFAULT;
 
-        } else if (builder.clientTlsEndpointBuilderOrNull != null) {
-            this.clientTlsEndpointBuilderOrNull = builder.clientTlsEndpointBuilderOrNull;
+        } else if (builder.clientTlsSocketBuilderOrNull != null) {
+            this.clientTlsSocketBuilderOrNull = builder.clientTlsSocketBuilderOrNull;
             assert builder.certificateChainCleaner != null;
             this.certificateChainCleaner = builder.certificateChainCleaner;
             this.certificatePinner = ((RealCertificatePinner) builder.certificatePinner)
                     .withCertificateChainCleaner(certificateChainCleaner);
 
         } else {
-            this.clientTlsEndpointBuilderOrNull = ClientTlsEndpoint.builder(ClientHandshakeCertificates.create());
-            final var x509TrustManager = clientTlsEndpointBuilderOrNull.getHandshakeCertificates().getTrustManager();
+            this.clientTlsSocketBuilderOrNull = ClientTlsSocket.builder(ClientHandshakeCertificates.create());
+            final var x509TrustManager = clientTlsSocketBuilderOrNull.getHandshakeCertificates().getTrustManager();
             this.certificateChainCleaner = new CertificateChainCleaner(x509TrustManager);
             this.certificatePinner = ((RealCertificatePinner) builder.certificatePinner)
                     .withCertificateChainCleaner(certificateChainCleaner);
@@ -157,11 +157,11 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     }
 
     @Override
-    public ClientTlsEndpoint.@NonNull Builder getTlsClientBuilder() {
-        if (clientTlsEndpointBuilderOrNull == null) {
+    public ClientTlsSocket.@NonNull Builder getTlsClientBuilder() {
+        if (clientTlsSocketBuilderOrNull == null) {
             throw new IllegalStateException("CLEARTEXT-only client");
         }
-        return clientTlsEndpointBuilderOrNull;
+        return clientTlsSocketBuilderOrNull;
     }
 
     @Override
@@ -283,11 +283,11 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     public @NonNull Address address(final @NonNull HttpUrl url) {
         Objects.requireNonNull(url);
 
-        ClientTlsEndpoint.@Nullable Builder useClientTlsEndpointBuilder = null;
+        ClientTlsSocket.@Nullable Builder useClientTlsSocketBuilder = null;
         HostnameVerifier useHostnameVerifier = null;
         CertificatePinner useCertificatePinner = null;
         if (url.isHttps()) {
-            useClientTlsEndpointBuilder = getTlsClientBuilder();
+            useClientTlsSocketBuilder = getTlsClientBuilder();
             useHostnameVerifier = hostnameVerifier;
             useCertificatePinner = certificatePinner;
         }
@@ -296,8 +296,8 @@ public final class RealJayoHttpClient implements JayoHttpClient {
                 url.getHost(),
                 url.getPort(),
                 dns,
-                networkEndpointBuilder,
-                useClientTlsEndpointBuilder,
+                networkSocketBuilder,
+                useClientTlsSocketBuilder,
                 useHostnameVerifier,
                 useCertificatePinner,
                 protocols,
@@ -332,7 +332,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private @NonNull Duration callTimeout;
         private @Nullable CertificateChainCleaner certificateChainCleaner = null;
         private @NonNull CertificatePinner certificatePinner;
-        private ClientTlsEndpoint.@Nullable Builder clientTlsEndpointBuilderOrNull = null;
+        private ClientTlsSocket.@Nullable Builder clientTlsSocketBuilderOrNull = null;
         private @Nullable ConnectionPool connectionPool = null;
         private @NonNull List<@NonNull ConnectionSpec> connectionSpecs;
         private @NonNull Duration connectTimeout;
@@ -386,7 +386,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.callTimeout = jayoHttpClient.callTimeout;
             this.certificateChainCleaner = jayoHttpClient.certificateChainCleaner;
             this.certificatePinner = jayoHttpClient.certificatePinner;
-            this.clientTlsEndpointBuilderOrNull = jayoHttpClient.clientTlsEndpointBuilderOrNull;
+            this.clientTlsSocketBuilderOrNull = jayoHttpClient.clientTlsSocketBuilderOrNull;
             this.connectionPool = jayoHttpClient.connectionPool;
             this.connectionSpecs = jayoHttpClient.connectionSpecs;
             this.connectTimeout = jayoHttpClient.connectTimeout;
@@ -640,15 +640,15 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
-        public @NonNull Builder tlsClientBuilder(final ClientTlsEndpoint.@NonNull Builder clientTlsEndpointBuilder) {
-            Objects.requireNonNull(clientTlsEndpointBuilder);
+        public @NonNull Builder tlsClientBuilder(final ClientTlsSocket.@NonNull Builder clientTlsSocketBuilder) {
+            Objects.requireNonNull(clientTlsSocketBuilder);
 
-            if (!clientTlsEndpointBuilder.equals(this.clientTlsEndpointBuilderOrNull)) {
+            if (!clientTlsSocketBuilder.equals(this.clientTlsSocketBuilderOrNull)) {
                 this.routeDatabase = null;
             }
 
-            this.clientTlsEndpointBuilderOrNull = clientTlsEndpointBuilder;
-            final var x509TrustManager = clientTlsEndpointBuilder.getHandshakeCertificates().getTrustManager();
+            this.clientTlsSocketBuilderOrNull = clientTlsSocketBuilder;
+            final var x509TrustManager = clientTlsSocketBuilder.getHandshakeCertificates().getTrustManager();
             this.certificateChainCleaner = new CertificateChainCleaner(x509TrustManager);
             return this;
         }

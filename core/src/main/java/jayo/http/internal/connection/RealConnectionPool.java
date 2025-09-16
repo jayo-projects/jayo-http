@@ -21,13 +21,13 @@
 
 package jayo.http.internal.connection;
 
-import jayo.Endpoint;
+import jayo.Jayo;
 import jayo.JayoException;
+import jayo.Socket;
 import jayo.http.Address;
 import jayo.http.ConnectionPool;
 import jayo.http.JayoHttpClient;
 import jayo.http.Route;
-import jayo.http.internal.Utils;
 import jayo.http.internal.connection.RealCall.CallReference;
 import jayo.scheduler.ScheduledTaskQueue;
 import jayo.scheduler.TaskRunner;
@@ -209,7 +209,7 @@ public final class RealConnectionPool implements ConnectionPool {
             // In the second lock-protected block, release the unhealthy acquired connection. We're also on the hook to
             // close this connection if it's no longer in use.
 //            final boolean noNewExchangesEvent;
-            final Endpoint toClose;
+            final Socket toClose;
             connection.lock.lock();
             try {
 //                noNewExchangesEvent = !connection.noNewExchanges;
@@ -219,7 +219,7 @@ public final class RealConnectionPool implements ConnectionPool {
                 connection.lock.unlock();
             }
             if (toClose != null) {
-                Utils.closeQuietly(toClose);
+                Jayo.closeQuietly(toClose);
 //                connectionListener.connectionClosed(connection);
 //            } else if (noNewExchangesEvent) {
 //                connectionListener.noNewExchanges(connection);
@@ -266,21 +266,21 @@ public final class RealConnectionPool implements ConnectionPool {
         final var i = connections.iterator();
         while (i.hasNext()) {
             final var connection = i.next();
-            final Endpoint endpointToClose;
+            final Socket toClose;
             connection.lock.lock();
             try {
                 if (connection.calls.isEmpty()) {
                     i.remove();
                     connection.noNewExchanges = true;
-                    endpointToClose = connection.endpoint();
+                    toClose = connection.socket();
                 } else {
-                    endpointToClose = null;
+                    toClose = null;
                 }
             } finally {
                 connection.lock.unlock();
             }
-            if (endpointToClose != null) {
-                Utils.closeQuietly(endpointToClose);
+            if (toClose != null) {
+                Jayo.closeQuietly(toClose);
 //                connectionListener.connectionClosed(connection);
             }
         }
@@ -513,7 +513,7 @@ public final class RealConnectionPool implements ConnectionPool {
             if (addressState != null) {
                 scheduleOpener(addressState);
             }
-            Utils.closeQuietly(toEvict.endpoint());
+            Jayo.closeQuietly(toEvict.socket());
             //connectionListener.connectionClosed(toEvict);
             if (connections.isEmpty()) {
                 cleanupQueue.cancelAll();

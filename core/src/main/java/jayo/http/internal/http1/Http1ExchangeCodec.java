@@ -74,7 +74,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
 
     private final @Nullable JayoHttpClient client;
     private final @NonNull Carrier carrier;
-    private final @NonNull Endpoint endpoint;
+    private final @NonNull Socket socket;
 
     private int state = STATE_IDLE;
     private final @NonNull HeadersReader headersReader;
@@ -96,20 +96,25 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
      */
     public Http1ExchangeCodec(final @Nullable JayoHttpClient client,
                               final @NonNull Carrier carrier,
-                              final @NonNull Endpoint endpoint) {
+                              final @NonNull Socket socket) {
         assert carrier != null;
-        assert endpoint != null;
+        assert socket != null;
 
         this.client = client;
         this.carrier = carrier;
-        this.endpoint = endpoint;
+        this.socket = socket;
 
-        headersReader = new HeadersReader(endpoint.getReader());
+        headersReader = new HeadersReader(socket.getReader());
     }
 
     @Override
     public boolean isResponseComplete() {
         return state == STATE_CLOSED;
+    }
+
+    @Override
+    public @NonNull RawSocket getSocket() {
+        return socket;
     }
 
     @Override
@@ -242,12 +247,12 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
 
     @Override
     public void flushRequest() {
-        endpoint.getWriter().flush();
+        socket.getWriter().flush();
     }
 
     @Override
     public void finishRequest() {
-        endpoint.getWriter().flush();
+        socket.getWriter().flush();
     }
 
     /**
@@ -260,15 +265,15 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
         if (state != STATE_IDLE) {
             throw new IllegalStateException("state: " + state);
         }
-        endpoint.getWriter().write(requestLine).write("\r\n");
+        socket.getWriter().write(requestLine).write("\r\n");
         for (final var header : headers) {
-            endpoint.getWriter()
+            socket.getWriter()
                     .write(header.name())
                     .write(": ")
                     .write(header.value())
                     .write("\r\n");
         }
-        endpoint.getWriter().write("\r\n");
+        socket.getWriter().write("\r\n");
         state = STATE_OPEN_REQUEST_BODY;
     }
 
@@ -362,10 +367,10 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
                 return;
             }
 
-            endpoint.getWriter().writeHexadecimalUnsignedLong(byteCount)
-            .write("\r\n")
-            .writeFrom(reader, byteCount);
-            endpoint.getWriter().write("\r\n");
+            socket.getWriter().writeHexadecimalUnsignedLong(byteCount)
+                    .write("\r\n")
+                    .writeFrom(reader, byteCount);
+            socket.getWriter().write("\r\n");
         }
 
         @Override
@@ -373,7 +378,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
             if (closed) {
                 return; // Don't throw; this stream might have been closed on the caller's behalf.
             }
-            endpoint.getWriter().flush();
+            socket.getWriter().flush();
         }
 
         @Override
@@ -382,7 +387,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
                 return;
             }
             closed = true;
-            endpoint.getWriter().write("0\r\n\r\n");
+            socket.getWriter().write("0\r\n\r\n");
             state = STATE_READ_RESPONSE_HEADERS;
         }
     }
@@ -400,7 +405,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
                 throw new JayoClosedResourceException();
             }
             checkOffsetAndCount(reader.bytesAvailable(), 0L, byteCount);
-            endpoint.getWriter().writeFrom(reader, byteCount);
+            socket.getWriter().writeFrom(reader, byteCount);
         }
 
         @Override
@@ -408,7 +413,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
             if (closed) {
                 return; // Don't throw; this stream might have been closed on the caller's behalf.
             }
-            endpoint.getWriter().flush();
+            socket.getWriter().flush();
         }
 
         @Override
@@ -434,7 +439,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
             assert writer != null;
 
             try {
-                return endpoint.getReader().readAtMostTo(writer, byteCount);
+                return socket.getReader().readAtMostTo(writer, byteCount);
             } catch (JayoException e) {
                 carrier.noNewExchanges();
                 responseBodyComplete(TRAILERS_RESPONSE_BODY_TRUNCATED);
@@ -562,11 +567,11 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
         private void readChunkSize() {
             // Read the suffix of the previous chunk.
             if (bytesRemainingInChunk != NO_CHUNK_YET) {
-                endpoint.getReader().readLineStrict(StandardCharsets.ISO_8859_1);
+                socket.getReader().readLineStrict(StandardCharsets.ISO_8859_1);
             }
             try {
-                bytesRemainingInChunk = endpoint.getReader().readHexadecimalUnsignedLong();
-                String extensions = endpoint.getReader().readLineStrict(StandardCharsets.ISO_8859_1).strip();
+                bytesRemainingInChunk = socket.getReader().readHexadecimalUnsignedLong();
+                String extensions = socket.getReader().readLineStrict(StandardCharsets.ISO_8859_1).strip();
                 if (bytesRemainingInChunk < 0L || (!extensions.isEmpty() && !extensions.startsWith(";"))) {
                     throw new JayoProtocolException(
                             "expected chunk size and optional extensions" +

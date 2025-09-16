@@ -25,7 +25,7 @@ import io.mockk.every
 import io.mockk.mockk
 import jayo.http.ConnectionSpec
 import jayo.tls.CipherSuite
-import jayo.tls.ClientTlsEndpoint
+import jayo.tls.ClientTlsSocket
 import jayo.tls.TlsVersion
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -89,7 +89,7 @@ class ConnectionSpecTest {
 
     @Test
     fun applyIntersectionToCiphers() {
-        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        val tlsParameterizer = mockk<ClientTlsSocket.Parameterizer>(relaxed = true)
         every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
         every { tlsParameterizer.supportedCipherSuites } returns
                 listOf(
@@ -118,7 +118,7 @@ class ConnectionSpecTest {
 
     @Test
     fun applyIntersectionToCiphersAddsTlsScsvForFallback() {
-        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        val tlsParameterizer = mockk<ClientTlsSocket.Parameterizer>(relaxed = true)
         every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
         every { tlsParameterizer.supportedCipherSuites } returns
                 listOf(
@@ -141,7 +141,7 @@ class ConnectionSpecTest {
 
     @Test
     fun applyIntersectionToTlsVersions() {
-        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        val tlsParameterizer = mockk<ClientTlsSocket.Parameterizer>(relaxed = true)
         every { tlsParameterizer.enabledTlsVersions } returns
                 listOf(TlsVersion.TLS_1_1, TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
         every { tlsParameterizer.supportedCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)
@@ -160,7 +160,7 @@ class ConnectionSpecTest {
 
     @Test
     fun tls_missingRequiredCipher() {
-        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        val tlsParameterizer = mockk<ClientTlsSocket.Parameterizer>(relaxed = true)
         every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
         every { tlsParameterizer.supportedCipherSuites } returns
                 listOf(
@@ -179,7 +179,7 @@ class ConnectionSpecTest {
 
     @Test
     fun allEnabledCipherSuites() {
-        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        val tlsParameterizer = mockk<ClientTlsSocket.Parameterizer>(relaxed = true)
         every { tlsParameterizer.enabledTlsVersions } returns listOf(TlsVersion.TLS_1_0)
         every { tlsParameterizer.supportedCipherSuites } returns
                 listOf(
@@ -211,7 +211,7 @@ class ConnectionSpecTest {
 
     @Test
     fun allEnabledTlsVersions() {
-        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        val tlsParameterizer = mockk<ClientTlsSocket.Parameterizer>(relaxed = true)
         every { tlsParameterizer.enabledTlsVersions } returns listOf(
             TlsVersion.SSL_3_0,
             TlsVersion.TLS_1_1,
@@ -243,7 +243,7 @@ class ConnectionSpecTest {
 
     @Test
     fun tls_missingTlsVersion() {
-        val tlsParameterizer = mockk<ClientTlsEndpoint.Parameterizer>(relaxed = true)
+        val tlsParameterizer = mockk<ClientTlsSocket.Parameterizer>(relaxed = true)
         every { tlsParameterizer.enabledTlsVersions } returns
                 listOf(TlsVersion.TLS_1_1, TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)
         every { tlsParameterizer.supportedCipherSuites } returns listOf(CipherSuite.TLS_AES_128_GCM_SHA256)

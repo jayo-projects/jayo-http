@@ -71,6 +71,7 @@ class CallHandshakeTest {
 
         val handshake = makeRequest(client)
         assertThat(handshake.cipherSuite).isIn(*expectedModernTls12CipherSuites.toTypedArray())
+        assertThat(handshake.tlsVersion).isEqualTo(TlsVersion.TLS_1_2)
     }
 
     @Test
@@ -85,6 +86,7 @@ class CallHandshakeTest {
 
         val handshake = makeRequest(client)
         assertThat(handshake.cipherSuite).isIn(*expectedModernTls12CipherSuites.toTypedArray())
+        assertThat(handshake.tlsVersion).isEqualTo(TlsVersion.TLS_1_2)
     }
 
     @Test
@@ -99,6 +101,7 @@ class CallHandshakeTest {
 
         val handshake = makeRequest(client)
         assertThat(handshake.cipherSuite).isIn(*expectedModernTls13CipherSuites.toTypedArray())
+        assertThat(handshake.tlsVersion).isEqualTo(TlsVersion.TLS_1_3)
     }
 
     @Test
@@ -199,7 +202,7 @@ class CallHandshakeTest {
         client =
             clientTestRule
                 .newClientBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
 
