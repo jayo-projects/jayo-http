@@ -59,7 +59,7 @@ public final class RealRoute implements Route {
         if (!(address.getProxy() instanceof Proxy.Http)) {
             return false;
         }
-        return (address.getClientTlsEndpointBuilder() != null) ||
+        return (address.getClientTlsSocketBuilder() != null) ||
                 (address.getProtocols().contains(Protocol.H2_PRIOR_KNOWLEDGE));
     }
 

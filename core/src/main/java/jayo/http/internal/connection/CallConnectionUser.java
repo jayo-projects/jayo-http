@@ -21,7 +21,7 @@
 
 package jayo.http.internal.connection;
 
-import jayo.Endpoint;
+import jayo.Socket;
 import jayo.JayoException;
 import jayo.http.Connection;
 import jayo.http.EventListener;
@@ -113,7 +113,7 @@ final class CallConnectionUser implements ConnectionUser {
     }
 
     @Override
-    public Endpoint releaseConnectionNoEvents() {
+    public Socket releaseConnectionNoEvents() {
         return call.releaseConnectionNoEvents();
     }
 

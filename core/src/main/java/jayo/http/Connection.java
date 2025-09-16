@@ -21,7 +21,7 @@
 
 package jayo.http;
 
-import jayo.Endpoint;
+import jayo.Socket;
 import jayo.http.internal.connection.RealConnection;
 import jayo.tls.Handshake;
 import jayo.tls.Protocol;
@@ -74,11 +74,11 @@ public sealed interface Connection permits RealConnection {
     Route route();
 
     /**
-     * @return the endpoint that this connection is using. Returns a {@linkplain jayo.tls.TlsEndpoint TLS endpoint} if
+     * @return the socket that this connection is using. Returns a {@linkplain jayo.tls.TlsSocket TLS socket} if
      * this connection is HTTPS. If this is an HTTP/2 connection the socket may be shared by multiple concurrent calls.
      */
     @NonNull
-    Endpoint endpoint();
+    Socket socket();
 
     /**
      * @return the TLS handshake used to establish this connection, or null if the connection is not HTTPS.

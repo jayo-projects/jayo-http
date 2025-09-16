@@ -39,7 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * A logical bidirectional HTTP/2 stream.
  */
-public final class Http2Stream {
+public final class Http2Stream implements RawSocket {
     private static final long EMIT_BUFFER_SIZE = 16384L;
 
     // Internal state is guarded by `lock`. No long-running or potentially blocking operations are performed while the
@@ -447,6 +447,21 @@ public final class Http2Stream {
         if (timeout.exit(node)) {
             throw new JayoTimeoutException(TIMEOUT_MSG);
         }
+    }
+
+    @Override
+    public @NonNull RawReader getReader() {
+        return reader;
+    }
+
+    @Override
+    public @NonNull RawWriter getWriter() {
+        return writer;
+    }
+
+    @Override
+    public void cancel() {
+        closeLater(ErrorCode.CANCEL);
     }
 
     /**

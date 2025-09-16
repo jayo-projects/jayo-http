@@ -32,7 +32,7 @@ import jayo.http.internal.sslSocketFactory
 import jayo.http.internal.toJayo
 import jayo.http.testing.Flaky
 import jayo.network.Proxy
-import jayo.tls.ClientTlsEndpoint
+import jayo.tls.ClientTlsSocket
 import jayo.tls.JssePlatformRule
 import jayo.tools.JayoTlsUtils
 import mockwebserver3.MockResponse
@@ -108,7 +108,7 @@ class CallKotlinTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .build()
         server.useHttps(handshakeCertificates.sslSocketFactory())
     }
@@ -250,7 +250,7 @@ class CallKotlinTest {
 
         val request = ClientRequest.get(server.url("/").toJayo())
 
-        // exception thrown from ConnectPlan.connectNetworkEndpoint
+        // exception thrown from ConnectPlan.connectNetworkSocket
         assertFailsWith<JayoException> {
             client.newCall(request).execute()
         }.also { expected ->

@@ -21,7 +21,7 @@
 
 package jayo.http.internal.connection;
 
-import jayo.Endpoint;
+import jayo.Socket;
 import jayo.JayoException;
 import jayo.http.Connection;
 import jayo.http.HttpUrl;
@@ -64,7 +64,7 @@ sealed interface ConnectionUser permits CallConnectionUser, PoolConnectionUser {
     void acquireConnectionNoEvents(final @NonNull RealConnection connection);
 
     @Nullable
-    Endpoint releaseConnectionNoEvents();
+    Socket releaseConnectionNoEvents();
 
     void connectionReleased(final @NonNull Connection connection);
 

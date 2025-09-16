@@ -28,14 +28,13 @@ import jayo.http.http2.ErrorCode;
 import jayo.http.http2.JayoConnectionShutdownException;
 import jayo.http.http2.JayoStreamResetException;
 import jayo.http.internal.JayoHostnameVerifier;
-import jayo.http.internal.Utils;
 import jayo.http.internal.http.ExchangeCodec;
 import jayo.http.internal.http1.Http1ExchangeCodec;
 import jayo.http.internal.http2.Http2Connection;
 import jayo.http.internal.http2.Http2ExchangeCodec;
 import jayo.http.internal.http2.Http2Stream;
 import jayo.http.internal.http2.Settings;
-import jayo.network.NetworkEndpoint;
+import jayo.network.NetworkSocket;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.Handshake;
 import jayo.tls.JayoTlsPeerUnverifiedException;
@@ -62,14 +61,14 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     private final @NonNull RealConnectionPool connectionPool;
     private final @NonNull Route route;
     /**
-     * The low-level TCP endpoint.
+     * The low-level TCP socket.
      */
-    private final @NonNull NetworkEndpoint rawEndpoint;
+    private final @NonNull NetworkSocket rawSocket;
     /**
-     * The application layer endpoint. Either a {@linkplain jayo.tls.TlsEndpoint TlsEndpoint} layered over
-     * {@code rawEndpoint}, or {@code rawEndpoint} itself if this connection does not use SSL.
+     * The application layer socket. Either a {@linkplain jayo.tls.TlsSocket TlsSocket} layered over {@code rawSocket},
+     * or {@code rawSocket} itself if this connection does not use TLS.
      */
-    private final @NonNull Endpoint endpoint;
+    private final @NonNull Socket socket;
     private final @Nullable Handshake handshake;
     private final @NonNull Protocol protocol;
     private final int pingIntervalMillis;
@@ -123,24 +122,24 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     RealConnection(final @NonNull TaskRunner taskRunner,
                    final @NonNull RealConnectionPool connectionPool,
                    final @NonNull Route route,
-                   final @NonNull NetworkEndpoint rawEndpoint,
-                   final @NonNull Endpoint endpoint,
+                   final @NonNull NetworkSocket rawSocket,
+                   final @NonNull Socket socket,
                    final @Nullable Handshake handshake,
                    final @NonNull Protocol protocol,
                    final int pingIntervalMillis) {
         assert taskRunner != null;
         assert connectionPool != null;
         assert route != null;
-        assert rawEndpoint != null;
-        assert endpoint != null;
+        assert rawSocket != null;
+        assert socket != null;
         assert protocol != null;
         assert pingIntervalMillis >= 0;
 
         this.taskRunner = taskRunner;
         this.connectionPool = connectionPool;
         this.route = route;
-        this.rawEndpoint = rawEndpoint;
-        this.endpoint = endpoint;
+        this.rawSocket = rawSocket;
+        this.socket = socket;
         this.handshake = handshake;
         this.protocol = protocol;
         this.pingIntervalMillis = pingIntervalMillis;
@@ -195,12 +194,12 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
     private void startHttp2() {
         // HTTP/2 connection timeouts are set per-stream.
-        rawEndpoint.setReadTimeout(Duration.ZERO);
-        rawEndpoint.setWriteTimeout(Duration.ZERO);
+        rawSocket.setReadTimeout(Duration.ZERO);
+        rawSocket.setWriteTimeout(Duration.ZERO);
 
         // todo (maybe) : flowControlListener from ConnectionListener
         final var http2Connection = new Http2Connection.Builder(true, taskRunner)
-                .endpoint(endpoint, route.getAddress().getUrl().getHost())
+                .socket(socket, route.getAddress().getUrl().getHost())
                 .listener(this)
                 .pingIntervalMillis(pingIntervalMillis)
                 .build();
@@ -316,9 +315,14 @@ public final class RealConnection extends Http2Connection.Listener implements Co
         }
 
         // use HTTP/1
-        rawEndpoint.setReadTimeout(client.getReadTimeout());
-        rawEndpoint.setWriteTimeout(client.getWriteTimeout());
-        return new Http1ExchangeCodec(client, this, endpoint);
+        rawSocket.setReadTimeout(client.getReadTimeout());
+        rawSocket.setWriteTimeout(client.getWriteTimeout());
+        return new Http1ExchangeCodec(client, this, socket);
+    }
+
+    void useAsSocket() {
+        rawSocket.setReadTimeout(Duration.ZERO);
+        noNewExchanges();
     }
 
     static final long IDLE_CONNECTION_HEALTHY_NS = 10_000_000_000L; // 10 seconds.
@@ -329,7 +333,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     public boolean isHealthy(final boolean doExtensiveChecks) {
         final var nowNs = System.nanoTime();
 
-        if (!rawEndpoint.isOpen()) {
+        if (!rawSocket.isOpen()) {
             return false;
         }
 
@@ -354,20 +358,19 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     }
 
     /**
-     * @return true if new reads and writes should be attempted on the underlying network socket of
-     * {@link #rawEndpoint}.
+     * @return true if new reads and writes should be attempted on the underlying network socket of {@link #rawSocket}.
      * @implNote Unfortunately, Java's networking APIs don't offer a good health check, so we go on our own by
      * attempting to read with a short timeout. If it fails immediately, we know the socket is unhealthy.
      */
     boolean isHealthy() {
         try {
             return Cancellable.call(Duration.ofMillis(1L), ignored -> {
-                final var readTimeout = rawEndpoint.getReadTimeout();
+                final var readTimeout = rawSocket.getReadTimeout();
                 try {
-                    rawEndpoint.setReadTimeout(Duration.ofMillis(1L));
-                    return !endpoint.getReader().exhausted();
+                    rawSocket.setReadTimeout(Duration.ofMillis(1L));
+                    return !socket.getReader().exhausted();
                 } finally {
-                    rawEndpoint.setReadTimeout(readTimeout);
+                    rawSocket.setReadTimeout(readTimeout);
                 }
             });
         } catch (JayoTimeoutException e) {
@@ -473,8 +476,8 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
     @Override
     public void cancel() {
-        // Close the network endpoint so we don't end up doing synchronous I/O.
-        Utils.closeQuietly(rawEndpoint);
+        // Close the network socket so we don't end up doing synchronous I/O.
+        Jayo.closeQuietly(rawSocket);
     }
 
     @Override
@@ -493,16 +496,16 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     }
 
     @Override
-    public @NonNull Endpoint endpoint() {
-        return endpoint;
+    public @NonNull Socket socket() {
+        return socket;
     }
 
     public static @NonNull RealConnection newTestConnection(final @NonNull TaskRunner taskRunner,
                                                             final @NonNull RealConnectionPool connectionPool,
                                                             final @NonNull Route route,
-                                                            final @NonNull NetworkEndpoint networkEndpoint,
+                                                            final @NonNull NetworkSocket networkSocket,
                                                             final long idleAtNs) {
-        final var endpoint = new Endpoint() {
+        final var socket = new Socket() {
             @Override
             public @NonNull Reader getReader() {
                 return Buffer.create();
@@ -514,7 +517,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
             }
 
             @Override
-            public void close() {
+            public void cancel() {
             }
 
             @Override
@@ -524,7 +527,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
             @Override
             public @NonNull Object getUnderlying() {
-                return networkEndpoint;
+                return networkSocket;
             }
         };
 
@@ -532,8 +535,8 @@ public final class RealConnection extends Http2Connection.Listener implements Co
                 taskRunner,
                 connectionPool,
                 route,
-                networkEndpoint,
-                endpoint,
+                networkSocket,
+                socket,
                 null,
                 Protocol.HTTP_2,
                 0

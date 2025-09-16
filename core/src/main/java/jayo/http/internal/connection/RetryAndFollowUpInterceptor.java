@@ -106,7 +106,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
                 // Clear out downstream interceptor's additional request headers, cookies, etc.
                 response = response.newBuilder()
                         .request(request)
-                        .priorResponse((priorResponse != null) ? stripBody(priorResponse) : null)
+                        .priorResponse((priorResponse != null) ? stripBody(priorResponse).build() : null)
                         .build();
 
                 final var exchange = call.interceptorScopedExchange();

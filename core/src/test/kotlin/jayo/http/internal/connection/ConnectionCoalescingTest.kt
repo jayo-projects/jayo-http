@@ -94,7 +94,7 @@ class ConnectionCoalescingTest {
                 .newClientBuilder()
                 .fastFallback(false) // Avoid data races.
                 .dns(dns)
-                .tlsClientBuilder(ClientTlsEndpoint.builder(handshakeCertificates))
+                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
                 .build()
         val serverHandshakeCertificates = ServerHandshakeCertificates.builder(certificate)
             .build()
@@ -147,7 +147,7 @@ class ConnectionCoalescingTest {
         assert200Http2Response(execute(url), server.hostName)
 
         // Simulate a stale connection in the pool.
-        connection.get()!!.endpoint().close()
+        connection.get()!!.socket().cancel()
         val sanUrl = url.newBuilder().host("san.com").build()
         assert200Http2Response(execute(sanUrl), "san.com")
         assertThat(client.connectionPool.connectionCount()).isEqualTo(1)
@@ -163,7 +163,7 @@ class ConnectionCoalescingTest {
      * - The coalesced connection is violently closed after servicing the first request.
      * - The second request discovers the coalesced connection is unhealthy just after acquiring it.
      */
-    @Disabled()
+    @Disabled
     @Test
     fun coalescedConnectionDestroyedAfterAcquire() {
         server.enqueue(MockResponse())
@@ -254,7 +254,7 @@ class ConnectionCoalescingTest {
                         throw kotlin.AssertionError(e)
                     }
                     assert200Http2Response(response, "san.com")
-                    connection.get()!!.endpoint().close()
+                    connection.get()!!.socket().cancel()
                     latch4.countDown()
                 }
 
@@ -561,7 +561,7 @@ class ConnectionCoalescingTest {
             client
                 .newBuilder()
                 .tlsClientBuilder(
-                    ClientTlsEndpoint.builder(
+                    ClientTlsSocket.builder(
                         ClientHandshakeCertificates.create(trustManager)
                     )
                 )

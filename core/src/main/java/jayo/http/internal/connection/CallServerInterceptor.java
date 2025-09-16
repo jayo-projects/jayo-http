@@ -30,6 +30,7 @@ import jayo.http.Headers;
 import jayo.http.Interceptor;
 import jayo.http.TrailersSource;
 import jayo.http.http2.JayoConnectionShutdownException;
+import jayo.http.internal.RealClientResponse;
 import jayo.http.tools.HttpMethodUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -38,17 +39,13 @@ import java.time.Clock;
 import java.time.Instant;
 
 import static jayo.http.internal.Utils.stripBody;
+import static jayo.http.internal.http.HttpStatusCodes.HTTP_SWITCHING_PROTOCOLS;
 
 /**
  * This is the last interceptor in the chain. It makes a network call to the server.
  */
-// todo rework
-final class CallServerInterceptor implements Interceptor {
-    private final boolean forWebSocket;
-
-    CallServerInterceptor(final boolean forWebSocket) {
-        this.forWebSocket = forWebSocket;
-    }
+enum CallServerInterceptor implements Interceptor {
+    INSTANCE;
 
     @Override
     public @NonNull ClientResponse intercept(final @NonNull Chain chain) {
@@ -63,10 +60,12 @@ final class CallServerInterceptor implements Interceptor {
         var invokeStartEvent = true;
         ClientResponse.Builder responseBuilder = null;
         JayoException sendRequestException = null;
+        final var hasRequestBody = HttpMethodUtils.permitsRequestBody(request.getMethod()) && requestBody != null;
+        final var isUpgradeRequest = !hasRequestBody && "upgrade".equalsIgnoreCase(request.header("Connection"));
         try {
             exchange.writeRequestHeaders(request);
 
-            if (HttpMethodUtils.permitsRequestBody(request.getMethod()) && requestBody != null) {
+            if (hasRequestBody) {
                 // If there's an "Expect: 100-continue" header on the request, wait for an "HTTP/1.1 100 Continue"
                 // response before transmitting the request body. If we don't get that, return what we did get (such as
                 // a 4xx response) without ever transmitting the request body.
@@ -97,7 +96,7 @@ final class CallServerInterceptor implements Interceptor {
                         exchange.noNewExchangesOnConnection();
                     }
                 }
-            } else {
+            } else if (!isUpgradeRequest) {
                 exchange.noRequestBody();
             }
 
@@ -148,10 +147,25 @@ final class CallServerInterceptor implements Interceptor {
 
             exchange.responseHeadersEnd(response);
 
-            if (forWebSocket && code == 101) {
-                // Connection is upgrading, but we need to ensure interceptors see a non-null response body.
-                response = stripBody(response);
+            final var isUpgradeCode = code == HTTP_SWITCHING_PROTOCOLS;
+            if (isUpgradeCode && exchange.connection().isMultiplexed()) {
+                throw new JayoProtocolException("Unexpected " + HTTP_SWITCHING_PROTOCOLS +
+                        " code on HTTP/2 connection");
+            }
+
+            boolean isUpgradeResponse = isUpgradeCode &&
+                    "upgrade".equalsIgnoreCase(response.header("Connection"));
+
+            if (isUpgradeRequest && isUpgradeResponse) {
+                // This is an HTTP/1 upgrade. (This case includes web socket upgrades.)
+                response = ((RealClientResponse.Builder) stripBody(response))
+                        .socket(exchange.upgradeToSocket())
+                        .build();
             } else {
+                // This is not an upgrade response.
+                if (isUpgradeRequest) {
+                    exchange.noRequestBody(); // Failed upgrade request has no outbound data.
+                }
                 final var responseBody = exchange.openResponseBody(response);
                 response = response.newBuilder()
                         .body(responseBody)
@@ -195,7 +209,13 @@ final class CallServerInterceptor implements Interceptor {
     }
 
     private static boolean shouldIgnoreAndWaitForRealResponse(final int code) {
-        return code == 100 || (code >= 102 && code < 200);
+        return
+                // Server sent a 100-continue even though we did not request one. Try again to read the actual response
+                // status.
+                code == 100 ||
+                        // Handle Processing (102) & Early Hints (103) and any new codes without failing 100 and 101 are
+                        // the exceptions with different meanings. But Early Hints not currently exposed
+                        (code >= 102 && code < 200);
     }
 
     private static void skipAll(final @NonNull Reader reader) {

@@ -23,7 +23,7 @@ package jayo.http.internal;
 
 import jayo.http.ConnectionSpec;
 import jayo.tls.CipherSuite;
-import jayo.tls.ClientTlsEndpoint;
+import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
 import jayo.tls.TlsVersion;
 import org.jspecify.annotations.NonNull;
@@ -179,7 +179,7 @@ public final class RealConnectionSpec implements ConnectionSpec {
     }
 
     @Override
-    public boolean isCompatible(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer) {
+    public boolean isCompatible(final ClientTlsSocket.@NonNull Parameterizer tlsParameterizer) {
         Objects.requireNonNull(tlsParameterizer);
 
         if (!isTls) {
@@ -237,7 +237,7 @@ public final class RealConnectionSpec implements ConnectionSpec {
     /**
      * Applies this spec to {@code sslEngine} and the given {@code routeProtocols}.
      */
-    public void apply(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer,
+    public void apply(final ClientTlsSocket.@NonNull Parameterizer tlsParameterizer,
                       final boolean isFallback,
                       final @NonNull List<@NonNull Protocol> routeProtocols) {
         assert tlsParameterizer != null;
@@ -260,12 +260,12 @@ public final class RealConnectionSpec implements ConnectionSpec {
      * @return a copy of this that omits cipher suites and TLS versions not enabled by {@code sslEngine}.
      */
     @NonNull
-    RealConnectionSpec supportedSpec(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer,
+    RealConnectionSpec supportedSpec(final ClientTlsSocket.@NonNull Parameterizer tlsParameterizer,
                                      final boolean isFallback) {
         assert tlsParameterizer != null;
 
-        final var tlsEndpointEnabledCipherSuites = tlsParameterizer.getEnabledCipherSuites();
-        var cipherSuitesIntersection = effectiveCipherSuites(this, tlsEndpointEnabledCipherSuites);
+        final var tlsSocketEnabledCipherSuites = tlsParameterizer.getEnabledCipherSuites();
+        var cipherSuitesIntersection = effectiveCipherSuites(this, tlsSocketEnabledCipherSuites);
 
         final List<TlsVersion> tlsVersionsIntersection;
         if (tlsVersions != null) {

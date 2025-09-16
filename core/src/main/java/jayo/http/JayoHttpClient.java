@@ -23,7 +23,7 @@ package jayo.http;
 
 import jayo.http.internal.connection.RealJayoHttpClient;
 import jayo.scheduler.TaskRunner;
-import jayo.tls.ClientTlsEndpoint;
+import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -141,7 +141,7 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
     @NonNull
     CertificatePinner getCertificatePinner();
 
-    ClientTlsEndpoint.@NonNull Builder getTlsClientBuilder();
+    ClientTlsSocket.@NonNull Builder getTlsClientBuilder();
 
     @NonNull
     ConnectionPool getConnectionPool();
@@ -276,7 +276,7 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
 
         /**
          * Sets the certificate pinner that constrains which certificates are trusted. By default, HTTPS connections
-         * rely on only the {@linkplain #tlsClientBuilder(ClientTlsEndpoint.Builder) TLS client builder} to establish
+         * rely on only the {@linkplain #tlsClientBuilder(ClientTlsSocket.Builder) TLS client builder} to establish
          * trust. Pinning certificates avoids the need to trust certificate authorities.
          */
         @NonNull
@@ -491,7 +491,7 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
          * ClientHandshakeCertificates clientHandshakeCerts = ClientHandshakeCertificates.create(
          *   trustManagerFactory);
          *
-         * ClientTlsEndpoint.Builder tlsClientBuilder = ClientTlsEndpoint.builder(clientHandshakeCerts);
+         * ClientTlsSocket.Builder tlsClientBuilder = ClientTlsSocket.builder(clientHandshakeCerts);
          *
          * JayoHttpClient client = JayoHttpClient.builder()
          *     .tlsClientBuilder(tlsClientBuilder)
@@ -502,7 +502,7 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
          * {@link HostnameVerifier}.
          */
         @NonNull
-        Builder tlsClientBuilder(final ClientTlsEndpoint.@NonNull Builder clientTlsEndpointBuilder);
+        Builder tlsClientBuilder(final ClientTlsSocket.@NonNull Builder clientTlsSocketBuilder);
 
         /**
          * Sets the close timeout for web socket connections. Default is 60 seconds. A timeout of zero is interpreted as

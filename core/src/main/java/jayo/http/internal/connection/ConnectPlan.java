@@ -21,7 +21,10 @@
 
 package jayo.http.internal.connection;
 
-import jayo.*;
+import jayo.Jayo;
+import jayo.JayoException;
+import jayo.JayoProtocolException;
+import jayo.Socket;
 import jayo.http.CertificatePinner;
 import jayo.http.ClientRequest;
 import jayo.http.ConnectionSpec;
@@ -29,14 +32,13 @@ import jayo.http.Route;
 import jayo.http.internal.JayoHostnameVerifier;
 import jayo.http.internal.RealCertificatePinner;
 import jayo.http.internal.RealConnectionSpec;
-import jayo.http.internal.Utils;
 import jayo.http.internal.connection.RoutePlanner.ConnectResult;
 import jayo.http.internal.connection.RoutePlanner.Plan;
 import jayo.http.internal.http.ExchangeCodec;
 import jayo.http.internal.http1.Http1ExchangeCodec;
 import jayo.network.JayoConnectException;
 import jayo.network.JayoUnknownServiceException;
-import jayo.network.NetworkEndpoint;
+import jayo.network.NetworkSocket;
 import jayo.network.Proxy;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.*;
@@ -56,10 +58,10 @@ import static jayo.tools.JayoUtils.createHandshake;
 /**
  * A single attempt to connect to a remote server, including these steps:
  * <ul>
- * <li>{@linkplain #connectNetworkEndpoint() TCP handshake}.
+ * <li>{@linkplain #connectNetworkSocket() TCP handshake}.
  * <li>Optional {@linkplain #connectTunnel() CONNECT tunnels}. When using an HTTP proxy to reach an HTTPS server, we
  * must send a {@code CONNECT} request, and handle authorization challenges from the proxy.
- * <li>Optional {@linkplain #connectTls(ClientTlsEndpoint.Parameterizer) TLS handshake}.
+ * <li>Optional {@linkplain #connectTls(ClientTlsSocket.Parameterizer) TLS handshake}.
  * </ul>
  * Each step may fail. If a retry is possible, a new instance is created with the next plan, which will be configured
  * differently.
@@ -93,12 +95,12 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     /**
      * The low-level TCP socket.
      */
-    private /* lateinit */ NetworkEndpoint rawEndpoint = null;
+    private /* lateinit */ NetworkSocket rawSocket = null;
     /**
-     * The application layer endpoint. Either a {@link TlsEndpoint} layered over {@link #rawEndpoint}, or
-     * {@link #rawEndpoint} itself if this connection does not use SSL.
+     * The application layer socket. Either a {@link TlsSocket} layered over {@link #rawSocket}, or
+     * {@link #rawSocket} itself if this connection does not use SSL.
      */
-    private /* lateinit */ Endpoint endpoint = null;
+    private /* lateinit */ Socket socket = null;
     private @Nullable Handshake handshake = null;
     private @Nullable Protocol protocol = null;
     private @Nullable RealConnection connection = null;
@@ -173,7 +175,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
     @Override
     public @NonNull ConnectResult connectTcp() {
-        if (rawEndpoint != null) {
+        if (rawSocket != null) {
             throw new IllegalStateException("TCP already connected");
         }
 
@@ -182,7 +184,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         connectionUser.addPlanToCancel(this);
         try {
             connectionUser.connectStart(route);
-            connectNetworkEndpoint();
+            connectNetworkSocket();
             success = true;
             return new ConnectResult(this, null, null);
         } catch (JayoException e) {
@@ -190,45 +192,46 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             return new ConnectResult(this, null, e);
         } finally {
             connectionUser.removePlanToCancel(this);
-            if (!success && rawEndpoint != null) {
-                Utils.closeQuietly(rawEndpoint);
+            if (!success && rawSocket != null) {
+                Jayo.closeQuietly(rawSocket);
             }
         }
     }
 
     /**
-     * Does all the work necessary to build a full HTTP or HTTPS connection on a raw network endpoint through its
+     * Does all the work necessary to build a full HTTP or HTTPS connection on a raw network socket through its
      * underlying socket.
      */
-    private void connectNetworkEndpoint() {
-        final NetworkEndpoint rawEndpoint;
+    private void connectNetworkSocket() {
+        final NetworkSocket rawSocket;
         try {
             if (route.getAddress().getProxy() instanceof Proxy.Socks socksProxy) {
-                rawEndpoint = route.getAddress().getNetworkEndpointBuilder()
+                rawSocket = route.getAddress().getNetworkSocketBuilder()
                         .connectTcp(route.getSocketAddress(), socksProxy);
             } else {
-                rawEndpoint = route.getAddress().getNetworkEndpointBuilder().connectTcp(route.getSocketAddress());
+                rawSocket = route.getAddress().getNetworkSocketBuilder().connectTcp(route.getSocketAddress());
             }
         } catch (JayoException e) {
             final var connectException = new JayoConnectException("Failed to connect to " + route.getSocketAddress());
             connectException.addSuppressed(e);
             throw connectException;
         }
-        this.rawEndpoint = rawEndpoint;
+        this.rawSocket = rawSocket;
 
-        // Handle the race where cancel() precedes connectNetworkEndpoint(). We don't want to miss a cancel.
+        // Handle the race where cancel() precedes connectNetworkSocket(). We don't want to miss a cancel.
         if (canceled) {
             throw new JayoException("canceled");
         }
 
-        endpoint = rawEndpoint;
+        socket = rawSocket;
     }
 
     @Override
     public @NonNull ConnectResult connectTlsEtc() {
-        if (rawEndpoint == null) {
+        if (rawSocket == null) {
             throw new IllegalStateException("TCP not connected");
         }
+        final var _rawSocket = rawSocket;
         if (isReady()) {
             throw new IllegalStateException("already connected");
         }
@@ -249,21 +252,20 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 }
             }
 
-            if (route.getAddress().getClientTlsEndpointBuilder() != null) {
+            if (route.getAddress().getClientTlsSocketBuilder() != null) {
                 // Assume the server won't send a TLS ServerHello until we send a TLS ClientHello. If that happens, then
                 // we will have buffered bytes that are needed by the SSLSocket!
                 // This check is imperfect: it doesn't tell us whether a handshake will succeed, just that it will
                 // almost certainly fail because the proxy has sent unexpected data.
-                if (rawEndpoint.getReader().bytesAvailable() > 0L) {
+                if (_rawSocket.getReader().bytesAvailable() > 0L) {
                     throw new JayoException("TLS tunnel buffered too many bytes!");
                 }
 
                 connectionUser.secureConnectStart();
 
                 // Create the wrapper over the connected socket.
-                assert rawEndpoint != null;
-                final var tlsParameterizer = route.getAddress().getClientTlsEndpointBuilder().createParameterizer(
-                        rawEndpoint,
+                final var tlsParameterizer = route.getAddress().getClientTlsSocketBuilder().createParameterizer(
+                        _rawSocket,
                         route.getAddress().getUrl().getHost(),
                         route.getAddress().getUrl().getPort());
 
@@ -283,15 +285,14 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                         : Protocol.HTTP_1_1;
             }
 
-            assert rawEndpoint != null;
-            assert endpoint != null;
+            assert socket != null;
             assert protocol != null;
             final var connection = new RealConnection(
                     taskRunner,
                     connectionPool,
                     route,
-                    rawEndpoint,
-                    endpoint,
+                    _rawSocket,
+                    socket,
                     handshake,
                     protocol,
                     pingIntervalMillis
@@ -314,11 +315,10 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         } finally {
             connectionUser.removePlanToCancel(this);
             if (!success) {
-                if (endpoint != null) {
-                    Utils.closeQuietly(endpoint);
+                if (socket != null) {
+                    Jayo.closeQuietly(socket);
                 }
-                assert rawEndpoint != null;
-                Utils.closeQuietly(rawEndpoint);
+                Jayo.closeQuietly(_rawSocket);
             }
         }
     }
@@ -329,7 +329,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     @NonNull
     ConnectPlan planWithCurrentOrInitialConnectionSpec(
             final @NonNull List<@NonNull ConnectionSpec> connectionSpecs,
-            final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer) {
+            final ClientTlsSocket.@NonNull Parameterizer tlsParameterizer) {
         assert connectionSpecs != null;
         assert tlsParameterizer != null;
 
@@ -353,7 +353,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
      */
     @Nullable
     ConnectPlan nextConnectionSpec(final @NonNull List<@NonNull ConnectionSpec> connectionSpecs,
-                                   final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer) {
+                                   final ClientTlsSocket.@NonNull Parameterizer tlsParameterizer) {
         assert connectionSpecs != null;
         assert tlsParameterizer != null;
 
@@ -365,17 +365,17 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         return null;
     }
 
-    private void connectTls(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer) {
+    private void connectTls(final ClientTlsSocket.@NonNull Parameterizer tlsParameterizer) {
         assert tlsParameterizer != null;
 
         // Force handshake and block for the TLS session establishment.
-        final var tlsEndpoint = tlsParameterizer.build();
+        final var tlsSocket = tlsParameterizer.build();
 
         final var address = route.getAddress();
         var success = false;
         try {
-            final var tlsSession = tlsEndpoint.getSession();
-            final var unverifiedHandshake = tlsEndpoint.getHandshake();
+            final var tlsSession = tlsSocket.getSession();
+            final var unverifiedHandshake = tlsSocket.getHandshake();
 
             // Verify that the socket's certificates are acceptable for the target host.
             assert address.getHostnameVerifier() != null;
@@ -416,12 +416,12 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                             .toList());
 
             // Success! Save the handshake and the ALPN protocol.
-            endpoint = tlsEndpoint;
+            socket = tlsSocket;
             protocol = handshake.getProtocol();
             success = true;
         } finally {
             if (!success) {
-                Utils.closeQuietly(tlsEndpoint);
+                Jayo.closeQuietly(tlsSocket);
             }
         }
     }
@@ -442,8 +442,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         }
 
         // The proxy decided to close the connection after an auth challenge. Retry with different auth credentials.
-        if (rawEndpoint != null) {
-            Utils.closeQuietly(rawEndpoint);
+        if (rawSocket != null) {
+            Jayo.closeQuietly(rawSocket);
         }
 
         final var nextAttempt = attempt + 1;
@@ -475,8 +475,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                     // No client for CONNECT tunnels
                     null,
                     this,
-                    endpoint);
-            rawEndpoint.setReadTimeout(readTimeout);
+                    socket);
+            rawSocket.setReadTimeout(readTimeout);
             tunnelCodec.writeRequest(nextRequest.getHeaders(), requestLine);
             tunnelCodec.finishRequest();
             final var responseBuilder = tunnelCodec.readResponseHeaders(false);
@@ -556,9 +556,9 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     @Override
     public void cancel() {
         canceled = true;
-        // Close the raw endpoint so we don't end up doing synchronous I/O.
-        if (rawEndpoint != null) {
-            Utils.closeQuietly(rawEndpoint);
+        // Close the raw socket so we don't end up doing synchronous I/O.
+        if (rawSocket != null) {
+            Jayo.closeQuietly(rawSocket);
         }
     }
 
@@ -583,8 +583,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     }
 
     void closeQuietly() {
-        if (endpoint != null) {
-            Utils.closeQuietly(endpoint);
+        if (socket != null) {
+            Jayo.closeQuietly(socket);
         }
     }
 

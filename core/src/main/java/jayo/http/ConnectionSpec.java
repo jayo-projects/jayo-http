@@ -23,7 +23,7 @@ package jayo.http;
 
 import jayo.http.internal.RealConnectionSpec;
 import jayo.tls.CipherSuite;
-import jayo.tls.ClientTlsEndpoint;
+import jayo.tls.ClientTlsSocket;
 import jayo.tls.TlsVersion;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -104,7 +104,7 @@ public sealed interface ConnectionSpec permits RealConnectionSpec {
      * For protocols, at least one of the {@linkplain #getTlsVersions() required protocols} must match the TLS
      * client's enabled protocols.
      */
-    boolean isCompatible(final ClientTlsEndpoint.@NonNull Parameterizer tlsParameterizer);
+    boolean isCompatible(final ClientTlsSocket.@NonNull Parameterizer tlsParameterizer);
 
     /**
      * The builder used to create a {@link ConnectionSpec} instance.

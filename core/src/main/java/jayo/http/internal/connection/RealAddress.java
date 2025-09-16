@@ -22,9 +22,9 @@
 package jayo.http.internal.connection;
 
 import jayo.http.*;
-import jayo.network.NetworkEndpoint;
+import jayo.network.NetworkSocket;
 import jayo.network.Proxy;
-import jayo.tls.ClientTlsEndpoint;
+import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -36,8 +36,8 @@ import java.util.Objects;
 public final class RealAddress implements Address {
     private final @NonNull HttpUrl url;
     private final @NonNull Dns dns;
-    private final NetworkEndpoint.@NonNull Builder networkEndpointBuilder;
-    private final ClientTlsEndpoint.@Nullable Builder clientTlsEndpointBuilder;
+    private final NetworkSocket.@NonNull Builder networkSocketBuilder;
+    private final ClientTlsSocket.@Nullable Builder clientTlsSocketBuilder;
     private final @Nullable HostnameVerifier hostnameVerifier;
     private final @Nullable CertificatePinner certificatePinner;
     private final @NonNull List<@NonNull Protocol> protocols;
@@ -48,8 +48,8 @@ public final class RealAddress implements Address {
     RealAddress(final @NonNull String uriHost,
                 final int uriPort,
                 final @NonNull Dns dns,
-                final NetworkEndpoint.@NonNull Builder networkEndpointBuilder,
-                final ClientTlsEndpoint.@Nullable Builder clientTlsEndpointBuilder,
+                final NetworkSocket.@NonNull Builder networkSocketBuilder,
+                final ClientTlsSocket.@Nullable Builder clientTlsSocketBuilder,
                 final @Nullable HostnameVerifier hostnameVerifier,
                 final @Nullable CertificatePinner certificatePinner,
                 final @NonNull List<@NonNull Protocol> protocols,
@@ -59,19 +59,19 @@ public final class RealAddress implements Address {
         assert uriHost != null;
         assert uriPort > 0;
         assert dns != null;
-        assert networkEndpointBuilder != null;
+        assert networkSocketBuilder != null;
         assert protocols != null;
         assert connectionSpecs != null;
         assert proxyAuthenticator != null;
 
         this.url = HttpUrl.builder()
-                .scheme((clientTlsEndpointBuilder != null) ? "https" : "http")
+                .scheme((clientTlsSocketBuilder != null) ? "https" : "http")
                 .host(uriHost)
                 .port(uriPort)
                 .build();
         this.dns = dns;
-        this.networkEndpointBuilder = networkEndpointBuilder;
-        this.clientTlsEndpointBuilder = clientTlsEndpointBuilder;
+        this.networkSocketBuilder = networkSocketBuilder;
+        this.clientTlsSocketBuilder = clientTlsSocketBuilder;
         this.hostnameVerifier = hostnameVerifier;
         this.certificatePinner = certificatePinner;
         this.protocols = List.copyOf(protocols);
@@ -91,13 +91,13 @@ public final class RealAddress implements Address {
     }
 
     @Override
-    public NetworkEndpoint.@NonNull Builder getNetworkEndpointBuilder() {
-        return networkEndpointBuilder;
+    public NetworkSocket.@NonNull Builder getNetworkSocketBuilder() {
+        return networkSocketBuilder;
     }
 
     @Override
-    public ClientTlsEndpoint.@Nullable Builder getClientTlsEndpointBuilder() {
-        return clientTlsEndpointBuilder;
+    public ClientTlsSocket.@Nullable Builder getClientTlsSocketBuilder() {
+        return clientTlsSocketBuilder;
     }
 
     @Override
@@ -148,7 +148,7 @@ public final class RealAddress implements Address {
         result = 31 * result + protocols.hashCode();
         result = 31 * result + connectionSpecs.hashCode();
         result = 31 * result + (proxy != null ? proxy.hashCode() : 0);
-        result = 31 * result + Objects.hashCode(clientTlsEndpointBuilder);
+        result = 31 * result + Objects.hashCode(clientTlsSocketBuilder);
         result = 31 * result + Objects.hashCode(hostnameVerifier);
         result = 31 * result + Objects.hashCode(certificatePinner);
         return result;
@@ -163,7 +163,7 @@ public final class RealAddress implements Address {
                 this.protocols.equals(that.protocols) &&
                 this.connectionSpecs.equals(that.connectionSpecs) &&
                 Objects.equals(this.proxy, that.proxy) &&
-                Objects.equals(this.clientTlsEndpointBuilder, that.clientTlsEndpointBuilder) &&
+                Objects.equals(this.clientTlsSocketBuilder, that.clientTlsSocketBuilder) &&
                 Objects.equals(this.hostnameVerifier, that.hostnameVerifier) &&
                 Objects.equals(this.certificatePinner, that.certificatePinner) &&
                 this.url.getPort() == that.url.getPort();

@@ -21,16 +21,13 @@
 
 package jayo.http.internal.http2
 
-import jayo.Buffer
-import jayo.JayoException
-import jayo.Reader
+import jayo.*
 import jayo.bytestring.ByteString
 import jayo.http.http2.ErrorCode
 import jayo.http.internal.TestUtils.threadFactory
-import jayo.http.internal.Utils
-import jayo.network.NetworkEndpoint
-import jayo.network.NetworkServer
+import jayo.http.internal.closeQuietly
 import java.io.Closeable
+import java.io.IOException
 import java.lang.System.Logger.Level.INFO
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -44,12 +41,12 @@ class MockHttp2Peer : Closeable {
     private var client = false
     private val bytesOut = Buffer()
     private var writer = Http2Writer(bytesOut, client)
-    private val outFrames: MutableList<OutFrame> = kotlin.collections.ArrayList()
+    private val outFrames: MutableList<OutFrame> = ArrayList()
     private val inFrames: BlockingQueue<InFrame> = LinkedBlockingQueue()
     private var port = 0
     private val executor = Executors.newSingleThreadExecutor(threadFactory("MockHttp2Peer"))
-    private var networkServer: NetworkServer? = null
-    private var networkEndpoint: NetworkEndpoint? = null
+    private var serverSocket: ServerSocket? = null
+    private var socket: java.net.Socket? = null
 
     fun setClient(client: Boolean) {
         if (this.client == client) return
@@ -94,38 +91,36 @@ class MockHttp2Peer : Closeable {
     internal fun takeFrame(): InFrame = inFrames.take()
 
     fun play() {
-        check(networkServer == null)
-        networkServer = NetworkServer.builder()
-            .useNio(false)
-            .maxPendingConnections(1)
-            .bindTcp(InetSocketAddress("localhost", 0))
-        (networkServer!!.underlying as ServerSocket).reuseAddress = false
-        port = networkServer!!.localAddress.port
+        check(serverSocket == null)
+        serverSocket = ServerSocket()
+        serverSocket!!.reuseAddress = false
+        serverSocket!!.bind(InetSocketAddress("localhost", 0), 1)
+        port = serverSocket!!.localPort
         executor.execute {
             try {
                 readAndWriteFrames()
-            } catch (e: JayoException) {
-                Utils.closeQuietly(this@MockHttp2Peer)
+            } catch (e: IOException) {
+                this@MockHttp2Peer.closeQuietly()
                 logger.log(INFO, "${this@MockHttp2Peer} done: ${e.message}")
             }
         }
     }
 
     private fun readAndWriteFrames() {
-        check(this@MockHttp2Peer.networkEndpoint == null)
-        val networkEndpoint = networkServer!!.accept()
-        this.networkEndpoint = networkEndpoint
+        check(socket == null)
+        val socket = serverSocket!!.accept()!!
+        this.socket = socket
 
         // Bail out now if this instance was closed while waiting for the socket to accept.
         synchronized(this) {
             if (executor.isShutdown) {
-                networkEndpoint.close()
+                socket.close()
                 return
             }
         }
-        val networkWriter = networkEndpoint.writer
-        val networkReader = networkEndpoint.reader
-        val reader = Http2Reader(networkReader, client)
+        val outputStream = socket.getOutputStream()
+        val inputStream = socket.getInputStream()
+        val reader = Http2Reader(inputStream.reader().buffered(), client)
         val outFramesIterator: Iterator<OutFrame> = outFrames.iterator()
         val outBytes = bytesOut.readByteArray()
         var nextOutFrame: OutFrame? = null
@@ -149,32 +144,44 @@ class MockHttp2Peer : Closeable {
 
                 // Write a frame.
                 val length = (end - start).toInt()
-                networkWriter.write(outBytes, start.toInt(), length)
-                networkWriter.flush()
+                outputStream.write(outBytes, start.toInt(), length)
 
                 // If the last frame was truncated, immediately close the connection.
                 if (truncated) {
-                    networkEndpoint.close()
+                    socket.close()
                 }
             } else {
                 // read a frame
-                val inFrame = InFrame()
+                val inFrame = InFrame(i, reader)
                 reader.nextFrame(false, inFrame)
                 inFrames.add(inFrame)
             }
         }
     }
 
-    fun openNetworkClient(): NetworkEndpoint =
-        NetworkEndpoint.builder()
-            .useNio(false)
-            .connectTcp(InetSocketAddress("localhost", port))
+    fun openSocket(): Socket {
+        val javaSocket = java.net.Socket("localhost", port)
+        return object : Socket {
+            override fun getReader() = javaSocket.inputStream.reader().buffered()
+            override fun getWriter() = javaSocket.outputStream.writer().buffered()
+
+            override fun isOpen() = !javaSocket.isClosed &&
+                    !javaSocket.isInputShutdown && !javaSocket.isOutputShutdown
+
+            override fun getUnderlying() = javaSocket
+
+            override fun cancel() {
+                javaSocket.close()
+            }
+
+        }
+    }
 
     @Synchronized
     override fun close() {
-        executor.shutdownNow()
-        networkEndpoint?.let { Utils.closeQuietly(it) }
-        networkServer?.let { Utils.closeQuietly(it) }
+        executor.shutdown()
+        socket?.closeQuietly()
+        serverSocket?.closeQuietly()
     }
 
     override fun toString(): String = "MockHttp2Peer[$port]"
@@ -185,7 +192,10 @@ class MockHttp2Peer : Closeable {
         val truncated: Boolean,
     )
 
-    internal class InFrame : Http2Reader.Handler {
+    internal class InFrame(
+        val sequence: Int,
+        val reader: Http2Reader,
+    ) : Http2Reader.Handler {
         @JvmField
         var type = -1
         var clearPrevious = false
@@ -318,7 +328,7 @@ class MockHttp2Peer : Closeable {
             streamDependency: Int,
             weight: Int,
             exclusive: Boolean,
-        ): Unit = throw kotlin.UnsupportedOperationException()
+        ): Unit = throw UnsupportedOperationException()
 
         override fun pushPromise(
             streamId: Int,
@@ -338,7 +348,7 @@ class MockHttp2Peer : Closeable {
             host: String,
             port: Int,
             maxAge: Long,
-        ): Unit = throw kotlin.UnsupportedOperationException()
+        ): Unit = throw UnsupportedOperationException()
     }
 
     companion object {

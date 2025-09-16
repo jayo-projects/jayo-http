@@ -23,13 +23,13 @@ package jayo.http.internal.connection
 
 import jayo.http.*
 import jayo.http.internal.RecordingJayoAuthenticator
-import jayo.network.NetworkEndpoint
 import jayo.network.NetworkServer
+import jayo.network.NetworkSocket
 import jayo.network.Proxy
 import jayo.scheduler.TaskRunner
 import jayo.scheduler.internal.TaskFaker
 import jayo.tls.ClientHandshakeCertificates
-import jayo.tls.ClientTlsEndpoint
+import jayo.tls.ClientTlsSocket
 import jayo.tls.Protocol
 import jayo.tools.JayoTlsUtils.localhost
 import java.io.Closeable
@@ -62,7 +62,7 @@ class TestValueFactory : Closeable {
         )
     var protocols: List<Protocol> = listOf(Protocol.HTTP_1_1)
     var handshakeCertificates: ClientHandshakeCertificates = localhost()
-    var tlsClientEndpointBuilder: ClientTlsEndpoint.Builder = ClientTlsEndpoint.builder(handshakeCertificates)
+    var tlsClientSocketBuilder: ClientTlsSocket.Builder = ClientTlsSocket.builder(handshakeCertificates)
     var hostnameVerifier: HostnameVerifier? = HttpsURLConnection.getDefaultHostnameVerifier()
     var uriHost: String = "example.com"
     var uriPort: Int = 1
@@ -83,7 +83,7 @@ class TestValueFactory : Closeable {
                 taskRunner,
                 pool,
                 route,
-                NetworkEndpoint.connectTcp(InetSocketAddress(0)),
+                NetworkSocket.connectTcp(networkServer!!.localAddress),
                 idleAtNanos,
             )
         result.lock.withLock { pool.put(result) }
@@ -118,7 +118,7 @@ class TestValueFactory : Closeable {
             },
         )
 
-    /** Returns an address that's without a TLS endpoint builder or hostname verifier.  */
+    /** Returns an address that's without a TLS socket builder or hostname verifier.  */
     fun newAddress(
         uriHost: String = this.uriHost,
         uriPort: Int = this.uriPort,
@@ -128,7 +128,7 @@ class TestValueFactory : Closeable {
             uriHost,
             uriPort,
             dns,
-            NetworkEndpoint.builder(),
+            NetworkSocket.builder(),
             null,
             null,
             null,
@@ -142,15 +142,15 @@ class TestValueFactory : Closeable {
         uriHost: String = this.uriHost,
         uriPort: Int = this.uriPort,
         proxy: Proxy? = null,
-        tlsClientEndpointBuilder: ClientTlsEndpoint.Builder? = this.tlsClientEndpointBuilder,
+        tlsClientSocketBuilder: ClientTlsSocket.Builder? = this.tlsClientSocketBuilder,
         hostnameVerifier: HostnameVerifier? = this.hostnameVerifier,
     ): Address =
         RealAddress(
             uriHost,
             uriPort,
             dns,
-            NetworkEndpoint.builder(),
-            tlsClientEndpointBuilder,
+            NetworkSocket.builder(),
+            tlsClientSocketBuilder,
             hostnameVerifier,
             null,
             protocols,

@@ -21,7 +21,7 @@
 
 package jayo.http.internal.connection;
 
-import jayo.Endpoint;
+import jayo.Socket;
 import jayo.JayoException;
 import jayo.http.Connection;
 import jayo.http.HttpUrl;
@@ -88,7 +88,7 @@ public enum PoolConnectionUser implements ConnectionUser {
     }
 
     @Override
-    public @Nullable Endpoint releaseConnectionNoEvents() {
+    public @Nullable Socket releaseConnectionNoEvents() {
         return null;
     }
 

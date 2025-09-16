@@ -22,6 +22,7 @@
 package jayo.http.internal;
 
 import jayo.Buffer;
+import jayo.RawSocket;
 import jayo.http.*;
 import jayo.http.internal.connection.Exchange;
 import jayo.http.internal.http.HttpHeaders;
@@ -45,6 +46,7 @@ public final class RealClientResponse implements ClientResponse {
     private final @Nullable Handshake handshake;
     private final @NonNull Headers headers;
     private final @NonNull ClientResponseBody body;
+    private final @Nullable RawSocket socket;
     private final @Nullable ClientResponse networkResponse;
     private final @Nullable ClientResponse cacheResponse;
     private final @Nullable ClientResponse priorResponse;
@@ -61,6 +63,7 @@ public final class RealClientResponse implements ClientResponse {
                               final @Nullable Handshake handshake,
                               final @NonNull Headers headers,
                               final @NonNull ClientResponseBody body,
+                              final @Nullable RawSocket socket,
                               final @Nullable ClientResponse networkResponse,
                               final @Nullable ClientResponse cacheResponse,
                               final @Nullable ClientResponse priorResponse,
@@ -83,6 +86,7 @@ public final class RealClientResponse implements ClientResponse {
         this.handshake = handshake;
         this.headers = headers;
         this.body = body;
+        this.socket = socket;
         this.networkResponse = networkResponse;
         this.cacheResponse = cacheResponse;
         this.priorResponse = priorResponse;
@@ -120,6 +124,10 @@ public final class RealClientResponse implements ClientResponse {
     @Override
     public @NonNull ClientResponseBody getBody() {
         return body;
+    }
+
+    public @Nullable RawSocket getSocket() {
+        return socket;
     }
 
     @Override
@@ -241,6 +249,7 @@ public final class RealClientResponse implements ClientResponse {
         private @Nullable Handshake handshake = null;
         private Headers.@NonNull Builder headers;
         private @NonNull ClientResponseBody body = ClientResponseBody.EMPTY;
+        private @Nullable RawSocket socket = null;
         private @Nullable ClientResponse networkResponse = null;
         private @Nullable ClientResponse cacheResponse = null;
         private @Nullable ClientResponse priorResponse = null;
@@ -254,18 +263,19 @@ public final class RealClientResponse implements ClientResponse {
         }
 
         private Builder(final @NonNull RealClientResponse response) {
-            this.request = response.getRequest();
-            this.protocol = response.getProtocol();
-            this.code = response.getStatus().code();
-            this.message = response.getStatus().message();
-            this.handshake = response.getHandshake();
-            this.headers = response.getHeaders().newBuilder();
-            this.body = response.getBody();
-            this.networkResponse = response.getNetworkResponse();
-            this.cacheResponse = response.getCacheResponse();
-            this.priorResponse = response.getPriorResponse();
-            this.sentRequestAt = response.getSentRequestAt();
-            this.receivedResponseAt = response.getReceivedResponseAt();
+            this.request = response.request;
+            this.protocol = response.protocol;
+            this.code = response.status.code();
+            this.message = response.status.message();
+            this.handshake = response.handshake;
+            this.headers = response.headers.newBuilder();
+            this.body = response.body;
+            this.socket = response.socket;
+            this.networkResponse = response.networkResponse;
+            this.cacheResponse = response.cacheResponse;
+            this.priorResponse = response.priorResponse;
+            this.sentRequestAt = response.sentRequestAt;
+            this.receivedResponseAt = response.receivedResponseAt;
             this.exchange = response.exchange;
             this.trailersSource = response.trailersSource;
         }
@@ -331,6 +341,12 @@ public final class RealClientResponse implements ClientResponse {
             return this;
         }
 
+        public @NonNull Builder socket(final @NonNull RawSocket socket) {
+            this.socket = Objects.requireNonNull(socket);
+            return this;
+        }
+
+
         @Override
         public @NonNull Builder networkResponse(final @Nullable ClientResponse networkResponse) {
             checkSupportResponse("networkResponse", networkResponse);
@@ -391,6 +407,7 @@ public final class RealClientResponse implements ClientResponse {
                     handshake,
                     headers.build(),
                     body,
+                    socket,
                     networkResponse,
                     cacheResponse,
                     priorResponse,
