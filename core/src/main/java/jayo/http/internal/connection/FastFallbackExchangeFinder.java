@@ -177,7 +177,7 @@ final class FastFallbackExchangeFinder implements ExchangeFinder {
 
         // Connect TCP asynchronously.
         tcpConnectsInFlight.add(plan);
-        taskRunner.newQueue().execute(
+        taskRunner.execute(
                 JAYO_HTTP_NAME + " connect " + routePlanner.getAddress().getUrl().redact(),
                 true,
                 () -> {

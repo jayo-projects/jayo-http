@@ -61,13 +61,13 @@ public final class Http2Connection implements Closeable {
     // The internal state of this connection is guarded by 'lock'. No blocking operations may be performed while holding
     // this lock!
     //
-    // Socket writes are guarded by frameWriter.
+    // Socket writes are guarded by Http2Writer.
     //
     // Socket reads are unguarded but are only made by the reader thread.
     //
-    // Certain operations (like SYN_STREAM) need to synchronize on both the frameWriter (to do blocking I/O) and this
-    // (to create streams). Such operations must synchronize on 'this lock' last.
-    // This ensures that we never wait for a blocking operation while holding 'this lock'.
+    // Some operations (like SYN_STREAM) need to synchronize on both the Http2Writer (to do blocking I/O) and this
+    // (to create streams). Such operations must synchronize on 'this.lock' last.
+    // This ensures that we never wait for a blocking operation while holding 'this.lock'.
 
     public static final int JAYO_HTTP_CLIENT_WINDOW_SIZE = 16 * 1024 * 1024;
 
@@ -620,7 +620,7 @@ public final class Http2Connection implements Closeable {
             }
         }
         // Thread doesn't use client Dispatcher, since it is scoped potentially across clients via ConnectionPool.
-        taskRunner.newQueue().execute(connectionName, true, readerRunnable);
+        taskRunner.execute(connectionName, true, readerRunnable);
     }
 
     /**
@@ -747,7 +747,7 @@ public final class Http2Connection implements Closeable {
     }
 
     /**
-     * Methods in this class must not lock FrameWriter. If a method needs to write a frame, create an async task to do
+     * Methods in this class must not lock Http2Writer. If a method needs to write a frame, create an async task to do
      * so.
      */
     final class ReaderRunnable implements Http2Reader.Handler, Runnable {
@@ -836,8 +836,9 @@ public final class Http2Connection implements Closeable {
                     lastGoodStreamId = streamId;
                     streams.put(streamId, newStream);
 
-                    // Use a different task queue for each stream because they should be handled in parallel.
-                    taskRunner.newQueue().execute(connectionName + "[" + streamId + "] onStream", true, () -> {
+                    // We execute this async task individually instead of using a task queue because all streams should
+                    // be handled in parallel.
+                    taskRunner.execute(connectionName + "[" + streamId + "] onStream", true, () -> {
                         try {
                             listener.onStream(newStream);
                         } catch (JayoException e) {

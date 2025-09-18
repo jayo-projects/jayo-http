@@ -1964,8 +1964,9 @@ class Http2ConnectionTest {
         assertThat(goaway.errorCode).isEqualTo(ErrorCode.PROTOCOL_ERROR)
     }
 
+    // Http2Connection now uses direct `TaskRunner.execute` instead of a single element TaskQueue
     @Test
-    fun connectionUsesTaskRunner() {
+    fun connectionNotUsesTaskQueue() {
         peer.acceptFrame() // SYN_STREAM.
         peer.play()
         TaskFaker().use { taskFaker ->
@@ -1978,7 +1979,7 @@ class Http2ConnectionTest {
                     .build()
             connection.start(false)
             val queues = taskRunner.activeQueues()
-            assertThat(queues).hasSize(1)
+            assertThat(queues).hasSize(0)
         }
     }
 
