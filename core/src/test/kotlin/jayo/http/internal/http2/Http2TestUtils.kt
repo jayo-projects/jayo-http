@@ -21,7 +21,61 @@
 
 package jayo.http.internal.http2
 
+import jayo.http.internal.connection.RealConnection
+import jayo.http.internal.connection.RealJayoHttpClient
+import jayo.scheduler.internal.TaskFaker
+import org.assertj.core.api.Assertions.assertThat
+
 object Http2TestUtils {
     @JvmStatic
-    fun headerEntries(vararg elements: String?): List<RealBinaryHeader> = List(elements.size / 2) { RealBinaryHeader(elements[it * 2]!!, elements[it * 2 + 1]!!) }
+    fun headerEntries(vararg elements: String?): List<RealBinaryHeader> =
+        List(elements.size / 2) { RealBinaryHeader(elements[it * 2]!!, elements[it * 2 + 1]!!) }
+
+    fun connectHttp2(
+        peer: MockHttp2Peer,
+        realConnection: RealConnection,
+        maxConcurrentStreams: Int,
+        taskFaker: TaskFaker,
+    ): Http2Connection {
+        // Write the mocking script.
+        val settings1 = Settings()
+        settings1[Settings.MAX_CONCURRENT_STREAMS] = maxConcurrentStreams
+        peer.sendFrame().settings(settings1)
+        peer.acceptFrame() // ACK
+        peer.sendFrame().ping(false, 2, 0)
+        peer.acceptFrame() // PING
+        peer.play()
+
+        // Play it back.
+        val connection =
+            Http2Connection
+                .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
+                .socket(peer.openSocket(), "peer")
+                .pushObserver(Http2ConnectionTest.IGNORE)
+                .listener(realConnection)
+                .build()
+        connection.start(false)
+
+        // verify the peer received the ACK
+        val ackFrame = peer.takeFrame()
+        assertThat(ackFrame.type).isEqualTo(Http2.TYPE_SETTINGS)
+        assertThat(ackFrame.streamId).isEqualTo(0)
+        assertThat(ackFrame.ack).isTrue()
+
+        taskFaker.runTasks()
+
+        return connection
+    }
+
+    fun updateMaxConcurrentStreams(
+        connection: Http2Connection,
+        amount: Int,
+        taskFaker: TaskFaker,
+    ) {
+        val settings = Settings()
+        settings[Settings.MAX_CONCURRENT_STREAMS] = amount
+        connection.readerRunnable.applyAndAckSettings(true, settings)
+        assertThat(connection.peerSettings[Settings.MAX_CONCURRENT_STREAMS]).isEqualTo(amount)
+        taskFaker.runTasks()
+    }
 }
