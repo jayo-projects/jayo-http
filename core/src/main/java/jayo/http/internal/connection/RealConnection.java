@@ -506,6 +506,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
                                                             final @NonNull NetworkSocket networkSocket,
                                                             final long idleAtNs) {
         final var socket = new Socket() {
+            private boolean canceled = false;
             @Override
             public @NonNull Reader getReader() {
                 return Buffer.create();
@@ -518,11 +519,12 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
             @Override
             public void cancel() {
+                canceled = true;
             }
 
             @Override
             public boolean isOpen() {
-                return true;
+                return !canceled;
             }
 
             @Override
