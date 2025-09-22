@@ -66,10 +66,15 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
     Protocol getProtocol();
 
     /**
-     * @return the HTTP status.
+     * @return the HTTP status code.
+     */
+    int getStatusCode();
+
+    /**
+     * @return the HTTP status message.
      */
     @NonNull
-    ResponseStatus getStatus();
+    String getStatusMessage();
 
     /**
      * @return the TLS handshake of the connection that carried this response, or null if the response was received

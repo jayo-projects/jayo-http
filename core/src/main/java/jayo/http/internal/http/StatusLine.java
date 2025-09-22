@@ -32,7 +32,7 @@ import org.jspecify.annotations.NonNull;
 public final class StatusLine {
     public static @NonNull StatusLine get(final @NonNull ClientResponse response) {
         assert response != null;
-        return new StatusLine(response.getProtocol(), response.getStatus().code(), response.getStatus().message());
+        return new StatusLine(response.getProtocol(), response.getStatusCode(), response.getStatusMessage());
     }
 
 

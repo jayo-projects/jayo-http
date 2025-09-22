@@ -50,7 +50,7 @@ public enum JavaNetAuthenticator implements jayo.http.Authenticator {
         final var challenges = response.challenges();
         final var request = response.getRequest();
         final var url = request.getUrl();
-        final var proxyAuthorization = response.getStatus().code() == 407;
+        final var proxyAuthorization = response.getStatusCode() == 407;
         final var proxy = (route != null) ? route.getAddress().getProxy() : null;
 
         for (final var challenge : challenges) {

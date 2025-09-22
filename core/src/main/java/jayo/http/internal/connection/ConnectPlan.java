@@ -484,7 +484,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             final var response = responseBuilder.request(nextRequest).build();
             tunnelCodec.skipConnectBody(response);
 
-            switch (response.getStatus().code()) {
+            switch (response.getStatusCode()) {
                 case HTTP_OK -> {
                     return null;
                 }
@@ -501,7 +501,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 }
 
                 default ->
-                        throw new JayoException("Unexpected response code for CONNECT: " + response.getStatus().code());
+                        throw new JayoException("Unexpected response code for CONNECT: " + response.getStatusCode());
             }
         }
     }

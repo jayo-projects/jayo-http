@@ -96,7 +96,7 @@ class ClientResponseTest {
     @Test
     fun zeroStatusCodeIsValid() {
         val response = newResponse(responseBody("set status code 0"), 0)
-        assertThat(response.status.code).isEqualTo(0)
+        assertThat(response.statusCode).isEqualTo(0)
     }
 
     @Test

@@ -58,7 +58,7 @@ class RecordedResponse(
 
     fun assertCode(expectedCode: Int) =
         apply {
-            assertThat(response!!.status.code).isEqualTo(expectedCode)
+            assertThat(response!!.statusCode).isEqualTo(expectedCode)
         }
 
     fun assertSuccessful() =

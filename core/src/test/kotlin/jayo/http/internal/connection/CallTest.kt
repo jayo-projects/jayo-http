@@ -259,7 +259,7 @@ class CallTest {
             .url(server.url("/").toJayo())
             .head()
         val response = client.newCall(headRequest).execute()
-        assertThat(response.status.code).isEqualTo(200)
+        assertThat(response.statusCode).isEqualTo(200)
         assertArrayEquals(ByteArray(0), response.body.bytes())
         val getRequest = ClientRequest.get(server.url("/").toJayo())
         executeSynchronously(getRequest)
@@ -410,7 +410,7 @@ class CallTest {
             .authenticator(RecordingJayoAuthenticator(credential, null))
             .build()
         val response = client.newCall(request).execute()
-        assertThat(response.status.code).isEqualTo(200)
+        assertThat(response.statusCode).isEqualTo(200)
         response.body.close()
         val recordedRequest1 = server.takeRequest()
         assertThat(recordedRequest1.method).isEqualTo("POST")
@@ -1269,7 +1269,7 @@ class CallTest {
                 .build()
         val request = ClientRequest.builder().url(server.url("/").toJayo()).get()
         val response = client.newCall(request).execute()
-        assertThat(response.status.code).isEqualTo(301)
+        assertThat(response.statusCode).isEqualTo(301)
         response.body.close()
     }
 
@@ -1958,7 +1958,7 @@ class CallTest {
                 .build()
         val request = ClientRequest.get(server.url("/").toJayo())
         val response = client.newCall(request).execute()
-        assertThat(response.status.code).isEqualTo(408)
+        assertThat(response.statusCode).isEqualTo(408)
         assertThat(response.body.string()).isEqualTo("You took too long!")
     }
 
@@ -1986,7 +1986,7 @@ class CallTest {
         )
         val request = ClientRequest.get(server.url("/").toJayo())
         val response = client.newCall(request).execute()
-        assertThat(response.status.code).isEqualTo(408)
+        assertThat(response.statusCode).isEqualTo(408)
         assertThat(response.body.string()).isEqualTo("You took too long!")
         assertThat(server.requestCount).isEqualTo(2)
     }
@@ -2017,7 +2017,7 @@ class CallTest {
         )
         val request = ClientRequest.get(server.url("/").toJayo())
         val response = client.newCall(request).execute()
-        assertThat(response.status.code).isEqualTo(503)
+        assertThat(response.statusCode).isEqualTo(503)
         assertThat(response.body.string()).isEqualTo("You took too long!")
         assertThat(server.requestCount).isEqualTo(2)
     }
@@ -2068,7 +2068,7 @@ class CallTest {
                 },
             )
         val response = client.newCall(request).execute()
-        assertThat(response.status.code).isEqualTo(200)
+        assertThat(response.statusCode).isEqualTo(200)
         assertThat(response.body.string()).isEqualTo("thank you for retrying")
         assertThat(server.takeRequest().body?.utf8()).isEqualTo("attempt 0")
         assertThat(server.takeRequest().body?.utf8()).isEqualTo("attempt 1")
@@ -2105,7 +2105,7 @@ class CallTest {
                 },
             )
         val response = client.newCall(request).execute()
-        assertThat(response.status.code).isEqualTo(503)
+        assertThat(response.statusCode).isEqualTo(503)
         assertThat(response.body.string()).isEqualTo("please retry")
         assertThat(server.takeRequest().body?.utf8()).isEqualTo("attempt 0")
         assertThat(server.requestCount).isEqualTo(1)
@@ -2846,7 +2846,7 @@ class CallTest {
             },
         )
         val response = responseRef.take()
-        assertThat(response.status.code).isEqualTo(200)
+        assertThat(response.statusCode).isEqualTo(200)
         assertThat(response.body.string()).isEqualTo("abc")
 
         // Make another request just to confirm that that connection can be reused...
@@ -3254,7 +3254,7 @@ class CallTest {
                     .post(requestBody)
             )
         call.execute().use { response ->
-            assertThat(response.status.code).isEqualTo(200)
+            assertThat(response.statusCode).isEqualTo(200)
             assertThat(response.body.string()).isNotEmpty()
         }
         val connectCount =
@@ -3552,7 +3552,7 @@ class CallTest {
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .proxyAuthenticator { _: Route?, response: ClientResponse? ->
                     assertThat(response!!.request.method).isEqualTo("CONNECT")
-                    assertThat(response.status.code).isEqualTo(HttpURLConnection.HTTP_PROXY_AUTH)
+                    assertThat(response.statusCode).isEqualTo(HttpURLConnection.HTTP_PROXY_AUTH)
                     assertThat(response.request.url.host).isEqualTo("android.com")
                     val challenges = response.challenges()
                     assertThat(challenges[0].scheme).isEqualTo(JAYO_PREEMPTIVE_CHALLENGE)

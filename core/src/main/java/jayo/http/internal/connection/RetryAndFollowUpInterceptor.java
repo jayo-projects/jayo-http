@@ -154,7 +154,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
         assert userResponse != null;
 
         final var route = (exchange != null) ? exchange.connection().route() : null;
-        final var responseCode = userResponse.getStatus().code();
+        final var responseCode = userResponse.getStatusCode();
 
         final var method = userResponse.getRequest().getMethod();
         return switch (responseCode) {
@@ -185,7 +185,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
                     yield null;
                 }
                 final var priorResponse = userResponse.getPriorResponse();
-                if (priorResponse != null && priorResponse.getStatus().code() == HTTP_CLIENT_TIMEOUT) {
+                if (priorResponse != null && priorResponse.getStatusCode() == HTTP_CLIENT_TIMEOUT) {
                     // We attempted to retry and got another timeout. Give up.
                     yield null;
                 }
@@ -199,7 +199,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
 
             case HTTP_UNAVAILABLE -> {
                 final var priorResponse = userResponse.getPriorResponse();
-                if (priorResponse != null && priorResponse.getStatus().code() == HTTP_UNAVAILABLE) {
+                if (priorResponse != null && priorResponse.getStatusCode() == HTTP_UNAVAILABLE) {
                     // We attempted to retry and got another timeout. Give up.
                     yield null;
                 }
@@ -263,7 +263,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
         // Most redirects don't include a request body.
         final var requestBuilder = userResponse.getRequest().newBuilder();
         if (HttpMethodUtils.permitsRequestBody(method)) {
-            final var responseCode = userResponse.getStatus().code();
+            final var responseCode = userResponse.getStatusCode();
             final var maintainBody = HttpMethodUtils.redirectsWithBody(method) ||
                     responseCode == HTTP_PERM_REDIRECT ||
                     responseCode == HTTP_TEMP_REDIRECT;

@@ -42,7 +42,8 @@ import static jayo.http.internal.http.HttpStatusCodes.HTTP_TEMP_REDIRECT;
 public final class RealClientResponse implements ClientResponse {
     private final @NonNull ClientRequest request;
     private final @NonNull Protocol protocol;
-    private final @NonNull ResponseStatus status;
+    private final int statusCode;
+    private final @NonNull String statusMessage;
     private final @Nullable Handshake handshake;
     private final @NonNull Headers headers;
     private final @NonNull ClientResponseBody body;
@@ -59,7 +60,8 @@ public final class RealClientResponse implements ClientResponse {
 
     public RealClientResponse(final @NonNull ClientRequest request,
                               final @NonNull Protocol protocol,
-                              final @NonNull ResponseStatus status,
+                              final int statusCode,
+                              final @NonNull String statusMessage,
                               final @Nullable Handshake handshake,
                               final @NonNull Headers headers,
                               final @NonNull ClientResponseBody body,
@@ -73,7 +75,7 @@ public final class RealClientResponse implements ClientResponse {
                               final @NonNull TrailersSource trailersSource) {
         assert request != null;
         assert protocol != null;
-        assert status != null;
+        assert statusMessage != null;
         assert headers != null;
         assert body != null;
         assert sentRequestAt != null;
@@ -82,7 +84,8 @@ public final class RealClientResponse implements ClientResponse {
 
         this.request = request;
         this.protocol = protocol;
-        this.status = status;
+        this.statusCode = statusCode;
+        this.statusMessage = statusMessage;
         this.handshake = handshake;
         this.headers = headers;
         this.body = body;
@@ -107,8 +110,13 @@ public final class RealClientResponse implements ClientResponse {
     }
 
     @Override
-    public @NonNull ResponseStatus getStatus() {
-        return status;
+    public int getStatusCode() {
+        return statusCode;
+    }
+
+    @Override
+    public @NonNull String getStatusMessage() {
+        return statusMessage;
     }
 
     @Override
@@ -157,7 +165,7 @@ public final class RealClientResponse implements ClientResponse {
 
     @Override
     public boolean isSuccessful() {
-        return status.code() > 199 && status.code() < 300;
+        return statusCode > 199 && statusCode < 300;
     }
 
     @Override
@@ -199,7 +207,7 @@ public final class RealClientResponse implements ClientResponse {
 
     @Override
     public boolean isRedirect() {
-        return switch (status.code()) {
+        return switch (statusCode) {
             case HTTP_PERM_REDIRECT, HTTP_TEMP_REDIRECT, HTTP_MULT_CHOICE,
                  HTTP_MOVED_PERM, HTTP_MOVED_TEMP, HTTP_SEE_OTHER -> true;
             default -> false;
@@ -209,7 +217,7 @@ public final class RealClientResponse implements ClientResponse {
     @Override
     public @NonNull List<Challenge> challenges() {
         final String challengeHeaderName;
-        switch (status.code()) {
+        switch (statusCode) {
             case HTTP_UNAUTHORIZED -> challengeHeaderName = "WWW-Authenticate";
             case HTTP_PROXY_AUTH -> challengeHeaderName = "Proxy-Authenticate";
             default -> {
@@ -236,7 +244,8 @@ public final class RealClientResponse implements ClientResponse {
     public @NonNull String toString() {
         return "ClientResponse{" +
                 "protocol=" + getProtocol() +
-                ", status=" + getStatus() +
+                ", statusCode=" + getStatusCode() +
+                ", statusMessage=" + getStatusMessage() +
                 ", url=" + getRequest().getUrl() +
                 "}";
     }
@@ -244,8 +253,8 @@ public final class RealClientResponse implements ClientResponse {
     public static final class Builder implements ClientResponse.Builder {
         private @Nullable ClientRequest request = null;
         private @Nullable Protocol protocol = null;
-        private int code = -1;
-        private @Nullable String message = null;
+        private int statusCode = -1;
+        private @Nullable String statusMessage = null;
         private @Nullable Handshake handshake = null;
         private Headers.@NonNull Builder headers;
         private @NonNull ClientResponseBody body = ClientResponseBody.EMPTY;
@@ -265,8 +274,8 @@ public final class RealClientResponse implements ClientResponse {
         private Builder(final @NonNull RealClientResponse response) {
             this.request = response.request;
             this.protocol = response.protocol;
-            this.code = response.status.code();
-            this.message = response.status.message();
+            this.statusCode = response.statusCode;
+            this.statusMessage = response.statusMessage;
             this.handshake = response.handshake;
             this.headers = response.headers.newBuilder();
             this.body = response.body;
@@ -294,13 +303,13 @@ public final class RealClientResponse implements ClientResponse {
 
         @Override
         public @NonNull Builder code(final int code) {
-            this.code = code;
+            this.statusCode = code;
             return this;
         }
 
         @Override
         public @NonNull Builder message(final @NonNull String message) {
-            this.message = Objects.requireNonNull(message);
+            this.statusMessage = Objects.requireNonNull(message);
             return this;
         }
 
@@ -393,17 +402,18 @@ public final class RealClientResponse implements ClientResponse {
 
         @Override
         public @NonNull ClientResponse build() {
-            if (code < 0) {
-                throw new IllegalStateException("code < 0: " + code);
+            if (statusCode < 0) {
+                throw new IllegalStateException("code < 0: " + statusCode);
             }
             Objects.requireNonNull(request, "request == null");
             Objects.requireNonNull(protocol, "protocol == null");
-            Objects.requireNonNull(message, "message == null");
+            Objects.requireNonNull(statusMessage, "StatusMessage == null");
 
             return new RealClientResponse(
                     request,
                     protocol,
-                    new ResponseStatus(code, message),
+                    statusCode,
+                    statusMessage,
                     handshake,
                     headers.build(),
                     body,
@@ -419,7 +429,7 @@ public final class RealClientResponse implements ClientResponse {
         }
 
         public int code() {
-            return code;
+            return statusCode;
         }
 
         private static void checkSupportResponse(final @NonNull String name, final @Nullable ClientResponse response) {
