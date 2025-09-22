@@ -97,7 +97,7 @@ class CallKotlinTest {
         val response = client.newCall(request).execute()
 
         response.use {
-            assertThat(response.status.code).isEqualTo(200)
+            assertThat(response.statusCode).isEqualTo(200)
             assertThat((response.handshake!!.peerCertificates.single() as X509Certificate).subjectX500Principal.name)
                 .isEqualTo("CN=localhost")
         }
@@ -146,14 +146,14 @@ class CallKotlinTest {
             .header("Content-Type", "application/xml")
             .put(ValidRequestBody())
         client.newCall(request).execute().use {
-            assertThat(it.status.code).isEqualTo(201)
+            assertThat(it.statusCode).isEqualTo(201)
         }
 
         request = ClientRequest.builder()
             .url(endpointUrl)
             .head()
         client.newCall(request).execute().use {
-            assertThat(it.status.code).isEqualTo(204)
+            assertThat(it.statusCode).isEqualTo(204)
         }
 
         request = ClientRequest.builder()
@@ -169,7 +169,7 @@ class CallKotlinTest {
             .head()
 
         client.newCall(request).execute().use {
-            assertThat(it.status.code).isEqualTo(204)
+            assertThat(it.statusCode).isEqualTo(204)
         }
     }
 

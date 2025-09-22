@@ -50,7 +50,7 @@ class RecordingJayoAuthenticator(
         routes += route
         if (!schemeMatches(response) || credential == null) return null
         val header =
-            when (response.status.code) {
+            when (response.statusCode) {
                 407 -> "Proxy-Authorization"
                 else -> "Authorization"
             }

@@ -519,8 +519,8 @@ class ConnectionCoalescingTest {
                 .host("san.com")
                 .build()
         execute(sanUrl).use { response ->
-            assertThat(response.status.code).isEqualTo(200)
-            assertThat(response.priorResponse!!.status.code).isEqualTo(421)
+            assertThat(response.statusCode).isEqualTo(200)
+            assertThat(response.priorResponse!!.statusCode).isEqualTo(421)
             assertThat(response.body.string()).isEqualTo("after misdirect")
         }
         val c0e0 = server.takeRequest()
@@ -580,7 +580,7 @@ class ConnectionCoalescingTest {
         response: ClientResponse,
         expectedHost: String,
     ) {
-        assertThat(response.status.code).isEqualTo(200)
+        assertThat(response.statusCode).isEqualTo(200)
         assertThat(response.request.url.host).isEqualTo(expectedHost)
         assertThat(response.protocol).isEqualTo(Protocol.HTTP_2)
         response.body.close()

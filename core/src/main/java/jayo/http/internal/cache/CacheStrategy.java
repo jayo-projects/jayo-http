@@ -308,7 +308,7 @@ final class CacheStrategy {
 
         // Always go to network for uncacheable response codes (RFC 7231 section 6.1), This implementation doesn't
         // support caching partial content.
-        switch (response.getStatus().code()) {
+        switch (response.getStatusCode()) {
             case HTTP_OK,
                  HTTP_NOT_AUTHORITATIVE,
                  HTTP_NO_CONTENT,

@@ -289,7 +289,7 @@ public final class HttpHeaders {
             return false;
         }
 
-        final var responseCode = response.getStatus().code();
+        final var responseCode = response.getStatusCode();
         if ((responseCode < HTTP_CONTINUE || responseCode >= 200) &&
                 responseCode != HTTP_NO_CONTENT &&
                 responseCode != HTTP_NOT_MODIFIED

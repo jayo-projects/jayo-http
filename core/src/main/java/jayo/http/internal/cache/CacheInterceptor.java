@@ -118,7 +118,7 @@ public final class CacheInterceptor implements Interceptor {
 
         // If we have a cache response too, then we're doing a conditional get.
         if (cacheResponse != null) {
-            if (networkResponse.getStatus().code() == HTTP_NOT_MODIFIED) {
+            if (networkResponse.getStatusCode() == HTTP_NOT_MODIFIED) {
                 final var response = cacheResponse
                         .newBuilder()
                         .headers(combine(cacheResponse.getHeaders(), networkResponse.getHeaders()))

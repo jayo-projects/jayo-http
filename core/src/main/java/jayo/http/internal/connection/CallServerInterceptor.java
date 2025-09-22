@@ -128,7 +128,7 @@ enum CallServerInterceptor implements Interceptor {
                     .sentRequestAt(sentRequestAt)
                     .receivedResponseAt(Instant.now(utcClock))
                     .build();
-            var code = response.getStatus().code();
+            var code = response.getStatusCode();
 
             while (shouldIgnoreAndWaitForRealResponse(code)) {
                 responseBuilder = exchange.readResponseHeaders(false);
@@ -142,7 +142,7 @@ enum CallServerInterceptor implements Interceptor {
                         .sentRequestAt(sentRequestAt)
                         .receivedResponseAt(Instant.now(utcClock))
                         .build();
-                code = response.getStatus().code();
+                code = response.getStatusCode();
             }
 
             exchange.responseHeadersEnd(response);
