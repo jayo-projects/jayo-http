@@ -21,14 +21,16 @@
 
 package jayo.http;
 
+import jayo.http.internal.authentication.DefaultProxyAuthenticator;
+import jayo.http.internal.authentication.JavaNetAuthenticator;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
 /**
- * Performs either <b>preemptive</b> authentication before connecting to a proxy server, or <b>reactive</b>
- * authentication after receiving a challenge from either an origin web server or proxy server.
+ * Performs <b>preemptive</b> authentication before connecting to a proxy server, <b>reactive</b> authentication after
+ * receiving a challenge from either an origin web server or proxy server, or both.
  * <h2>Preemptive Authentication</h2>
  * To make HTTPS calls using an HTTP proxy server, Jayo HTTP must first negotiate a connection with the proxy. This
  * proxy connection is called a "TLS Tunnel" and is specified by
@@ -45,7 +47,7 @@ import java.util.Objects;
  * {@code
  * for (Challenge challenge : response.challenges()) {
  *   // If this is preemptive auth, use a preemptive credential.
- *   if (challenge.getScheme().equalsIgnoreCase("JayoHttp-Preemptive")) {
+ *   if (challenge.getScheme().equalsIgnoreCase(JAYO_PREEMPTIVE_CHALLENGE)) {
  *     return response.getRequest().newBuilder()
  *         .header("Proxy-Authorization", "secret")
  *         .build();
@@ -121,14 +123,24 @@ public interface Authenticator {
     @Nullable
     ClientRequest authenticate(final @Nullable Route route, final @NonNull ClientResponse response);
 
+    @NonNull String JAYO_PREEMPTIVE_CHALLENGE = "JayoHttp-Preemptive";
+
+    /**
+     * A proxy authenticator that relies on the credentials declared in the HTTP Proxy
+     * {@link jayo.network.Proxy.Http#getAuthentication()}.
+     */
+    @NonNull
+    Authenticator DEFAULT_PROXY_AUTHENTICATOR = DefaultProxyAuthenticator.INSTANCE;
 
     /**
      * An authenticator that knows no credentials and makes no attempt to authenticate.
      */
     @NonNull
-    Authenticator NONE = new AuthenticatorNone();
+    Authenticator NONE = AuthenticatorNone.INSTANCE;
 
-    final class AuthenticatorNone implements Authenticator {
+    enum AuthenticatorNone implements Authenticator {
+        INSTANCE;
+
         @Override
         public @Nullable ClientRequest authenticate(final @Nullable Route route,
                                                     final @NonNull ClientResponse response) {
@@ -136,4 +148,10 @@ public interface Authenticator {
             return null;
         }
     }
+
+    /**
+     * An authenticator that uses the java.net.Authenticator global authenticator.
+     */
+    @NonNull
+    Authenticator JAVA_NET_AUTHENTICATOR = JavaNetAuthenticator.INSTANCE;
 }

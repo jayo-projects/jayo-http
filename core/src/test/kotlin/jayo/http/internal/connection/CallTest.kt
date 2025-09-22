@@ -24,6 +24,7 @@ package jayo.http.internal.connection
 
 import jayo.*
 import jayo.http.*
+import jayo.http.Authenticator.JAYO_PREEMPTIVE_CHALLENGE
 import jayo.http.CallEvent.*
 import jayo.http.CertificatePinner.pin
 import jayo.http.CookieJar.javaNetCookieJar
@@ -3554,7 +3555,7 @@ class CallTest {
                     assertThat(response.status.code).isEqualTo(HttpURLConnection.HTTP_PROXY_AUTH)
                     assertThat(response.request.url.host).isEqualTo("android.com")
                     val challenges = response.challenges()
-                    assertThat(challenges[0].scheme).isEqualTo("JayoHttp-Preemptive")
+                    assertThat(challenges[0].scheme).isEqualTo(JAYO_PREEMPTIVE_CHALLENGE)
                     response.request
                         .newBuilder()
                         .header("Proxy-Authorization", credential)
@@ -3618,7 +3619,7 @@ class CallTest {
         val connect2 = server.takeRequest()
         assertThat(connect2.method).isEqualTo("CONNECT")
         assertThat(connect2.headers["Proxy-Authorization"]).isEqualTo(credential)
-        assertThat(challengeSchemes).containsExactly("JayoHttp-Preemptive", "Basic")
+        assertThat(challengeSchemes).containsExactly(JAYO_PREEMPTIVE_CHALLENGE, "Basic")
     }
 
     /** https://github.com/square/okhttp/issues/4915  */

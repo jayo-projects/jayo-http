@@ -38,6 +38,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
+import static jayo.http.Authenticator.JAYO_PREEMPTIVE_CHALLENGE;
 import static jayo.http.internal.UrlUtils.toHostHeader;
 import static jayo.http.internal.Utils.USER_AGENT;
 
@@ -297,7 +298,7 @@ final class RealRoutePlanner implements RoutePlanner {
                         .protocol(Protocol.HTTP_1_1)
                         .code(HttpURLConnection.HTTP_PROXY_AUTH)
                         .message("Preemptive Authenticate")
-                        .header("Proxy-Authenticate", "JayoHttp-Preemptive")
+                        .header("Proxy-Authenticate", JAYO_PREEMPTIVE_CHALLENGE)
                         .build();
 
         final var authenticatedRequest =
