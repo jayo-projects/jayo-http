@@ -371,7 +371,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.hostnameVerifier = JayoHostnameVerifier.INSTANCE;
             this.protocols = DEFAULT_PROTOCOLS;
             proxies = Proxies.EMPTY;
-            this.proxyAuthenticator = Authenticator.NONE;
+            this.proxyAuthenticator = Authenticator.DEFAULT_PROXY_AUTHENTICATOR;
             this.readTimeout = DEFAULT_TIMEOUT;
             this.taskRunner = DEFAULT_TASK_RUNNER;
             this.webSocketCloseTimeout = DEFAULT_WEB_SOCKET_CLOSE_TIMEOUT;
