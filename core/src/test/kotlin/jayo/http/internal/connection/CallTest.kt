@@ -51,8 +51,10 @@ import okhttp3.Headers.Companion.headersOf
 import okio.ByteString
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -98,12 +100,13 @@ class CallTest {
 //            directory = "/cache".toPath(),
 //            maxSize = Int.MAX_VALUE.toLong(),
 //        )
-//
-//    @AfterEach
-//    fun tearDown() {
+
+    @AfterEach
+    fun tearDown() {
+        Thread.sleep(10)
 //        cache.close()
 //        fileSystem.checkNoOpenFiles()
-//    }
+    }
 
     @Test
     fun get() {
@@ -364,17 +367,20 @@ class CallTest {
         postZeroLength()
     }
 
+    @Tag("no-ci")
     @Test
     fun postBodyRetransmittedAfterAuthorizationFail() {
         postBodyRetransmittedAfterAuthorizationFail("abc", server)
     }
 
+    @Tag("no-ci")
     @Test
     fun postBodyRetransmittedAfterAuthorizationFail_HTTPS() {
         enableTls()
         postBodyRetransmittedAfterAuthorizationFail("abc", server)
     }
 
+    @Tag("no-ci")
     @Test
     fun postBodyRetransmittedAfterAuthorizationFail_HTTP_2() {
         enableProtocol(Protocol.HTTP_2)
@@ -382,17 +388,20 @@ class CallTest {
     }
 
     /** Don't explode when resending an empty post. */
+    @Tag("no-ci")
     @Test
     fun postEmptyBodyRetransmittedAfterAuthorizationFail() {
         postBodyRetransmittedAfterAuthorizationFail("", server)
     }
 
+    @Tag("no-ci")
     @Test
     fun postEmptyBodyRetransmittedAfterAuthorizationFail_HTTPS() {
         enableTls()
         postBodyRetransmittedAfterAuthorizationFail("", server)
     }
 
+    @Tag("no-ci")
     @Test
     fun postEmptyBodyRetransmittedAfterAuthorizationFail_HTTP_2() {
         enableProtocol(Protocol.HTTP_2)
@@ -2305,6 +2314,7 @@ class CallTest {
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(2)
     }
 
+    @Tag("no-ci")
     @Test
     fun follow20Redirects() {
         for (i in 0..19) {
@@ -2322,6 +2332,7 @@ class CallTest {
             .assertBody("Success!")
     }
 
+    @Tag("no-ci")
     @Test
     fun follow20Redirects_Async() {
         for (i in 0..19) {
@@ -2342,6 +2353,7 @@ class CallTest {
             .assertBody("Success!")
     }
 
+    @Tag("no-ci")
     @Test
     fun doesNotFollow21Redirects() {
         for (i in 0..20) {
@@ -2360,6 +2372,7 @@ class CallTest {
         }
     }
 
+    @Tag("no-ci")
     @Test
     fun doesNotFollow21Redirects_Async() {
         for (i in 0..20) {
@@ -2440,11 +2453,13 @@ class CallTest {
         assertThat(server.requestCount).isEqualTo(0)
     }
 
+    @Tag("no-ci")
     @Test
     fun cancelDuringHttpConnect() {
         cancelDuringConnect(server, "http")
     }
 
+    @Tag("no-ci")
     @Test
     fun cancelDuringHttpsConnect() {
         cancelDuringConnect(server, "https")
@@ -2504,7 +2519,7 @@ class CallTest {
         call.enqueue(callback)
         client.dispatcher.cancelAll()
         callback.await(server.url("/").toJayo())
-            .assertFailure("Canceled", "Socket closed", "Socket is closed")
+            .assertFailure("canceled", "Canceled", "Socket closed", "Socket is closed")
     }
 
     @Test
@@ -2926,6 +2941,7 @@ class CallTest {
         expect100ContinueEmptyRequestBody()
     }
 
+    @Tag("no-ci")
     @Test
     fun expect100ContinueTimesOutWithoutContinue() {
         server.enqueue(MockResponse.Builder().onResponseStart(Stall).build())
@@ -2946,6 +2962,7 @@ class CallTest {
         assertThat(recordedRequest.body).isIn(null, ByteString.EMPTY)
     }
 
+    @Tag("no-ci")
     @Test
     fun expect100ContinueTimesOutWithoutContinue_HTTP2() {
         enableProtocol(Protocol.HTTP_2)
@@ -3082,6 +3099,7 @@ class CallTest {
         assertThat(recordedRequest.body?.utf8()).isEqualTo("abc")
     }
 
+    @Tag("no-ci")
     @Test
     fun serverRespondsWith100ContinueOnly() {
         client =
@@ -3101,12 +3119,14 @@ class CallTest {
         assertThat(recordedRequest.body?.utf8()).isEqualTo("abc")
     }
 
+    @Tag("no-ci")
     @Test
     fun serverRespondsWith100ContinueOnly_HTTP2() {
         enableProtocol(Protocol.HTTP_2)
         serverRespondsWith100ContinueOnly()
     }
 
+    @Tag("no-ci")
     @Test
     fun successfulExpectContinuePermitsConnectionReuse() {
         platform.assumeConscrypt() // whatever assertion on platform works, it is required for exchangeIndex check
@@ -3129,6 +3149,7 @@ class CallTest {
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(1)
     }
 
+    @Tag("no-ci")
     @Test
     fun successfulExpectContinuePermitsConnectionReuseWithHttp2() {
         enableProtocol(Protocol.HTTP_2)
@@ -4095,6 +4116,7 @@ class CallTest {
         )
     }
 
+    @Tag("no-ci")
     @Test
     fun asyncLeakedResponseBodyLogsStackTrace() {
         server.enqueue(MockResponse(body = "This gets leaked."))

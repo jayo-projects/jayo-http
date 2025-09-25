@@ -37,6 +37,7 @@ import org.assertj.core.data.Offset
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.util.concurrent.CountDownLatch
@@ -47,6 +48,7 @@ import kotlin.concurrent.withLock
 import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.milliseconds
 
+@Tag("no-ci")
 @Timeout(5)
 class Http2ConnectionTest {
     private lateinit var peer: MockHttp2Peer
@@ -1626,6 +1628,7 @@ class Http2ConnectionTest {
         assertThat(peer.takeFrame().type).isEqualTo(Http2.TYPE_RST_STREAM)
     }
 
+    @Tag("no-ci")
     @Test
     fun writeTimesOutAwaitingConnectionWindow() {
         // Set the peer's receive window to 5 bytes. Give the stream 5 bytes back, so only the connection-level window

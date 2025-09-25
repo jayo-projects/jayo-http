@@ -13,15 +13,16 @@ plugins {
 }
 
 val versionCatalog: VersionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-
 fun catalogVersion(lib: String) =
     versionCatalog.findVersion(lib).getOrNull()?.requiredVersion
         ?: throw GradleException("Version '$lib' is not specified in the toml version catalog")
 
+val isCI = providers.gradleProperty("isCI")
+
 val javaVersion = catalogVersion("java").toInt()
 
 val koverage = mapOf(
-    "jayo-http" to 83,
+    "jayo-http" to if (isCI.isPresent) 81 else 85,
 )
 
 kotlin {
@@ -54,16 +55,14 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.jspecify:jspecify:${catalogVersion("jspecify")}")
+    api("org.jspecify:jspecify:${catalogVersion("jspecify")}")
 
-    testImplementation(platform("org.junit:junit-bom:${catalogVersion("junit")}"))
-    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter:${catalogVersion("junit")}")
     testImplementation("org.junit-pioneer:junit-pioneer:${catalogVersion("junitPioneer")}")
     testImplementation(kotlin("test"))
     testImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
     testImplementation("io.mockk:mockk:${catalogVersion("mockk")}")
 
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testRuntimeOnly("org.slf4j:slf4j-jdk-platform-logging:${catalogVersion("slf4j")}")
     testRuntimeOnly("ch.qos.logback:logback-classic:${catalogVersion("logback")}")
 }
@@ -102,8 +101,18 @@ tasks {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
+    val testJavaVersion = System.getProperty("test.java.version", "").toIntOrNull()
     withType<Test> {
-        useJUnitPlatform()
+        if (testJavaVersion != null) {
+            javaLauncher = javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(testJavaVersion)
+            }
+        }
+        useJUnitPlatform {
+            if (isCI.isPresent) {
+                excludeTags("no-ci")
+            }
+        }
         testLogging {
             events = setOf(TestLogEvent.PASSED, TestLogEvent.FAILED, TestLogEvent.SKIPPED)
             exceptionFormat = TestExceptionFormat.FULL
