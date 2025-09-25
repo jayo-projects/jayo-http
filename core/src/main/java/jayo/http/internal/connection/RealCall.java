@@ -64,7 +64,7 @@ public final class RealCall implements Call {
     private final @NonNull RealConnectionPool connectionPool;
     final @NonNull EventListener eventListener;
     private final @NonNull AsyncTimeout timeout;
-    private volatile AsyncTimeout.@Nullable Node timeoutNode = null;
+    private volatile AsyncTimeout.Node timeoutNode = null;
 
     private final @NonNull Lock lock = new ReentrantLock();
 
@@ -551,7 +551,7 @@ public final class RealCall implements Call {
             throw new IllegalStateException();
         }
         timeoutEarlyExit = true;
-        timeout.exit(timeoutNode);
+        timeoutNode.exit();
     }
 
     /**

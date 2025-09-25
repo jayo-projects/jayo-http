@@ -443,8 +443,8 @@ public final class Http2Stream implements RawSocket {
         connection.sendDegradedPingLater();
     }
 
-    private void exitAndThrowIfTimedOut(final AsyncTimeout.@Nullable Node node) {
-        if (timeout.exit(node)) {
+    private void exitAndThrowIfTimedOut(final AsyncTimeout.@NonNull Node node) {
+        if (node.exit()) {
             throw new JayoTimeoutException(TIMEOUT_MSG);
         }
     }

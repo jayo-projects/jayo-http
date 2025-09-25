@@ -2007,7 +2007,7 @@ class Http2ConnectionTest {
         try {
             latch.await()
         } finally {
-            watchdogJob.exit(node)
+            node.exit()
         }
     }
 
