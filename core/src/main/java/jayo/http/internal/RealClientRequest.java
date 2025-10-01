@@ -36,65 +36,81 @@ import static jayo.http.internal.Utils.isSensitiveHeader;
 import static jayo.http.internal.Utils.startsWithIgnoreCase;
 
 public final class RealClientRequest implements ClientRequest {
-    private final @NonNull AbstractBuilder<?> builder;
+    private final @NonNull HttpUrl url;
+    private final @NonNull String method;
+    private final @NonNull Headers headers;
+    private final @Nullable ClientRequestBody body;
+    private final @Nullable HttpUrl cacheUrlOverride;
     final @NonNull Map<Class<?>, ?> tags;
     private @Nullable CacheControl lazyCacheControl = null;
 
     RealClientRequest(final @NonNull AbstractBuilder<?> builder) {
         assert builder != null;
 
-        this.builder = builder;
+        if (builder.url == null) {
+            throw new IllegalStateException("url == null");
+        }
+        this.url = builder.url;
+        this.method = builder.method;
+        this.headers = builder.headers.build();
+        this.body = builder.body;
+        this.cacheUrlOverride = builder.cacheUrlOverride;
         this.tags = Map.copyOf(builder.tags);
+
+        final var connectionHeader = headers.get("Connection");
+        if ("upgrade".equalsIgnoreCase(connectionHeader)) {
+            if (!(body == null || body.contentByteSize() == 0L)) {
+                throw new IllegalArgumentException("expected a null or empty request body with 'Connection: upgrade'");
+            }
+        }
     }
 
     @Override
     public @NonNull HttpUrl getUrl() {
-        assert builder.url != null;
-        return builder.url;
+        return url;
     }
 
     @Override
     public @NonNull String getMethod() {
-        assert builder.method != null;
-        return builder.method;
+        return method;
     }
 
     @Override
     public @NonNull Headers getHeaders() {
-        return builder.headers.build();
+        return headers;
     }
 
     @Override
     public @Nullable ClientRequestBody getBody() {
-        return builder.body;
+        return body;
     }
 
     @Override
     public @Nullable HttpUrl getCacheUrlOverride() {
-        return builder.cacheUrlOverride;
+        return cacheUrlOverride;
     }
 
     @Override
     public boolean isHttps() {
-        return getUrl().isHttps();
+        return url.isHttps();
     }
 
     @Override
     public @Nullable String header(final @NonNull String name) {
         Objects.requireNonNull(name);
-        return getHeaders().get(name);
+        return headers.get(name);
     }
 
     @Override
     public @NonNull List<String> headers(final @NonNull String name) {
         Objects.requireNonNull(name);
-        return getHeaders().values(name);
+        return headers.values(name);
     }
 
     @Override
     public @NonNull CacheControl getCacheControl() {
         if (lazyCacheControl == null) {
-            lazyCacheControl = CacheControl.parse(getHeaders());
+            lazyCacheControl = CacheControl.parse(headers);
         }
         return lazyCacheControl;
     }
@@ -145,10 +161,8 @@ public final class RealClientRequest implements ClientRequest {
 
     public static abstract sealed class AbstractBuilder<T extends ClientRequest.AbstractBuilder<T>>
             implements ClientRequest.AbstractBuilder<T> {
-        @Nullable
-        HttpUrl url = null;
-        @Nullable
-        String method = null;
+        @Nullable HttpUrl url = null;
+        /* lateinit */ String method = null;
         Headers.@NonNull Builder headers;
         @Nullable
         ClientRequestBody body = null;
@@ -156,7 +170,7 @@ public final class RealClientRequest implements ClientRequest {
         HttpUrl cacheUrlOverride = null;
         @NonNull
         Map<Class<?>, Object> tags = new HashMap<>();
-        boolean gzip = false;
+        private boolean gzip = false;
 
         AbstractBuilder() {
             this.headers = Headers.builder();

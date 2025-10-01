@@ -27,6 +27,7 @@ import jayo.JayoException;
 import jayo.RawReader;
 import jayo.http.*;
 import jayo.http.internal.RealHeaders;
+import jayo.http.internal.StandardClientResponseBodies;
 import jayo.http.internal.connection.RealCall;
 import jayo.http.tools.HttpMethodUtils;
 import jayo.tls.Protocol;
@@ -240,12 +241,8 @@ public final class CacheInterceptor implements Interceptor {
             mediaType = MediaType.parse(contentType);
         }
 
-        final ClientResponseBody responseBody;
-        if (mediaType != null) {
-            responseBody = ClientResponseBody.create(Jayo.buffer(cacheWritingReader), mediaType, contentLength);
-        } else {
-            responseBody = ClientResponseBody.create(Jayo.buffer(cacheWritingReader), contentLength);
-        }
+        final var responseBody =
+                StandardClientResponseBodies.create(Jayo.buffer(cacheWritingReader), mediaType, contentLength);
         return response.newBuilder()
                 .body(responseBody)
                 .build();

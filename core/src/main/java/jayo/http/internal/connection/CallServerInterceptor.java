@@ -49,7 +49,9 @@ enum CallServerInterceptor implements Interceptor {
 
     @Override
     public @NonNull ClientResponse intercept(final @NonNull Chain chain) {
+        assert chain != null;
         final var realChain = (RealInterceptorChain) chain;
+
         final var exchange = realChain.exchange();
         assert exchange != null;
         final var request = realChain.request();
@@ -61,7 +63,7 @@ enum CallServerInterceptor implements Interceptor {
         ClientResponse.Builder responseBuilder = null;
         JayoException sendRequestException = null;
         final var hasRequestBody = HttpMethodUtils.permitsRequestBody(request.getMethod()) && requestBody != null;
-        final var isUpgradeRequest = !hasRequestBody && "upgrade".equalsIgnoreCase(request.header("Connection"));
+        final var isUpgradeRequest = "upgrade".equalsIgnoreCase(request.header("Connection"));
         try {
             exchange.writeRequestHeaders(request);
 
