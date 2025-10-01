@@ -195,9 +195,7 @@ public final class RealClientResponse implements ClientResponse {
         peeked.request(byteCount);
         buffer.writeFrom(peeked, Math.min(byteCount, peeked.bytesAvailable()));
         final var contentType = body.contentType();
-        return (contentType != null)
-                ? ClientResponseBody.create(buffer, contentType, buffer.bytesAvailable())
-                : ClientResponseBody.create(buffer, buffer.bytesAvailable());
+        return StandardClientResponseBodies.create(buffer, contentType, buffer.bytesAvailable());
     }
 
     @Override

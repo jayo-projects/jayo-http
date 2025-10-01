@@ -74,8 +74,8 @@ public final class RealAddress implements Address {
         this.clientTlsSocketBuilder = clientTlsSocketBuilder;
         this.hostnameVerifier = hostnameVerifier;
         this.certificatePinner = certificatePinner;
-        this.protocols = List.copyOf(protocols);
-        this.connectionSpecs = List.copyOf(connectionSpecs);
+        this.protocols = protocols;
+        this.connectionSpecs = connectionSpecs;
         this.proxy = proxy;
         this.proxyAuthenticator = proxyAuthenticator;
     }

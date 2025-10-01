@@ -81,7 +81,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         this.authenticator = builder.authenticator;
         this.cache = builder.cache;
         this.callTimeout = builder.callTimeout;
-        this.connectionSpecs = builder.connectionSpecs;
+        this.connectionSpecs = List.copyOf(builder.connectionSpecs);
         this.connectTimeout = builder.connectTimeout;
         this.cookieJar = builder.cookieJar;
         this.dispatcher = builder.dispatcher;
@@ -95,7 +95,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         this.minWebSocketMessageToCompress = builder.minWebSocketMessageToCompress;
         this.networkInterceptors = List.copyOf(builder.networkInterceptors);
         this.pingIntervalMillis = builder.pingIntervalMillis;
-        this.protocols = builder.protocols;
+        this.protocols = List.copyOf(builder.protocols);
         this.proxies = (builder.proxies != null) ? builder.proxies : Proxies.builder().build();
         this.proxyAuthenticator = builder.proxyAuthenticator;
         this.readTimeout = builder.readTimeout;
