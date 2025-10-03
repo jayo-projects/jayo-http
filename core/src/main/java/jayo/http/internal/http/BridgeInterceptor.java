@@ -34,8 +34,8 @@ import java.util.List;
 
 import static jayo.http.internal.UrlUtils.toHostHeader;
 import static jayo.http.internal.Utils.USER_AGENT;
-import static jayo.http.internal.http.HttpHeaders.promisesBody;
 import static jayo.http.internal.http.HttpHeaders.receiveHeaders;
+import static jayo.http.tools.JayoHttpUtils.promisesBody;
 
 /**
  * Bridges from application code to network code.

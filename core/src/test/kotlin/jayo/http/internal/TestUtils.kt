@@ -27,7 +27,6 @@ import jayo.http.Cookie
 import jayo.http.Headers
 import jayo.http.HttpUrl
 import jayo.http.Proxies
-import jayo.tls.ClientHandshakeCertificates
 import jayo.tls.Protocol
 import jayo.tls.ServerHandshakeCertificates
 import jayo.tools.JayoTlsUtils
@@ -96,13 +95,8 @@ internal infix fun Short.and(mask: Int): Int = toInt() and mask
 
 internal infix fun Int.and(mask: Long): Long = toLong() and mask
 
-internal fun ClientHandshakeCertificates.sslSocketFactory() =
-    JayoTlsUtils.handshakeCertSSLContext(this).socketFactory
-
 internal fun ServerHandshakeCertificates.sslSocketFactory() =
     JayoTlsUtils.handshakeCertSSLContext(this).socketFactory
-
-internal fun okhttp3.HttpUrl.toJayo() = HttpUrl.get(toString())
 
 internal fun Proxy.toJayo() =
     when (type()) {

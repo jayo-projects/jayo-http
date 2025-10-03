@@ -21,6 +21,7 @@ import jayo.http.Cookie.parse
 import jayo.http.HttpUrl
 import jayo.http.JayoHttpClientTestRule
 import jayo.http.toHttpUrl
+import jayo.http.toJayo
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.junit5.StartStop

@@ -126,7 +126,7 @@ public sealed interface ClientRequest permits RealClientRequest {
         T header(final @NonNull String name, final @NonNull String value);
 
         /**
-         * Adds a header with {@code name} to {@code value}. Prefer this method for multiply-valued headers like
+         * Adds a header with {@code name} to {@code value}. Prefer this method for multiply valued headers like
          * "Set-Cookie".
          * <p>
          * Note that for some headers including {@code Content-Length} and {@code Content-Encoding}, Jayo HTTP may

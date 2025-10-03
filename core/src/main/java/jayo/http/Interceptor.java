@@ -84,5 +84,8 @@ public interface Interceptor {
 
         @NonNull
         Call call();
+
+        @NonNull
+        JayoHttpClient client();
     }
 }

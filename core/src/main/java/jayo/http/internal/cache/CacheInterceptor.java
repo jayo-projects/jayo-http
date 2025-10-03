@@ -42,7 +42,7 @@ import static java.net.HttpURLConnection.HTTP_GATEWAY_TIMEOUT;
 import static java.net.HttpURLConnection.HTTP_NOT_MODIFIED;
 import static jayo.http.internal.Utils.*;
 import static jayo.http.internal.http.ExchangeCodec.DISCARD_STREAM_TIMEOUT;
-import static jayo.http.internal.http.HttpHeaders.promisesBody;
+import static jayo.http.tools.JayoHttpUtils.promisesBody;
 
 /**
  * Serves requests from the cache and writes responses to the cache.

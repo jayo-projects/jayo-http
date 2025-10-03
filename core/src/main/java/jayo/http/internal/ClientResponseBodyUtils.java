@@ -31,10 +31,11 @@ import org.jspecify.annotations.Nullable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static jayo.http.tools.JayoHttpUtils.charsetOrUtf8;
 
 public final class ClientResponseBodyUtils {
     // un-instantiable
@@ -80,7 +81,7 @@ public final class ClientResponseBodyUtils {
         }
 
         try (final var reader = responseBody.reader()) {
-            final var charset = Utils.readBomAsCharset(reader, charsetOrUtf8(responseBody));
+            final var charset = Utils.readBomAsCharset(reader, charsetOrUtf8(responseBody.contentType()));
             return reader.readString(charset);
         }
     }
@@ -93,11 +94,15 @@ public final class ClientResponseBodyUtils {
 
         public BomAwareReader(final @NonNull ClientResponseBody responseBody) {
             this.reader = responseBody.reader();
-            this.charset = charsetOrUtf8(responseBody);
+            this.charset = charsetOrUtf8(responseBody.contentType());
         }
 
         @Override
-        public int read(final char @NonNull [] cbuf, final int off, final int len) throws IOException {
+        public int read(final char @NonNull [] cbuf,
+                        final int off,
+                        final int len) throws IOException {
+            Objects.requireNonNull(cbuf);
+
             if (closed) {
                 throw new IOException("Stream closed");
             }
@@ -124,17 +129,5 @@ public final class ClientResponseBodyUtils {
                 }
             }
         }
-    }
-
-    private static @NonNull Charset charsetOrUtf8(final @NonNull ClientResponseBody responseBody) {
-        assert responseBody != null;
-
-        final var contentType = responseBody.contentType();
-        if (contentType == null || contentType.charset() == null) {
-            return UTF_8;
-        }
-
-        //noinspection DataFlowIssue
-        return contentType.charset();
     }
 }

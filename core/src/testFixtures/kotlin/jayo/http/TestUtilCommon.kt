@@ -22,6 +22,8 @@
 package jayo.http
 
 import jayo.Buffer
+import jayo.tls.ClientHandshakeCertificates
+import jayo.tools.JayoTlsUtils
 
 fun String(vararg codePoints: Int): String {
     val buffer = Buffer()
@@ -30,3 +32,8 @@ fun String(vararg codePoints: Int): String {
     }
     return buffer.readString()
 }
+
+fun okhttp3.HttpUrl.toJayo() = HttpUrl.get(toString())
+
+fun ClientHandshakeCertificates.sslSocketFactory() =
+    JayoTlsUtils.handshakeCertSSLContext(this).socketFactory

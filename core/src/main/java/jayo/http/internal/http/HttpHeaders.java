@@ -33,10 +33,6 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 
 import static java.lang.System.Logger.Level.WARNING;
-import static java.net.HttpURLConnection.HTTP_NOT_MODIFIED;
-import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
-import static jayo.http.internal.Utils.headersContentLength;
-import static jayo.http.internal.http.HttpStatusCodes.HTTP_CONTINUE;
 
 public final class HttpHeaders {
     private static final System.Logger LOGGER = System.getLogger("jayo.http.HttpHeaders");
@@ -275,35 +271,5 @@ public final class HttpHeaders {
             buffer.readByte();
             result.writeFrom(buffer, 1L); // The escaped character.
         }
-    }
-
-    /**
-     * @return true if the response headers and status indicate that this response has a (possibly 0-length) body.
-     * See RFC 7231.
-     */
-    public static boolean promisesBody(final @NonNull ClientResponse response) {
-        assert response != null;
-
-        // HEAD requests never yield a body regardless of the response headers.
-        if (response.getRequest().getMethod().equals("HEAD")) {
-            return false;
-        }
-
-        final var responseCode = response.getStatusCode();
-        if ((responseCode < HTTP_CONTINUE || responseCode >= 200) &&
-                responseCode != HTTP_NO_CONTENT &&
-                responseCode != HTTP_NOT_MODIFIED
-        ) {
-            return true;
-        }
-
-        // If the Content-Length or Transfer-Encoding headers disagree with the response code, the
-        // response is malformed. For better compatibility, we honor the headers.
-        if (headersContentLength(response) != -1L ||
-                "chunked".equalsIgnoreCase(response.header("Transfer-Encoding"))) {
-            return true;
-        }
-
-        return false;
     }
 }

@@ -23,6 +23,7 @@ val javaVersion = catalogVersion("java").toInt()
 
 val koverage = mapOf(
     "jayo-http" to if (isCI.isPresent) 81 else 85,
+    "jayo-http-logging-interceptor" to 86,
 )
 
 kotlin {
