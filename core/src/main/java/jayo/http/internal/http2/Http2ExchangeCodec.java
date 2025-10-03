@@ -22,7 +22,10 @@
 package jayo.http.internal.http2;
 
 import jayo.*;
-import jayo.http.*;
+import jayo.http.ClientRequest;
+import jayo.http.ClientResponse;
+import jayo.http.Headers;
+import jayo.http.JayoHttpClient;
 import jayo.http.http2.ErrorCode;
 import jayo.http.internal.RealClientResponse;
 import jayo.http.internal.RealHeaders;
@@ -38,9 +41,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import static jayo.http.internal.http.HttpHeaders.promisesBody;
 import static jayo.http.internal.http.HttpStatusCodes.HTTP_CONTINUE;
 import static jayo.http.internal.http2.RealBinaryHeader.*;
+import static jayo.http.tools.JayoHttpUtils.promisesBody;
 
 /**
  * Encode requests and responses using HTTP/2 frames.

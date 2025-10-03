@@ -35,10 +35,10 @@ import java.time.Duration;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 import static jayo.http.internal.Utils.*;
-import static jayo.http.internal.http.HttpHeaders.promisesBody;
 import static jayo.http.internal.http.HttpHeaders.receiveHeaders;
 import static jayo.http.internal.http.HttpStatusCodes.HTTP_CONTINUE;
 import static jayo.http.internal.http.HttpStatusCodes.HTTP_PROCESSING;
+import static jayo.http.tools.JayoHttpUtils.promisesBody;
 import static jayo.tools.JayoUtils.checkOffsetAndCount;
 
 /**

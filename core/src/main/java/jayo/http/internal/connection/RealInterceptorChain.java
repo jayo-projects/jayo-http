@@ -21,10 +21,7 @@
 
 package jayo.http.internal.connection;
 
-import jayo.http.ClientRequest;
-import jayo.http.ClientResponse;
-import jayo.http.Connection;
-import jayo.http.Interceptor;
+import jayo.http.*;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -87,6 +84,11 @@ public final class RealInterceptorChain implements Interceptor.Chain {
     @Override
     public @NonNull RealCall call() {
         return call;
+    }
+
+    @Override
+    public @NonNull JayoHttpClient client() {
+        return call.client;
     }
 
     @Override

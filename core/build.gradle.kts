@@ -25,12 +25,13 @@ dependencies {
     optional("org.jetbrains.kotlin:kotlin-stdlib")
 
     testImplementation(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
-    testImplementation("com.squareup.okhttp3:mockwebserver3-junit5:${catalogVersion("mockwebserver3")}")
+    testImplementation("com.squareup.okhttp3:mockwebserver3-junit5:${catalogVersion("okhttp")}")
 
     testFixturesApi(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
     testFixturesApi(testFixtures("dev.jayo:jayo-scheduler:${catalogVersion("jayo")}"))
-    testFixturesApi("org.junit.jupiter:junit-jupiter:${catalogVersion("junit")}")
-    testFixturesApi("org.assertj:assertj-core:${catalogVersion("assertj")}")
+    testFixturesImplementation("com.squareup.okhttp3:okhttp:${catalogVersion("okhttp")}")
+    testFixturesImplementation("org.junit.jupiter:junit-jupiter:${catalogVersion("junit")}")
+    testFixturesImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
 }
 
 fun ByteArray.toByteStringExpression(): String {
