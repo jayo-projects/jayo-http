@@ -353,6 +353,14 @@ public final class RealClientRequest implements ClientRequest {
         }
 
         @Override
+        public @NonNull ClientRequest query(@NonNull ClientRequestBody requestBody) {
+            Objects.requireNonNull(requestBody);
+            method = "QUERY";
+            body = requestBody;
+            return buildInternal();
+        }
+
+        @Override
         public @NonNull ClientRequest connect() {
             method = "CONNECT";
             return buildInternal();
