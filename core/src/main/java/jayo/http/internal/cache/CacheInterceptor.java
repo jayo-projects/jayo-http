@@ -252,7 +252,10 @@ public final class CacheInterceptor implements Interceptor {
         assert request != null;
 
         final var cacheUrlOverride = request.getCacheUrlOverride();
-        if (cacheUrlOverride != null && (request.getMethod().equals("GET") || request.getMethod().equals("POST"))) {
+        final var method = request.getMethod();
+
+        // Allow POST and QUERY caching only when there is a cacheUrlOverride
+        if (cacheUrlOverride != null && (HttpMethodUtils.isCacheable(method) || method.equals("POST"))) {
             return request.newBuilder()
                     .url(cacheUrlOverride)
                     .cacheUrlOverride(null)

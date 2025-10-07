@@ -249,6 +249,30 @@ public sealed interface ClientRequest permits RealClientRequest {
         ClientRequest patch(final @NonNull ClientRequestBody requestBody);
 
         /**
+         * Build a {@link ClientRequest} for a QUERY HTTP call
+         * <p>
+         * By default, {@code QUERY} requests are not cached. You can use {@link #cacheUrlOverride(HttpUrl)} to specify
+         * how to cache them.
+         * <p>
+         * A typical use case is to hash the request body:
+         * <pre>
+         * {@code
+         *     Buffer buffer = Buffer.create();
+         *     requestBody.writeTo(buffer);
+         *     String hash = Jayo.hash(buffer, JdkDigest.SHA_256).hex();
+         *     val query = ClientRequest.builder()
+         *         .query(requestBody)
+         *         .url("https://example.com/query")
+         *         .cacheUrlOverride(HttpUrl.get("https://example.com/query/" + hash))
+         *         .build();
+         * }
+         * </pre>
+         * @see #cacheUrlOverride(HttpUrl)
+         */
+        @NonNull
+        ClientRequest query(final @NonNull ClientRequestBody requestBody);
+
+        /**
          * Build a {@link ClientRequest} for a CONNECT HTTP call
          */
         @NonNull

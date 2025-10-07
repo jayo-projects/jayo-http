@@ -21,12 +21,14 @@
 
 package jayo.http.tools;
 
+import org.jspecify.annotations.NonNull;
+
 public final class HttpMethodUtils {
     // un-instantiable
     private HttpMethodUtils() {
     }
 
-    public static boolean invalidatesCache(String method) {
+    public static boolean invalidatesCache(final @NonNull String method) {
         return method.equals("POST") ||
                 method.equals("PATCH") ||
                 method.equals("PUT") ||
@@ -34,24 +36,29 @@ public final class HttpMethodUtils {
                 method.equals("MOVE");
     }
 
-    public static boolean requiresRequestBody(String method) {
+    public static boolean requiresRequestBody(final @NonNull String method) {
         return method.equals("POST") ||
                 method.equals("PUT") ||
                 method.equals("PATCH") ||
                 method.equals("PROPPATCH") ||
+                method.equals("QUERY") ||
                 // WebDAV
                 method.equals("REPORT");
     }
 
-    public static boolean permitsRequestBody(String method) {
+    public static boolean permitsRequestBody(final @NonNull String method) {
         return !(method.equals("GET") || method.equals("HEAD"));
     }
 
-    public static boolean redirectsWithBody(String method) {
+    public static boolean redirectsWithBody(final @NonNull String method) {
         return method.equals("PROPFIND");
     }
 
-    public static boolean redirectsToGet(String method) {
+    public static boolean redirectsToGet(final @NonNull String method) {
         return !method.equals("PROPFIND");
+    }
+
+    public static boolean isCacheable(final @NonNull String requestMethod) {
+        return requestMethod.equals("GET") || requestMethod.equals("QUERY");
     }
 }
