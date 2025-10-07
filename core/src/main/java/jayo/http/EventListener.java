@@ -32,6 +32,61 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+/**
+ * Listener for metrics events. Extend this class to monitor the quantity, size, and duration of your application's
+ * HTTP calls.
+ * <p>
+ * All start/connect/acquire events will eventually receive a matching end/release event, either successful (non-null
+ * parameters), or failed (non-null throwable). The first common parameters of each event pair are used to link the
+ * event in case of concurrent or repeated events e.g.
+ * {@code dnsStart(call, domainName)} → {@code dnsEnd(call, domainName, inetAddressList)}.
+ * <p>
+ * Events are typically nested with this structure:
+ * <ul>
+ * <li>call ({@link #callStart(Call)}, {@link #callEnd(Call)}, {@link #callFailed(Call, JayoException)}
+ * <ul>
+ * <li>dispatcher queue ({@link #dispatcherQueueStart(Call, Dispatcher)},
+ * {@link #dispatcherQueueEnd(Call, Dispatcher)})</li>
+ * <li>proxy selection ({@link #proxySelected(Call, HttpUrl, Proxy)}</li>
+ * <li>dns ({@link #dnsStart(Call, String)}, {@link #dnsEnd(Call, String, List)})</li>
+ * <li>connect ({@link #connectStart(Call, InetSocketAddress, Proxy)},
+ * {@link #connectEnd(Call, InetSocketAddress, Proxy, Protocol)},
+ * {@link #connectFailed(Call, InetSocketAddress, Proxy, Protocol, JayoException)})
+ * <ul>
+ * <li>secure connect ({@link #secureConnectStart(Call)}, {@link #secureConnectEnd(Call, Handshake)})
+ * </ul>
+ * </li>
+ * <li>connection held ({@link #connectionAcquired(Call, Connection)}, {@link #connectionReleased(Call, Connection)})
+ * <ul>
+ * <li>request ({@link #requestFailed(Call, JayoException)})
+ * <ul>
+ * <li>headers ({@link #requestHeadersStart(Call)}, {@link #requestHeadersEnd(Call, ClientRequest)})</li>
+ * <li>body ({@link #requestBodyStart(Call)}, {@link #requestBodyEnd(Call, long)})</li>
+ * </ul>
+ * </li>
+ * <li>response ({@link #responseFailed(Call, JayoException)})
+ * <ul>
+ * <li>headers ({@link #responseHeadersStart(Call)}, {@link #responseHeadersEnd(Call, ClientResponse)})</li>
+ * <li>body ({@link #responseBodyStart(Call)}, {@link #responseBodyEnd(Call, long)})</li>
+ * </li>
+ * </ul>
+ * </li>
+ * </ul>
+ * </li>
+ * </ul>
+ * This nesting is typical but not strict. For example, when calls use "Expect: continue", the request body start and
+ * end events occur within the response header events. Similarly, {@linkplain ClientRequestBody#isDuplex() duplex calls}
+ * interleave the request and response bodies.
+ * <p>
+ * Since connections may be reused, the proxy selection, DNS, and connect events may not be present for a call. In
+ * future releases of Jayo HTTP these events may also occur concurrently to permit multiple routes to be attempted
+ * simultaneously.
+ * <p>
+ * Events and sequences of events may be repeated for retries and follow-ups.
+ * <p>
+ * All event methods must execute fast, without external locking, cannot throw exceptions, attempt to mutate the event
+ * parameters, or be re-entrant back into the client. Any IO writing to files or network should be done asynchronously.
+ */
 public abstract class EventListener {
     /**
      * Invoked as soon as a call is enqueued or executed by a client. In the case of thread or stream limits, this call
@@ -44,7 +99,25 @@ public abstract class EventListener {
     }
 
     /**
-     * Invoked when proxy is selected. This selected proxy may be null.
+     * Invoked for calls that were not executed immediately because resources weren't available. The call will remain in
+     * the queue until resources are available.
+     * <p>
+     * Use {@link Dispatcher.Builder#maxRequests(int)} and {@link Dispatcher.Builder#maxRequestsPerHost(int)} to
+     * configure how many calls Jayo HTTP performs concurrently.
+     */
+    public void dispatcherQueueStart(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
+    }
+
+    /**
+     * Invoked when {@code call} will be executed immediately.
+     * <p>
+     * This method is invoked after {@link #dispatcherQueueStart(Call, Dispatcher)}.
+     */
+    public void dispatcherQueueEnd(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
+    }
+
+    /**
+     * Invoked when a proxy is selected. This selected proxy may be null.
      *
      * @param url a URL with only the scheme, hostname, and port specified.
      */

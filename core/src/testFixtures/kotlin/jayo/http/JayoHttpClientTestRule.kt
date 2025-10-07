@@ -22,6 +22,7 @@
 package jayo.http
 
 import jayo.http.JayoHttpClientTestRule.Companion.plus
+import jayo.http.internal.connection.ClientRuleEventListener
 import jayo.http.internal.connection.RealConnectionPool
 import jayo.http.internal.http2.Http2Connection
 import jayo.http.testing.Flaky

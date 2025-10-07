@@ -140,6 +140,16 @@ open class RecordingEventListener(
         }
     }
 
+    override fun dispatcherQueueStart(
+        call: Call,
+        dispatcher: Dispatcher,
+    ) = logEvent(DispatcherQueueStart(System.nanoTime(), call, dispatcher))
+
+    override fun dispatcherQueueEnd(
+        call: Call,
+        dispatcher: Dispatcher,
+    ) = logEvent(DispatcherQueueEnd(System.nanoTime(), call, dispatcher))
+
     override fun proxySelected(
         call: Call,
         url: HttpUrl,
