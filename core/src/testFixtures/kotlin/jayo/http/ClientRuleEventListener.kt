@@ -19,9 +19,10 @@
  * limitations under the License.
  */
 
-package jayo.http
+package jayo.http.internal.connection
 
 import jayo.JayoException
+import jayo.http.*
 import jayo.network.Proxy
 import jayo.tls.Handshake
 import jayo.tls.Protocol
@@ -44,6 +45,24 @@ class ClientRuleEventListener(
         logWithTime("callStart: ${call.request()}")
 
         delegate.callStart(call)
+    }
+
+    override fun dispatcherQueueStart(
+        call: Call,
+        dispatcher: Dispatcher,
+    ) {
+        logWithTime("dispatcherQueueStart: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
+
+        delegate.dispatcherQueueStart(call, dispatcher)
+    }
+
+    override fun dispatcherQueueEnd(
+        call: Call,
+        dispatcher: Dispatcher,
+    ) {
+        logWithTime("dispatcherQueueEnd: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
+
+        delegate.dispatcherQueueEnd(call, dispatcher)
     }
 
     override fun proxySelected(
