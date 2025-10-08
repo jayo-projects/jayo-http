@@ -75,7 +75,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     private final @NonNull Duration writeTimeout;
     private final int pingIntervalMillis;
     private final boolean retryOnConnectionFailure;
-    private final @NonNull ConnectionUser connectionUser;
+    private final @NonNull RealCall call;
     private final @NonNull RealRoutePlanner routePlanner;
     // Specifics to this plan.
     private final @NonNull Route route;
@@ -111,7 +111,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 final @NonNull Duration writeTimeout,
                 final int pingIntervalMillis,
                 final boolean retryOnConnectionFailure,
-                final @NonNull ConnectionUser connectionUser,
+                final @NonNull RealCall call,
                 final @NonNull RealRoutePlanner routePlanner,
                 final @NonNull Route route,
                 final @Nullable List<@NonNull Route> routes,
@@ -124,7 +124,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         assert readTimeout != null;
         assert writeTimeout != null;
         assert pingIntervalMillis >= 0;
-        assert connectionUser != null;
+        assert call != null;
         assert routePlanner != null;
         assert route != null;
         assert attempt >= 0;
@@ -135,7 +135,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         this.writeTimeout = writeTimeout;
         this.pingIntervalMillis = pingIntervalMillis;
         this.retryOnConnectionFailure = retryOnConnectionFailure;
-        this.connectionUser = connectionUser;
+        this.call = call;
         this.routePlanner = routePlanner;
         this.route = route;
         this.routes = routes;
@@ -163,7 +163,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 writeTimeout,
                 pingIntervalMillis,
                 retryOnConnectionFailure,
-                connectionUser,
+                call,
                 routePlanner,
                 route,
                 routes,
@@ -181,17 +181,20 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
         var success = false;
         // Tell the call about the connecting call so async cancels work.
-        connectionUser.addPlanToCancel(this);
+        call.plansToCancel.add(this);
         try {
-            connectionUser.connectStart(route);
+            call.eventListener.connectStart(call, route.getSocketAddress(), route.getAddress().getProxy());
+//            connectionPool.connectionListener.connectStart(route, call)
+
             connectNetworkSocket();
             success = true;
             return new ConnectResult(this, null, null);
-        } catch (JayoException e) {
-            connectionUser.connectFailed(route, null, e);
-            return new ConnectResult(this, null, e);
+        } catch (JayoException je) {
+            call.eventListener.connectFailed(call, route.getSocketAddress(), route.getAddress().getProxy(), null, je);
+//            connectionPool.connectionListener().connectFailed(route, call, je);
+            return new ConnectResult(this, null, je);
         } finally {
-            connectionUser.removePlanToCancel(this);
+            call.plansToCancel.remove(this);
             if (!success && rawSocket != null) {
                 Jayo.closeQuietly(rawSocket);
             }
@@ -241,7 +244,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         var success = false;
 
         // Tell the call about the connecting call so async cancels work.
-        connectionUser.addPlanToCancel(this);
+        call.plansToCancel.add(this);
         try {
             if (tunnelRequest != null) {
                 final var tunnelResult = connectTunnel();
@@ -261,7 +264,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                     throw new JayoException("TLS tunnel buffered too many bytes!");
                 }
 
-                connectionUser.secureConnectStart();
+                call.eventListener.secureConnectStart(call);
 
                 // Create the wrapper over the connected socket.
                 final var tlsParameterizer = route.getAddress().getClientTlsSocketBuilder().createParameterizer(
@@ -278,7 +281,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 ((RealConnectionSpec) connectionSpec)
                         .apply(tlsParameterizer, tlsEquipPlan.isTlsFallback, route.getAddress().getProtocols());
                 connectTls(tlsParameterizer);
-                connectionUser.secureConnectEnd(handshake);
+                call.eventListener.secureConnectEnd(call, handshake);
             } else {
                 protocol = route.getAddress().getProtocols().contains(Protocol.H2_PRIOR_KNOWLEDGE)
                         ? Protocol.H2_PRIOR_KNOWLEDGE
@@ -300,19 +303,20 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             connection.start();
 
             // Success.
-            connectionUser.callConnectEnd(route, protocol);
+            call.eventListener.connectEnd(call, route.getSocketAddress(), route.getAddress().getProxy(), protocol);
             success = true;
             return new ConnectResult(this, null, null);
-        } catch (JayoException e) {
-            connectionUser.connectFailed(route, null, e);
+        } catch (JayoException je) {
+            call.eventListener.connectFailed(call, route.getSocketAddress(), route.getAddress().getProxy(), null, je);
+//            connectionPool.connectionListener.connectFailed(route, call, je);
 
-            if (!retryOnConnectionFailure || !retryTlsHandshake(e)) {
+            if (!retryOnConnectionFailure || !retryTlsHandshake(je)) {
                 retryTlsConnection = null;
             }
 
-            return new ConnectResult(this, retryTlsConnection, e);
+            return new ConnectResult(this, retryTlsConnection, je);
         } finally {
-            connectionUser.removePlanToCancel(this);
+            call.plansToCancel.remove(this);
             if (!success) {
                 if (socket != null) {
                     Jayo.closeQuietly(socket);
@@ -447,14 +451,15 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
         final var nextAttempt = attempt + 1;
         if (nextAttempt < MAX_TUNNEL_ATTEMPTS) {
-            connectionUser.callConnectEnd(route, null);
+            call.eventListener.connectEnd(call, route.getSocketAddress(), route.getAddress().getProxy(), null);
             return new ConnectResult(this,
                     copy(nextAttempt, nextTunnelRequest, connectionSpecIndex, isTlsFallback),
                     null);
         } else {
             final var failure =
                     new JayoProtocolException("Too many tunnel connections attempted: " + MAX_TUNNEL_ATTEMPTS);
-            connectionUser.connectFailed(route, null, failure);
+            call.eventListener().connectFailed(call, route.getSocketAddress(), route.getAddress().getProxy(), null, failure);
+//            connectionPool.connectionListener.connectFailed(route, call, failure);
             return new ConnectResult(this, null, failure);
         }
     }
@@ -510,11 +515,11 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
      */
     @Override
     public @NonNull RealConnection handleSuccess() {
-        connectionUser.updateRouteDatabaseAfterSuccess(route);
+        call.client.routeDatabase.connected(route);
 
         assert connection != null;
         final var connection = this.connection;
-        connectionUser.connectionConnectEnd(connection, route);
+//        connection.connectionListener.connectEnd(connection, route, call)
 
         // If we raced another call connecting to this host, coalesce the connections. This makes for 3 different
         // lookups in the connection pool!
@@ -526,13 +531,13 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         connection.lock.lock();
         try {
             connectionPool.put(connection);
-            connectionUser.acquireConnectionNoEvents(connection);
+            call.acquireConnectionNoEvents(connection);
         } finally {
             connection.lock.unlock();
         }
 
-        connectionUser.connectionAcquired(connection);
-        connectionUser.connectionConnectionAcquired(connection);
+        call.eventListener.connectionAcquired(call, connection);
+//        connection.connectionListener.connectionAcquired(connection, call);
         return connection;
     }
 
@@ -570,7 +575,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 writeTimeout,
                 pingIntervalMillis,
                 retryOnConnectionFailure,
-                connectionUser,
+                call,
                 routePlanner,
                 route,
                 routes,

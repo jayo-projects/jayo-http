@@ -79,7 +79,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
         final var recoveredFailures = new ArrayList<JayoException>();
 
         while (true) {
-            call.enterNetworkInterceptorExchange(request, newRoutePlanner, realChain);
+            call.enterNetworkInterceptorExchange(request, newRoutePlanner);
 
             ClientResponse response;
             var closeActiveExchange = true;

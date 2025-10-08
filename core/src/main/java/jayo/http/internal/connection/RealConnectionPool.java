@@ -95,9 +95,9 @@ public final class RealConnectionPool implements ConnectionPool {
     }
 
     /**
-     * Attempts to acquire a recycled connection to {@code address} for {@code connectionUser}. Returns the connection
-     * if it was acquired, or null if no connection was acquired. The acquired connection will also be given to
-     * {@code connectionUser} who may (for example) assign it to a {@link RealCall#connection}.
+     * Attempts to acquire a recycled connection to {@code address} for {@code call}. Returns the connection if it was
+     * acquired, or null if no connection was acquired. The acquired connection will also be given to {@code call} who
+     * may (for example) assign it to a {@link RealCall#connection}.
      * <p>
      * This confirms the returned connection is healthy before returning it. If this encounters any unhealthy
      * connections in its search, this will clean them up.
@@ -108,11 +108,11 @@ public final class RealConnectionPool implements ConnectionPool {
     @Nullable
     RealConnection callAcquirePooledConnection(final boolean doExtensiveHealthChecks,
                                                final @NonNull Address address,
-                                               final @NonNull ConnectionUser connectionUser,
+                                               final @NonNull RealCall call,
                                                final @Nullable List<@NonNull Route> routes,
                                                final boolean requireMultiplexed) {
         assert address != null;
-        assert connectionUser != null;
+        assert call != null;
 
         for (final var connection : connections) {
             // In the first lock-protected block, acquire the connection if it can satisfy this call.
@@ -125,7 +125,7 @@ public final class RealConnectionPool implements ConnectionPool {
                     continue;
                 }
 
-                connectionUser.acquireConnectionNoEvents(connection);
+                call.acquireConnectionNoEvents(connection);
             } finally {
                 connection.lock.unlock();
             }
@@ -143,7 +143,7 @@ public final class RealConnectionPool implements ConnectionPool {
             try {
 //                noNewExchangesEvent = !connection.noNewExchanges;
                 connection.noNewExchanges = true;
-                toClose = connectionUser.releaseConnectionNoEvents();
+                toClose = call.releaseConnectionNoEvents();
             } finally {
                 connection.lock.unlock();
             }

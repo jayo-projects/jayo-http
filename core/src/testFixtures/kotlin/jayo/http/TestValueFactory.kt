@@ -146,15 +146,6 @@ class TestValueFactory : Closeable {
     ): Route =
         RealRoute(address, socketAddress)
 
-    fun newChain(call: RealCall): RealInterceptorChain =
-        RealInterceptorChain(
-            call,
-            listOf(),
-            0,
-            null,
-            call.request(),
-        )
-
     fun newRoutePlanner(
         client: JayoHttpClient,
         address: Address = newAddress(),
@@ -164,7 +155,6 @@ class TestValueFactory : Closeable {
             ClientRequest.get(address.url),
             false,
         )
-        val chain = newChain(call)
         return RealRoutePlanner(
             client.taskRunner,
             client.connectionPool as RealConnectionPool,
@@ -175,7 +165,8 @@ class TestValueFactory : Closeable {
             client.fastFallback(),
             address,
             client.routeDatabase,
-            CallConnectionUser(call, chain),
+            call,
+            call.request(),
         )
     }
 
