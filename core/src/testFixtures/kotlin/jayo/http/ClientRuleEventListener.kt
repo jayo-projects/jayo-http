@@ -31,7 +31,6 @@ import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 class ClientRuleEventListener(
-    val delegate: EventListener = NONE,
     var logger: (String) -> Unit,
 ) : EventListener(),
     EventListener.Factory {
@@ -43,8 +42,6 @@ class ClientRuleEventListener(
         startNs = System.nanoTime()
 
         logWithTime("callStart: ${call.request()}")
-
-        delegate.callStart(call)
     }
 
     override fun dispatcherQueueStart(
@@ -52,8 +49,6 @@ class ClientRuleEventListener(
         dispatcher: Dispatcher,
     ) {
         logWithTime("dispatcherQueueStart: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
-
-        delegate.dispatcherQueueStart(call, dispatcher)
     }
 
     override fun dispatcherQueueEnd(
@@ -61,8 +56,6 @@ class ClientRuleEventListener(
         dispatcher: Dispatcher,
     ) {
         logWithTime("dispatcherQueueEnd: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
-
-        delegate.dispatcherQueueEnd(call, dispatcher)
     }
 
     override fun proxySelected(
@@ -71,8 +64,6 @@ class ClientRuleEventListener(
         proxy: Proxy?,
     ) {
         logWithTime("proxySelected: $url $proxy")
-
-        delegate.proxySelected(call, url, proxy)
     }
 
     override fun dnsStart(
@@ -80,8 +71,6 @@ class ClientRuleEventListener(
         domainName: String,
     ) {
         logWithTime("dnsStart: $domainName")
-
-        delegate.dnsStart(call, domainName)
     }
 
     override fun dnsEnd(
@@ -90,8 +79,6 @@ class ClientRuleEventListener(
         inetAddressList: List<InetAddress>,
     ) {
         logWithTime("dnsEnd: $inetAddressList")
-
-        delegate.dnsEnd(call, domainName, inetAddressList)
     }
 
     override fun connectStart(
@@ -100,14 +87,10 @@ class ClientRuleEventListener(
         proxy: Proxy?,
     ) {
         logWithTime("connectStart: $inetSocketAddress $proxy")
-
-        delegate.connectStart(call, inetSocketAddress, proxy)
     }
 
     override fun secureConnectStart(call: Call) {
         logWithTime("secureConnectStart")
-
-        delegate.secureConnectStart(call)
     }
 
     override fun secureConnectEnd(
@@ -115,8 +98,6 @@ class ClientRuleEventListener(
         handshake: Handshake?,
     ) {
         logWithTime("secureConnectEnd: $handshake")
-
-        delegate.secureConnectEnd(call, handshake)
     }
 
     override fun connectEnd(
@@ -126,8 +107,6 @@ class ClientRuleEventListener(
         protocol: Protocol?,
     ) {
         logWithTime("connectEnd: $protocol")
-
-        delegate.connectEnd(call, inetSocketAddress, proxy, protocol)
     }
 
     override fun connectFailed(
@@ -138,8 +117,6 @@ class ClientRuleEventListener(
         je: JayoException,
     ) {
         logWithTime("connectFailed: $protocol $je")
-
-        delegate.connectFailed(call, inetSocketAddress, proxy, protocol, je)
     }
 
     override fun connectionAcquired(
@@ -147,8 +124,6 @@ class ClientRuleEventListener(
         connection: Connection,
     ) {
         logWithTime("connectionAcquired: $connection")
-
-        delegate.connectionAcquired(call, connection)
     }
 
     override fun connectionReleased(
@@ -156,14 +131,10 @@ class ClientRuleEventListener(
         connection: Connection,
     ) {
         logWithTime("connectionReleased")
-
-        delegate.connectionReleased(call, connection)
     }
 
     override fun requestHeadersStart(call: Call) {
         logWithTime("requestHeadersStart")
-
-        delegate.requestHeadersStart(call)
     }
 
     override fun requestHeadersEnd(
@@ -171,14 +142,10 @@ class ClientRuleEventListener(
         request: ClientRequest,
     ) {
         logWithTime("requestHeadersEnd")
-
-        delegate.requestHeadersEnd(call, request)
     }
 
     override fun requestBodyStart(call: Call) {
         logWithTime("requestBodyStart")
-
-        delegate.requestBodyStart(call)
     }
 
     override fun requestBodyEnd(
@@ -186,8 +153,6 @@ class ClientRuleEventListener(
         byteCount: Long,
     ) {
         logWithTime("requestBodyEnd: byteCount=$byteCount")
-
-        delegate.requestBodyEnd(call, byteCount)
     }
 
     override fun requestFailed(
@@ -195,14 +160,10 @@ class ClientRuleEventListener(
         je: JayoException,
     ) {
         logWithTime("requestFailed: $je")
-
-        delegate.requestFailed(call, je)
     }
 
     override fun responseHeadersStart(call: Call) {
         logWithTime("responseHeadersStart")
-
-        delegate.responseHeadersStart(call)
     }
 
     override fun responseHeadersEnd(
@@ -210,14 +171,10 @@ class ClientRuleEventListener(
         response: ClientResponse,
     ) {
         logWithTime("responseHeadersEnd: $response")
-
-        delegate.responseHeadersEnd(call, response)
     }
 
     override fun responseBodyStart(call: Call) {
         logWithTime("responseBodyStart")
-
-        delegate.responseBodyStart(call)
     }
 
     override fun responseBodyEnd(
@@ -225,8 +182,6 @@ class ClientRuleEventListener(
         byteCount: Long,
     ) {
         logWithTime("responseBodyEnd: byteCount=$byteCount")
-
-        delegate.responseBodyEnd(call, byteCount)
     }
 
     override fun responseFailed(
@@ -234,14 +189,10 @@ class ClientRuleEventListener(
         je: JayoException,
     ) {
         logWithTime("responseFailed: $je")
-
-        delegate.responseFailed(call, je)
     }
 
     override fun callEnd(call: Call) {
         logWithTime("callEnd")
-
-        delegate.callEnd(call)
     }
 
     override fun callFailed(
@@ -249,14 +200,10 @@ class ClientRuleEventListener(
         je: JayoException,
     ) {
         logWithTime("callFailed: $je")
-
-        delegate.callFailed(call, je)
     }
 
     override fun canceled(call: Call) {
         logWithTime("canceled")
-
-        delegate.canceled(call)
     }
 
     override fun satisfactionFailure(
@@ -264,14 +211,10 @@ class ClientRuleEventListener(
         response: ClientResponse,
     ) {
         logWithTime("satisfactionFailure")
-
-        delegate.satisfactionFailure(call, response)
     }
 
     override fun cacheMiss(call: Call) {
         logWithTime("cacheMiss")
-
-        delegate.cacheMiss(call)
     }
 
     override fun cacheHit(
@@ -279,8 +222,6 @@ class ClientRuleEventListener(
         response: ClientResponse,
     ) {
         logWithTime("cacheHit")
-
-        delegate.cacheHit(call, response)
     }
 
     override fun cacheConditionalHit(
@@ -288,8 +229,6 @@ class ClientRuleEventListener(
         cachedResponse: ClientResponse,
     ) {
         logWithTime("cacheConditionalHit")
-
-        delegate.cacheConditionalHit(call, cachedResponse)
     }
 
     override fun retryDecision(
@@ -298,8 +237,6 @@ class ClientRuleEventListener(
         retry: Boolean,
     ) {
         logWithTime("retryDecision")
-
-        delegate.retryDecision(call, je, retry)
     }
 
     override fun followUpDecision(
@@ -308,8 +245,6 @@ class ClientRuleEventListener(
         nextRequest: ClientRequest?,
     ) {
         logWithTime("followUpDecision")
-
-        delegate.followUpDecision(call, networkResponse, nextRequest)
     }
 
     private fun logWithTime(message: String) {

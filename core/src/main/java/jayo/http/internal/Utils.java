@@ -33,6 +33,7 @@ import java.io.Closeable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Locale;
 
 public final class Utils {
@@ -352,5 +353,21 @@ public final class Utils {
      */
     public static @NonNull String format(final @NonNull String format, final Object... args) {
         return String.format(Locale.US, format, args);
+    }
+
+
+    /**
+     * @return an array containing all elements of the original array and then all elements of the given
+     * {@code elements} array.
+     */
+    static <T> @NonNull T[] concat(final @NonNull T[] original, final @NonNull T[] elements) {
+        assert original != null;
+        assert elements != null;
+
+        final var originalLength = original.length;
+        final var elementsLength = elements.length;
+        final var result = Arrays.copyOf(original, originalLength + elementsLength);
+        System.arraycopy(elements, 0, result, originalLength, elementsLength);
+        return result;
     }
 }
