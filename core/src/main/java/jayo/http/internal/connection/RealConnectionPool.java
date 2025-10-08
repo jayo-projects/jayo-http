@@ -22,7 +22,6 @@
 package jayo.http.internal.connection;
 
 import jayo.Jayo;
-import jayo.JayoException;
 import jayo.Socket;
 import jayo.http.Address;
 import jayo.http.ConnectionPool;
@@ -34,22 +33,18 @@ import jayo.scheduler.TaskRunner;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.time.Duration;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ThreadLocalRandom;
 
 import static jayo.http.internal.Utils.JAYO_HTTP_NAME;
 
 public final class RealConnectionPool implements ConnectionPool {
-    private final @NonNull TaskRunner taskRunner;
+    /**
+     * The maximum number of idle connections across all addresses.
+     */
     private final int maxIdleConnections;
-    private final ExchangeFinder.@NonNull Factory exchangeFinderFactory;
 
     final long keepAliveDurationNs;
 
@@ -62,83 +57,17 @@ public final class RealConnectionPool implements ConnectionPool {
      */
     private final Collection<RealConnection> connections = new ConcurrentLinkedQueue<>();
 
-    @SuppressWarnings("FieldMayBeFinal")
-    private volatile @NonNull Map<@NonNull Address, @NonNull AddressState> addressStates = Map.of();
-    // VarHandle mechanics
-    private static final VarHandle ADDRESS_STATES;
-
-    static {
-        try {
-            final var l = MethodHandles.lookup();
-            ADDRESS_STATES = l.findVarHandle(RealConnectionPool.class, "addressStates", Map.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
-
     public RealConnectionPool(final int maxIdleConnections, final @NonNull Duration keepAlive) {
-        this(JayoHttpClient.DEFAULT_TASK_RUNNER, maxIdleConnections, keepAlive, Duration.ofSeconds(10),
-                Duration.ofSeconds(10), 10_000, true, true,
-                new RouteDatabase());
-    }
-
-    RealConnectionPool(final @NonNull TaskRunner taskRunner,
-                       final @NonNull Duration readTimeout,
-                       final @NonNull Duration writeTimeout,
-                       final int pingIntervalMillis,
-                       final boolean retryOnConnectionFailure,
-                       final boolean fastFallback,
-                       final @NonNull RouteDatabase routeDatabase) {
-        this(taskRunner, 5, Duration.ofMinutes(5), readTimeout, writeTimeout, pingIntervalMillis,
-                retryOnConnectionFailure, fastFallback, routeDatabase);
-    }
-
-    /**
-     * Create a new connection pool with tuning parameters appropriate for a single-user application. The tuning
-     * parameters in this pool are subject to change in future Jayo HTTP releases.
-     * <p>
-     * Currently, this pool holds up to 5 idle connections which will be evicted after 5 minutes of inactivity.
-     */
-    private RealConnectionPool(final @NonNull TaskRunner taskRunner,
-                               final int maxIdleConnections,
-                               final @NonNull Duration keepAlive,
-                               final @NonNull Duration readTimeout,
-                               final @NonNull Duration writeTimeout,
-                               final int pingIntervalMillis,
-                               final boolean retryOnConnectionFailure,
-                               final boolean fastFallback,
-                               final @NonNull RouteDatabase routeDatabase) {
-        this(taskRunner,
-                maxIdleConnections,
-                keepAlive,
-                (pool, address, user) -> new FastFallbackExchangeFinder(
-                        new ForceConnectRoutePlanner(
-                                new RealRoutePlanner(
-                                        taskRunner,
-                                        pool,
-                                        readTimeout,
-                                        writeTimeout,
-                                        pingIntervalMillis,
-                                        retryOnConnectionFailure,
-                                        fastFallback,
-                                        address,
-                                        routeDatabase,
-                                        user)
-                        ),
-                        taskRunner));
+        this(JayoHttpClient.DEFAULT_TASK_RUNNER, maxIdleConnections, keepAlive);
     }
 
     RealConnectionPool(final @NonNull TaskRunner taskRunner,
                        final int maxIdleConnections,
-                       final @NonNull Duration keepAlive,
-                       final ExchangeFinder.@NonNull Factory exchangeFinderFactory) {
+                       final @NonNull Duration keepAlive) {
         assert taskRunner != null;
         assert keepAlive != null;
-        assert exchangeFinderFactory != null;
 
-        this.taskRunner = taskRunner;
         this.maxIdleConnections = maxIdleConnections;
-        this.exchangeFinderFactory = exchangeFinderFactory;
 
         this.keepAliveDurationNs = keepAlive.toNanos();
         this.cleanupQueue = taskRunner.newScheduledQueue();
@@ -236,10 +165,6 @@ public final class RealConnectionPool implements ConnectionPool {
         scheduleCloser();
     }
 
-    private static long jitterBy(final long backoffDelayMillis, final int amount) {
-        return backoffDelayMillis + ThreadLocalRandom.current().nextInt(amount * -1, amount);
-    }
-
     /**
      * Notify this pool that {@code connection} has become idle. Returns true if the connection has been removed from
      * the pool and should be closed.
@@ -253,7 +178,6 @@ public final class RealConnectionPool implements ConnectionPool {
             if (connections.isEmpty()) {
                 cleanupQueue.cancelAll();
             }
-            scheduleOpener(connection.route().getAddress());
             return true;
         } else {
             scheduleCloser();
@@ -288,115 +212,6 @@ public final class RealConnectionPool implements ConnectionPool {
         if (connections.isEmpty()) {
             cleanupQueue.cancelAll();
         }
-
-        for (final var policy : addressStates.values()) {
-            scheduleOpener(policy);
-        }
-    }
-
-    /**
-     * Adds or replaces the policy for {@code address}.
-     * This will trigger a background task to start creating connections as needed.
-     */
-    void setPolicy(final @NonNull Address address, final @NonNull AddressPolicy policy) {
-        assert address != null;
-        assert policy != null;
-
-        final var newState = new AddressState(address, taskRunner.newScheduledQueue(), policy);
-        final int newConnectionsNeeded;
-
-        while (true) {
-            Map<Address, AddressState> oldMap = this.addressStates;
-            Map<Address, AddressState> newMap = new HashMap<>(oldMap);
-            newMap.put(address, newState);
-            if (ADDRESS_STATES.compareAndSet(this, oldMap, newMap)) {
-                final var oldState = oldMap.get(address);
-                final var oldPolicyMinimumConcurrentCalls =
-                        (oldState != null) ? oldState.policy.minimumConcurrentCalls : 0;
-                newConnectionsNeeded = policy.minimumConcurrentCalls - oldPolicyMinimumConcurrentCalls;
-                break;
-            }
-        }
-
-        if (newConnectionsNeeded > 0) {
-            scheduleOpener(newState);
-        } else if (newConnectionsNeeded < 0) {
-            scheduleCloser();
-        }
-    }
-
-    /**
-     * Open connections to {@code address}, if required by the address policy.
-     */
-    void scheduleOpener(final @NonNull Address address) {
-        assert address != null;
-
-        final var addressState = addressStates.get(address);
-        if (addressState != null) {
-            scheduleOpener(addressState);
-        }
-    }
-
-    private void scheduleOpener(final @NonNull AddressState addressState) {
-        assert addressState != null;
-
-        addressState.queue.schedule(JAYO_HTTP_NAME + " ConnectionPool connection opener", 0L,
-                () -> openConnections(addressState));
-    }
-
-    /**
-     * Ensure enough connections open to {@linkplain AddressState addressState}'s address to satisfy its
-     * {@linkplain AddressPolicy Address policy}. If there are already enough connections, we're done.
-     * If not, we create one and then schedule the task to run again immediately.
-     */
-    private long openConnections(final @NonNull AddressState addressState) {
-        assert addressState != null;
-
-        // This policy does not require minimum connections, don't run again
-        if (addressState.policy.minimumConcurrentCalls == 0) {
-            return -1L;
-        }
-
-        var concurrentCallCapacity = 0;
-        for (final var connection : connections) {
-            if (!addressState.address.equals(connection.route().getAddress())) {
-                continue;
-            }
-            connection.lock.lock();
-            try {
-                concurrentCallCapacity += connection.allocationLimit;
-            } finally {
-                connection.lock.unlock();
-            }
-
-            // The policy was satisfied by existing connections, don't run again
-            if (concurrentCallCapacity >= addressState.policy.minimumConcurrentCalls) {
-                return -1L;
-            }
-        }
-
-        // If we got here, then the policy was not satisfied -- open a connection!
-        try {
-            final var connection = exchangeFinderFactory
-                    .newExchangeFinder(this, addressState.address, PoolConnectionUser.INSTANCE)
-                    .find();
-
-            // RealRoutePlanner will add the connection to the pool itself, other RoutePlanners may not
-            // TODO: make all RoutePlanners consistent in this behavior
-            if (!connections.contains(connection)) {
-                connection.lock.lock();
-                try {
-                    put(connection);
-                } finally {
-                    connection.lock.unlock();
-                }
-            }
-
-            return 0L; // run again immediately to create more connections if needed
-        } catch (JayoException e) {
-            // No need to log, user.connectFailed() will already have been called. Just try again later.
-            return jitterBy(addressState.policy.backoffDelayMillis, addressState.policy.backoffJitterMillis) * 1000_000;
-        }
     }
 
     void scheduleCloser() {
@@ -412,25 +227,6 @@ public final class RealConnectionPool implements ConnectionPool {
      * further cleanups are required.
      */
     long closeConnections(long now) {
-        // Compute the concurrent call capacity for each address. We won't close a connection if doing so violates a
-        // policy, unless it's OLD.
-        final var addressStates = this.addressStates;
-        for (AddressState state : addressStates.values()) {
-            state.concurrentCallCapacity = 0;
-        }
-        for (final var connection : connections) {
-            final var addressState = addressStates.get(connection.route().getAddress());
-            if (addressState == null) {
-                continue;
-            }
-            connection.lock.lock();
-            try {
-                addressState.concurrentCallCapacity += connection.allocationLimit;
-            } finally {
-                connection.lock.unlock();
-            }
-        }
-
         // Find the longest-idle connections in 2 categories:
         //
         //  1. OLD: Connections that have been idle for at least keepAliveDurationNs. We close these if we find them,
@@ -464,12 +260,10 @@ public final class RealConnectionPool implements ConnectionPool {
                     earliestOldConnection = connection;
                 }
 
-                if (isEvictable(addressStates, connection)) {
-                    evictableConnectionCount++;
-                    if (idleAtNs < earliestEvictableIdleAtNs) {
-                        earliestEvictableIdleAtNs = idleAtNs;
-                        earliestEvictableConnection = connection;
-                    }
+                evictableConnectionCount++;
+                if (idleAtNs < earliestEvictableIdleAtNs) {
+                    earliestEvictableIdleAtNs = idleAtNs;
+                    earliestEvictableConnection = connection;
                 }
             } finally {
                 connection.lock.unlock();
@@ -508,10 +302,6 @@ public final class RealConnectionPool implements ConnectionPool {
                 connections.remove(toEvict);
             } finally {
                 toEvict.lock.unlock();
-            }
-            final var addressState = addressStates.get(toEvict.route().getAddress());
-            if (addressState != null) {
-                scheduleOpener(addressState);
             }
             Jayo.closeQuietly(toEvict.socket());
             //connectionListener.connectionClosed(toEvict);
@@ -565,46 +355,5 @@ public final class RealConnectionPool implements ConnectionPool {
         }
 
         return references.size();
-    }
-
-    /**
-     * @return true if no address policies prevent {@code connection} from being evicted.
-     */
-    private boolean isEvictable(final @NonNull Map<@NonNull Address, @NonNull AddressState> addressStates,
-                                final @NonNull RealConnection connection) {
-        assert addressStates != null;
-        assert connection != null;
-
-        final var addressState = addressStates.get(connection.route().getAddress());
-        if (addressState == null) {
-            return true;
-        }
-
-        final var capacityWithoutIt = addressState.concurrentCallCapacity - connection.allocationLimit;
-        return capacityWithoutIt >= addressState.policy.minimumConcurrentCalls;
-    }
-
-    private static final class AddressState {
-        private final @NonNull Address address;
-        private final @NonNull ScheduledTaskQueue queue;
-        private final @NonNull AddressPolicy policy;
-
-        private AddressState(final @NonNull Address address,
-                             final @NonNull ScheduledTaskQueue queue,
-                             final @NonNull AddressPolicy policy) {
-            assert address != null;
-            assert queue != null;
-            assert policy != null;
-
-            this.address = address;
-            this.queue = queue;
-            this.policy = policy;
-        }
-
-        /**
-         * How many calls the pool can carry without opening new connections. This field must only be accessed by the
-         * connection closer task.
-         */
-        private int concurrentCallCapacity = 0;
     }
 }

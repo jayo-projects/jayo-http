@@ -21,20 +21,16 @@
 
 package jayo.http.internal.connection
 
-import jayo.http.Address
 import jayo.http.ClientRequest
 import jayo.http.ConnectionPool
 import jayo.http.JayoHttpClient
 import jayo.http.internal.FakeRoutePlanner
 import jayo.http.internal.TestUtils.awaitGarbageCollection
-import jayo.http.internal.http2.Http2TestUtils.connectHttp2
-import jayo.http.internal.http2.Http2TestUtils.updateMaxConcurrentStreams
 import jayo.http.internal.http2.MockHttp2Peer
 import jayo.scheduler.TaskRunner
 import jayo.scheduler.internal.activeQueues
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
@@ -44,7 +40,6 @@ import kotlin.concurrent.withLock
 class ConnectionPoolTest {
     private val routePlanner = FakeRoutePlanner()
     private val factory = routePlanner.factory
-    private val taskFaker = routePlanner.taskFaker
     private val peer = MockHttp2Peer()
 
     /** The fake task runner prevents the cleanup runnable from being started.  */
@@ -202,11 +197,10 @@ class ConnectionPoolTest {
                 60L,
                 TimeUnit.SECONDS,
                 SynchronousQueue(),
-                { runnable ->
-                    Thread(runnable, "interruptStopsThread TaskRunner")
-                        .also { taskRunnerThreads += it }
-                },
-            )
+            ) { runnable ->
+                Thread(runnable, "interruptStopsThread TaskRunner")
+                    .also { taskRunnerThreads += it }
+            }
         )
 
         val pool =
@@ -224,92 +218,6 @@ class ConnectionPoolTest {
         }
         Thread.sleep(100)
         assertThat(taskRunner.activeQueues()).isEmpty()
-    }
-
-    @Test
-    fun connectionPreWarmingHttp1() {
-        taskFaker.advanceUntil(System.nanoTime())
-        val expireTime = taskFaker.nanoTime + 1_000_000_000_000
-
-        routePlanner.autoGeneratePlans = true
-        routePlanner.defaultConnectionIdleAtNanos = expireTime
-        val address = routePlanner.address
-        val pool = routePlanner.pool
-
-        // Connections are created as soon as a policy is set
-        setPolicy(pool, address, AddressPolicy(2, 60 * 1000, 100))
-        assertThat(pool.connectionCount()).isEqualTo(2)
-
-        // Connections are replaced if they idle out or are evicted from the pool
-        evictAllConnections(pool)
-        assertThat(pool.connectionCount()).isEqualTo(2)
-        forceConnectionsToExpire(pool, expireTime)
-        assertThat(pool.connectionCount()).isEqualTo(2)
-
-        // Excess connections aren't removed until they idle out, even if no longer needed
-        setPolicy(pool, address, AddressPolicy(1, 60 * 1000, 100))
-        assertThat(pool.connectionCount()).isEqualTo(2)
-        forceConnectionsToExpire(pool, expireTime)
-        assertThat(pool.connectionCount()).isEqualTo(1)
-    }
-
-    @Disabled("https://github.com/square/okhttp/issues/8451")
-    @Test
-    fun connectionPreWarmingHttp2() {
-        taskFaker.advanceUntil(System.nanoTime())
-        val expireSooner = taskFaker.nanoTime + 1_000_000_000_000
-        val expireLater = taskFaker.nanoTime + 2_000_000_000_000
-
-        routePlanner.autoGeneratePlans = true
-        val address = routePlanner.address
-        val pool = routePlanner.pool
-
-        // Add a connection to the pool that won't expire for a while
-        routePlanner.defaultConnectionIdleAtNanos = expireLater
-        setPolicy(pool, address, AddressPolicy(1, 60 * 1000, 100))
-        assertThat(pool.connectionCount()).isEqualTo(1)
-
-        // All other connections created will expire sooner
-        routePlanner.defaultConnectionIdleAtNanos = expireSooner
-
-        // Turn it into an http/2 connection that supports 5 concurrent streams which can satisfy a larger policy
-        val connection = routePlanner.plans.first().connection
-        val http2Connection = connectHttp2(peer, connection, 5, taskFaker)
-        setPolicy(pool, address, AddressPolicy(5, 60 * 1000, 100))
-        assertThat(pool.connectionCount()).isEqualTo(1)
-
-        // Decrease the connection's max so that another connection is needed
-        updateMaxConcurrentStreams(http2Connection, 4, taskFaker)
-        assertThat(pool.connectionCount()).isEqualTo(2)
-
-        // Increase the connection's max so that the new connection is no longer needed
-        updateMaxConcurrentStreams(http2Connection, 5, taskFaker)
-        forceConnectionsToExpire(pool, expireSooner)
-        assertThat(pool.connectionCount()).isEqualTo(1)
-    }
-
-    private fun setPolicy(
-        pool: RealConnectionPool,
-        address: Address,
-        policy: AddressPolicy,
-    ) {
-        pool.setPolicy(address, policy)
-        taskFaker.runTasks()
-    }
-
-    private fun evictAllConnections(pool: RealConnectionPool) {
-        pool.evictAll()
-        assertThat(pool.connectionCount()).isEqualTo(0)
-        taskFaker.runTasks()
-    }
-
-    private fun forceConnectionsToExpire(
-        pool: RealConnectionPool,
-        expireTime: Long,
-    ) {
-        val idleTimeNanos = expireTime + pool.keepAliveDurationNs
-        repeat(pool.connectionCount()) { pool.closeConnections(idleTimeNanos) }
-        taskFaker.runTasks()
     }
 
     /** Use a helper method so there's no hidden reference remaining on the stack.  */

@@ -58,7 +58,6 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public final class RealConnection extends Http2Connection.Listener implements Connection, ExchangeCodec.Carrier {
     private final @NonNull TaskRunner taskRunner;
-    private final @NonNull RealConnectionPool connectionPool;
     private final @NonNull Route route;
     /**
      * The low-level TCP socket.
@@ -120,7 +119,6 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     long idleAtNs = Long.MAX_VALUE;
 
     RealConnection(final @NonNull TaskRunner taskRunner,
-                   final @NonNull RealConnectionPool connectionPool,
                    final @NonNull Route route,
                    final @NonNull NetworkSocket rawSocket,
                    final @NonNull Socket socket,
@@ -128,7 +126,6 @@ public final class RealConnection extends Http2Connection.Listener implements Co
                    final @NonNull Protocol protocol,
                    final int pingIntervalMillis) {
         assert taskRunner != null;
-        assert connectionPool != null;
         assert route != null;
         assert rawSocket != null;
         assert socket != null;
@@ -136,7 +133,6 @@ public final class RealConnection extends Http2Connection.Listener implements Co
         assert pingIntervalMillis >= 0;
 
         this.taskRunner = taskRunner;
-        this.connectionPool = connectionPool;
         this.route = route;
         this.rawSocket = rawSocket;
         this.socket = socket;
@@ -399,16 +395,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
         lock.lock();
         try {
-            var oldLimit = allocationLimit;
             allocationLimit = settings.maxConcurrentStreams();
-
-            if (allocationLimit < oldLimit) {
-                // We might need new connections to keep policies satisfied
-                connectionPool.scheduleOpener(route.getAddress());
-            } else if (allocationLimit > oldLimit) {
-                // We might no longer need some connections
-                connectionPool.scheduleCloser();
-            }
         } finally {
             lock.unlock();
         }
@@ -501,12 +488,12 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     }
 
     public static @NonNull RealConnection newTestConnection(final @NonNull TaskRunner taskRunner,
-                                                            final @NonNull RealConnectionPool connectionPool,
                                                             final @NonNull Route route,
                                                             final @NonNull NetworkSocket networkSocket,
                                                             final long idleAtNs) {
         final var socket = new Socket() {
             private boolean canceled = false;
+
             @Override
             public @NonNull Reader getReader() {
                 return Buffer.create();
@@ -535,7 +522,6 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
         final var result = new RealConnection(
                 taskRunner,
-                connectionPool,
                 route,
                 networkSocket,
                 socket,
