@@ -22,6 +22,7 @@
 package jayo.http;
 
 import jayo.JayoException;
+import jayo.http.internal.AggregateEventListener;
 import jayo.network.Proxy;
 import jayo.tls.Handshake;
 import jayo.tls.Protocol;
@@ -31,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Listener for metrics events. Extend this class to monitor the quantity, size, and duration of your application's
@@ -467,6 +469,15 @@ public abstract class EventListener {
     public void followUpDecision(final @NonNull Call call,
                                  final @NonNull ClientResponse networkResponse,
                                  final @Nullable ClientRequest nextRequest) {
+    }
+
+    /**
+     * @return a new {@link EventListener} that publishes events to this and then {@code other}.
+     */
+    public final @NonNull EventListener plus(final @NonNull EventListener other) {
+        Objects.requireNonNull(other);
+
+        return AggregateEventListener.create(this, other);
     }
 
     @FunctionalInterface

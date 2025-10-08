@@ -120,10 +120,10 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
     }
 
     fun wrap(eventListener: EventListener) =
-        EventListener.Factory { ClientRuleEventListener(eventListener, ::addEvent) }
+        EventListener.Factory { ClientRuleEventListener(::addEvent) + eventListener }
 
     fun wrap(eventListenerFactory: EventListener.Factory) =
-        EventListener.Factory { call -> ClientRuleEventListener(eventListenerFactory.create(call), ::addEvent) }
+        EventListener.Factory { call -> ClientRuleEventListener(::addEvent) + eventListenerFactory.create(call) }
 
     /**
      * Returns a JayoHttpClient for tests to use as a starting point.
