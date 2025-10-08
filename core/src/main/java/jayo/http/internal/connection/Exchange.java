@@ -45,6 +45,11 @@ public final class Exchange {
     boolean isDuplex = false;
 
     /**
+     * True if the request body should not be used, but the socket, instead.
+     */
+    boolean isSocket = false;
+
+    /**
      * True if there was an exception on the connection to the peer.
      */
     boolean hasFailure = false;
@@ -166,10 +171,9 @@ public final class Exchange {
 
     @NonNull
     RawSocket upgradeToSocket() {
+        isSocket = true;
         call.timeoutEarlyExit();
         ((RealConnection) codec.getCarrier()).useAsSocket();
-
-        eventListener.requestBodyStart(call);
 
         return new RawSocket() {
             @Override
@@ -247,6 +251,7 @@ public final class Exchange {
         private final long contentLength;
         private boolean completed = false;
         private long bytesReceived = 0L;
+        private boolean invokeStartEvent = isSocket;
         private boolean closed = false;
 
         private RequestBodyRawWriter(final @NonNull RawWriter delegate, final long contentLength) {
@@ -268,6 +273,10 @@ public final class Exchange {
                         "expected " + contentLength + " bytes but received " + (bytesReceived + byteCount));
             }
             try {
+                if (invokeStartEvent) {
+                    invokeStartEvent = false;
+                    eventListener.requestBodyStart(call);
+                }
                 delegate.writeFrom(reader, byteCount);
                 bytesReceived += byteCount;
             } catch (JayoException e) {
