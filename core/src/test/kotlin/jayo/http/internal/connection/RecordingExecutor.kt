@@ -26,6 +26,9 @@ import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 
+/**
+ * A fake executor for testing that never executes anything! Instead, it just keeps track of what's been enqueued.
+ */
 internal class RecordingExecutor(
     private val dispatcherTest: DispatcherTest,
 ) : AbstractExecutorService() {

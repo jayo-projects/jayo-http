@@ -94,22 +94,7 @@ public final class RealDispatcher implements Dispatcher {
 
     void enqueue(final @NonNull AsyncCall call) {
         assert call != null;
-
-        lock.lock();
-        try {
-            readyAsyncCalls.add(call);
-
-            // Mutate the AsyncCall so that it shares the AtomicInteger of an existing running call to the same host.
-            if (!call.call().forWebSocket) {
-                final var existingCall = findExistingCallWithHost(call.host());
-                if (existingCall != null) {
-                    call.reuseCallsPerHostFrom(existingCall);
-                }
-            }
-        } finally {
-            lock.unlock();
-        }
-        promoteAndExecute();
+        promoteAndExecute(call, null, null);
     }
 
     private @Nullable AsyncCall findExistingCallWithHost(final @NonNull String host) {
@@ -148,60 +133,111 @@ public final class RealDispatcher implements Dispatcher {
      * Promotes eligible calls from {@link #readyAsyncCalls} to {@link #runningAsyncCalls} and runs them on the executor
      * service. Must not be called with synchronization because executing calls can call into user code.
      *
-     * @return true if the dispatcher is currently running calls.
+     * @param enqueuedCall      a call to enqueue in the synchronized block
+     * @param finishedCall      a call to finish in the synchronized block
+     * @param finishedAsyncCall an async call to finish in the synchronized block
      */
-    private boolean promoteAndExecute() {
-        final var executableCalls = new ArrayList<AsyncCall>();
-        boolean isRunning;
+    private void promoteAndExecute(final @Nullable AsyncCall enqueuedCall,
+                                   final @Nullable RealCall finishedCall,
+                                   final @Nullable AsyncCall finishedAsyncCall) {
+        final var executorIsShutdown = getExecutorService().isShutdown();
 
+        final Effects effects;
         lock.lock();
         try {
-            final var i = readyAsyncCalls.iterator();
-            while (i.hasNext()) {
-                final var asyncCall = i.next();
-
-                if (runningAsyncCalls.size() >= this.maxRequests) {
-                    break; // Max capacity.
-                }
-                if (asyncCall.callsPerHost.get() >= this.maxRequestsPerHost) {
-                    continue; // Host max capacity.
-                }
-
-                i.remove();
-                asyncCall.callsPerHost.incrementAndGet();
-                executableCalls.add(asyncCall);
-                runningAsyncCalls.add(asyncCall);
-            }
-            isRunning = runningCallsCount() > 0;
+            effects = computeEffects(enqueuedCall, finishedCall, finishedAsyncCall, executorIsShutdown);
         } finally {
             lock.unlock();
         }
 
-        // Avoid resubmitting if we can't logically progress, particularly because RealCall handles a
-        // RejectedExecutionException by executing on the same thread.
-        if (getExecutorService().isShutdown()) {
-            for (AsyncCall asyncCall : executableCalls) {
-                asyncCall.callsPerHost.decrementAndGet();
+        var callDispatcherQueueStart = true;
 
-                lock.lock();
-                try {
-                    runningAsyncCalls.remove(asyncCall);
-                } finally {
-                    lock.unlock();
-                }
+        for (final var call : effects.callsToExecute) {
+            // If the newly enqueued call is already out, skip its dispatcher queue events. We only publish those events
+            // for calls that have to wait.
+            if (call == enqueuedCall) {
+                callDispatcherQueueStart = false;
+            } else {
+                call.call().eventListener().dispatcherQueueEnd(call.call(), this);
+            }
 
-                asyncCall.failRejected(null);
-            }
-            if (idleCallback != null) {
-                idleCallback.run();
-            }
-        } else {
-            for (final var asyncCall : executableCalls) {
-                asyncCall.executeOn(getExecutorService());
+            if (executorIsShutdown) {
+                call.failRejected(null);
+            } else {
+                call.executeOn(getExecutorService());
             }
         }
 
-        return isRunning;
+        if (callDispatcherQueueStart && enqueuedCall != null) {
+            enqueuedCall.call().eventListener().dispatcherQueueStart(enqueuedCall.call(), this);
+        }
+
+        if (effects.idleCallbackToRun != null) {
+            effects.idleCallbackToRun.run();
+        }
+    }
+
+    private @NonNull Effects computeEffects(final @Nullable AsyncCall enqueuedCall,
+                                            final @Nullable RealCall finishedCall,
+                                            final @Nullable AsyncCall finishedAsyncCall,
+                                            final boolean executorIsShutdown) {
+        if (finishedCall != null) {
+            if (!runningSyncCalls.remove(finishedCall)) {
+                throw new IllegalStateException("Call wasn't in-flight!");
+            }
+        }
+
+        if (finishedAsyncCall != null) {
+            finishedAsyncCall.callsPerHost.decrementAndGet();
+            if (!runningAsyncCalls.remove(finishedAsyncCall)) {
+                throw new IllegalStateException("Call wasn't in-flight!");
+            }
+        }
+
+        if (enqueuedCall != null) {
+            readyAsyncCalls.add(enqueuedCall);
+
+            // Mutate the AsyncCall so that it shares the AtomicInteger of an existing running call to the same host
+            if (!enqueuedCall.call().forWebSocket) {
+                final var existingCall = findExistingCallWithHost(enqueuedCall.host());
+                if (existingCall != null) {
+                    enqueuedCall.reuseCallsPerHostFrom(existingCall);
+                }
+            }
+        }
+
+        final var becameIdle =
+                (finishedCall != null || finishedAsyncCall != null) &&
+                        (executorIsShutdown || runningAsyncCalls.isEmpty()) &&
+                        runningSyncCalls.isEmpty();
+        final var idleCallbackToRun = becameIdle ? idleCallback : null;
+
+        if (executorIsShutdown) {
+            final var callsToExecute = List.copyOf(readyAsyncCalls);
+            readyAsyncCalls.clear();
+            return new Effects(callsToExecute, idleCallbackToRun);
+        }
+
+        final var callsToExecute = new ArrayList<AsyncCall>();
+        final var i = readyAsyncCalls.iterator();
+        while (i.hasNext()) {
+            final var asyncCall = i.next();
+
+            if (runningAsyncCalls.size() >= this.maxRequests) {
+                break; // Max capacity.
+            }
+            if (asyncCall.callsPerHost.get() >= this.maxRequestsPerHost) {
+                continue; // Host max capacity.
+            }
+
+            i.remove();
+
+            asyncCall.callsPerHost.incrementAndGet();
+            callsToExecute.add(asyncCall);
+            runningAsyncCalls.add(asyncCall);
+        }
+
+        return new Effects(callsToExecute, idleCallbackToRun);
     }
 
     void executed(final @NonNull RealCall call) {
@@ -220,8 +256,7 @@ public final class RealDispatcher implements Dispatcher {
      */
     void finished(final @NonNull RealCall call) {
         assert call != null;
-
-        finishedPrivate(runningSyncCalls, call);
+        promoteAndExecute(null, call, null);
     }
 
     /**
@@ -229,28 +264,7 @@ public final class RealDispatcher implements Dispatcher {
      */
     void finished(final @NonNull AsyncCall asyncCall) {
         assert asyncCall != null;
-
-        asyncCall.callsPerHost.decrementAndGet();
-        finishedPrivate(runningAsyncCalls, asyncCall);
-    }
-
-    private <T> void finishedPrivate(final @NonNull Collection<T> calls, final T call) {
-        final Runnable idleCallback;
-        lock.lock();
-        try {
-            if (!calls.remove(call)) {
-                throw new AssertionError("Call wasn't in-flight!");
-            }
-            idleCallback = this.idleCallback;
-        } finally {
-            lock.unlock();
-        }
-
-        boolean isRunning = promoteAndExecute();
-
-        if (!isRunning && idleCallback != null) {
-            idleCallback.run();
-        }
+        promoteAndExecute(null, null, asyncCall);
     }
 
     /**
@@ -298,6 +312,22 @@ public final class RealDispatcher implements Dispatcher {
             return runningAsyncCalls.size() + runningSyncCalls.size();
         } finally {
             lock.unlock();
+        }
+    }
+
+    /**
+     * Actions to take outside the synchronized block.
+     */
+    private static final class Effects {
+        private final @NonNull List<@NonNull AsyncCall> callsToExecute;
+        private final @Nullable Runnable idleCallbackToRun;
+
+        private Effects(final @NonNull List<@NonNull AsyncCall> callsToExecute,
+                        final @Nullable Runnable idleCallbackToRun) {
+            assert callsToExecute != null;
+
+            this.callsToExecute = callsToExecute;
+            this.idleCallbackToRun = idleCallbackToRun;
         }
     }
 

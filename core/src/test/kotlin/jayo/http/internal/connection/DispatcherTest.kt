@@ -35,6 +35,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertFailsWith
 
+import jayo.http.CallEvent.*
+
 class DispatcherTest {
     @RegisterExtension
     val clientTestRule = JayoHttpClientTestRule()
@@ -82,6 +84,9 @@ class DispatcherTest {
     fun enqueuedJobsRunImmediately() {
         client.newCall(newRequest("http://a/1")).enqueue(callback)
         executor.assertJobs("http://a/1")
+
+        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueStart }
+        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueEnd }
     }
 
     @Test
@@ -92,6 +97,10 @@ class DispatcherTest {
         client.newCall(newRequest("http://b/1")).enqueue(callback)
         client.newCall(newRequest("http://b/2")).enqueue(callback)
         executor.assertJobs("http://a/1", "http://a/2", "http://b/1")
+
+        val dispatcherQueueStart = listener.removeUpToEvent<DispatcherQueueStart>()
+        assertThat(dispatcherQueueStart.call.request().url).isEqualTo("http://b/2".toHttpUrl())
+        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueEnd }
     }
 
     @Test
@@ -101,6 +110,11 @@ class DispatcherTest {
         client.newCall(newRequest("http://a/2")).enqueue(callback)
         client.newCall(newRequest("http://a/3")).enqueue(callback)
         executor.assertJobs("http://a/1", "http://a/2")
+
+        val dispatcherQueueStart = listener.removeUpToEvent<DispatcherQueueStart>()
+        assertThat(dispatcherQueueStart.call.request().url).isEqualTo("http://a/3".toHttpUrl())
+        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueEnd }
+
     }
 
 //    @Test
