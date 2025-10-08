@@ -21,6 +21,8 @@
 
 package jayo.http.tools;
 
+import jayo.JayoEOFException;
+import jayo.Reader;
 import jayo.http.ClientResponse;
 import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
@@ -75,5 +77,29 @@ public class JayoHttpUtils {
         }
 
         return false;
+    }
+
+    /**
+     * @return true if the body in question probably contains human-readable text. Uses a small sample of code points to
+     * detect Unicode control characters commonly used in binary file signatures.
+     */
+    public static boolean isProbablyUtf8(final @NonNull Reader reader, final long codePointLimit) {
+        assert reader != null;
+
+        try {
+            final var peek = reader.peek();
+            for (var i = 0L; i < codePointLimit; i++) {
+                if (peek.exhausted()) {
+                    break;
+                }
+                final var codePoint = peek.readUtf8CodePoint();
+                if (Character.isISOControl(codePoint) && !Character.isWhitespace(codePoint)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (JayoEOFException e) {
+            return false; // Truncated UTF-8 sequence.
+        }
     }
 }

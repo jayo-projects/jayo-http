@@ -21,6 +21,7 @@
 
 package jayo.http.internal;
 
+import jayo.Buffer;
 import jayo.http.*;
 import jayo.http.tools.HttpMethodUtils;
 import org.jspecify.annotations.NonNull;
@@ -34,6 +35,7 @@ import java.util.Objects;
 
 import static jayo.http.internal.Utils.isSensitiveHeader;
 import static jayo.http.internal.Utils.startsWithIgnoreCase;
+import static jayo.http.tools.JayoHttpUtils.isProbablyUtf8;
 
 public final class RealClientRequest implements ClientRequest {
     private final @NonNull HttpUrl url;
@@ -129,6 +131,59 @@ public final class RealClientRequest implements ClientRequest {
     @Override
     public @NonNull FromClientRequestBuilder newBuilder() {
         return new FromClientRequestBuilder(this);
+    }
+
+    @Override
+    public @NonNull String toCurl(boolean includeBody) {
+        final var result = new StringBuilder();
+        result.append("curl ").append(shellEscape(url.toString()));
+
+        @SuppressWarnings("DataFlowIssue")
+        final var contentType = (body != null && body.contentType() != null) ? body.contentType().toString() : null;
+
+        // Add method if not the default.
+        final String defaultMethod;
+        if (includeBody && body != null) {
+            defaultMethod = "POST";
+        } else {
+            defaultMethod = "GET";
+        }
+        if (!method.equals(defaultMethod)) {
+            result.append(" \\\n  -X ").append(shellEscape(method));
+        }
+
+        // Append headers.
+        for (var i = 0; i < headers.size(); i++) {
+            String name = headers.name(i);
+            if (contentType != null && name.equalsIgnoreCase("Content-Type")) {
+                continue;
+            }
+            String value = headers.value(i);
+            result.append(" \\\n  -H ").append(shellEscape(name + ": " + value));
+        }
+
+        if (contentType != null) {
+            result.append(" \\\n  -H ").append(shellEscape("Content-Type: " + contentType));
+        }
+
+        // Append body if present.
+        if (includeBody && body != null) {
+            final var bodyBuffer = Buffer.create();
+            body.writeTo(bodyBuffer);
+
+            if (isProbablyUtf8(bodyBuffer, Long.MAX_VALUE)) {
+                result.append(" \\\n  --data ").append(shellEscape(bodyBuffer.readString()));
+            } else {
+                result.append(" \\\n  --data-binary ").append(shellEscape(bodyBuffer.readByteString().hex()));
+            }
+        }
+
+        return result.toString();
+    }
+
+    private static @NonNull String shellEscape(final @NonNull String string) {
+        assert string != null;
+        return "'" + string.replace("'", "'\\''") + "'";
     }
 
     @Override
@@ -295,6 +350,10 @@ public final class RealClientRequest implements ClientRequest {
             assert method != null;
 
             if (gzip && body != null) {
+                final var contentEncoding = headers.get("Content-Encoding");
+                if (contentEncoding != null) {
+                    throw new IllegalStateException("Content-Encoding already set: " + contentEncoding);
+                }
                 headers.set("Content-Encoding", "gzip");
                 body = new GzipClientRequestBody(body);
             }

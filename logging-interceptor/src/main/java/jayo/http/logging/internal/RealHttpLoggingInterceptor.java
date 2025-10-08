@@ -197,7 +197,7 @@ public final class RealHttpLoggingInterceptor implements HttpLoggingInterceptor 
 
                 final var charset = charsetOrUtf8(responseBody.contentType());
 
-                if (!isProbablyUtf8(buffer)) {
+                if (!isProbablyUtf8(buffer, 16L)) {
                     logger.log("");
                     logger.log("<-- END HTTP (" + totalMs +
                             "ms, binary " + buffer.bytesAvailable() + "-byte body omitted)");
@@ -322,32 +322,6 @@ public final class RealHttpLoggingInterceptor implements HttpLoggingInterceptor 
                     _headersToRedact,
                     _queryParamsNameToRedact
             );
-        }
-    }
-
-    /**
-     * @return true if the body in question probably contains human-readable text. Uses a small sample of code points to
-     * detect Unicode control characters commonly used in binary file signatures.
-     */
-    static boolean isProbablyUtf8(final @NonNull Buffer buffer) {
-        assert buffer != null;
-
-        try {
-            final var prefix = Buffer.create();
-            final var byteCount = Math.min(buffer.bytesAvailable(), 64);
-            buffer.copyTo(prefix, 0, byteCount);
-            for (var i = 0; i < 16; i++) {
-                if (prefix.exhausted()) {
-                    break;
-                }
-                final var codePoint = prefix.readUtf8CodePoint();
-                if (Character.isISOControl(codePoint) && !Character.isWhitespace(codePoint)) {
-                    return false;
-                }
-            }
-            return true;
-        } catch (JayoEOFException e) {
-            return false; // Truncated UTF-8 sequence.
         }
     }
 }

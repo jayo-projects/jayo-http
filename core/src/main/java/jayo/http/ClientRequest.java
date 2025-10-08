@@ -91,6 +91,26 @@ public sealed interface ClientRequest permits RealClientRequest {
     FromClientRequestBuilder newBuilder();
 
     /**
+     * @return a cURL command equivalent to this request, useful for debugging and reproducing requests.
+     * <p>
+     * This includes the HTTP method, headers, request body (if present), and URL.
+     * <p>
+     * Example:
+     * <pre>
+     * {@code
+     * curl 'https://example.com/api' \
+     * -X PUT \
+     * -H 'Authorization: Bearer token' \
+     * --data '{\"key\":\"value\"}'
+     * }
+     * </pre>
+     * <b>Note:</b> This will consume the request body. This may have side effects if the {@link ClientRequestBody} is
+     * streaming or can be consumed only once.
+     */
+    @NonNull
+    String toCurl(final boolean includeBody);
+
+    /**
      * The abstract builder used to create a {@link ClientRequest} instance.
      */
     sealed interface AbstractBuilder<T extends AbstractBuilder<T>>
@@ -267,6 +287,7 @@ public sealed interface ClientRequest permits RealClientRequest {
          *         .build();
          * }
          * </pre>
+         *
          * @see #cacheUrlOverride(HttpUrl)
          */
         @NonNull
