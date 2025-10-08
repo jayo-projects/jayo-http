@@ -46,7 +46,7 @@ import static jayo.tools.HostnameUtils.canParseAsIpAddress;
 final class RouteSelector {
     private final @NonNull Address address;
     private final @NonNull RouteDatabase routeDatabase;
-    private final @NonNull ConnectionUser connectionUser;
+    private final @NonNull RealCall call;
     private final boolean fastFallback;
 
     private boolean firstRoute = true;
@@ -59,19 +59,19 @@ final class RouteSelector {
 
     RouteSelector(final @NonNull Address address,
                   final @NonNull RouteDatabase routeDatabase,
-                  final @NonNull ConnectionUser connectionUser,
+                  final @NonNull RealCall call,
                   final boolean fastFallback) {
         assert address != null;
         assert routeDatabase != null;
-        assert connectionUser != null;
+        assert call != null;
 
         this.address = address;
         this.routeDatabase = routeDatabase;
-        this.connectionUser = connectionUser;
+        this.call = call;
         this.fastFallback = fastFallback;
 
         // Prepares the proxy to try.
-        connectionUser.proxySelected(address.getUrl(), address.getProxy());
+        call.eventListener.proxySelected(call, address.getUrl(), address.getProxy());
     }
 
     /**
@@ -146,14 +146,14 @@ final class RouteSelector {
                     throw new JayoUnknownHostException(e);
                 }
             } else {
-                connectionUser.dnsStart(socketHost);
+                call.eventListener.dnsStart(call, socketHost);
 
                 final var result = address.getDns().lookup(socketHost);
                 if (result.isEmpty()) {
                     throw new JayoUnknownHostException(address.getDns() + " returned no addresses for " + socketHost);
                 }
 
-                connectionUser.dnsEnd(socketHost, result);
+                call.eventListener.dnsEnd(call, socketHost, result);
                 addresses = result;
             }
 

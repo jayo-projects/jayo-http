@@ -95,7 +95,7 @@ class ConnectionPoolTest {
             .connectionPool(pool)
             .build()
         val call = client.newCall(ClientRequest.get(addressA.url)) as RealCall
-        call.enterNetworkInterceptorExchange(call.request(), true, factory.newChain(call))
+        call.enterNetworkInterceptorExchange(call.request(), true)
         c1.lock.withLock { call.acquireConnectionNoEvents(c1) }
 
         // Running at time 50, the pool returns that nothing can be evicted until time 150.
@@ -229,7 +229,7 @@ class ConnectionPoolTest {
             .connectionPool(pool)
             .build()
         val call = client.newCall(ClientRequest.get(connection.route().address.url)) as RealCall
-        call.enterNetworkInterceptorExchange(call.request(), true, factory.newChain(call))
+        call.enterNetworkInterceptorExchange(call.request(), true)
         connection.lock.withLock { call.acquireConnectionNoEvents(connection) }
     }
 }

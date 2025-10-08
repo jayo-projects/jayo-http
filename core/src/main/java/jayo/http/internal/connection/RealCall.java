@@ -264,11 +264,8 @@ public final class RealCall implements Call {
      *
      * @param newRoutePlanner true if this is not a retry and new routing can be performed.
      */
-    void enterNetworkInterceptorExchange(final @NonNull ClientRequest request,
-                                         final boolean newRoutePlanner,
-                                         final @NonNull RealInterceptorChain chain) {
+    void enterNetworkInterceptorExchange(final @NonNull ClientRequest request, final boolean newRoutePlanner) {
         assert request != null;
-        assert chain != null;
 
         if (interceptorScopedExchange != null) {
             throw new IllegalStateException();
@@ -298,7 +295,8 @@ public final class RealCall implements Call {
                     client.fastFallback(),
                     client.address(request.getUrl()),
                     client.routeDatabase,
-                    new CallConnectionUser(this, chain)
+                    this,
+                    request
             );
             this.exchangeFinder = client.fastFallback()
                     ? new FastFallbackExchangeFinder(routePlanner, client.taskRunner)

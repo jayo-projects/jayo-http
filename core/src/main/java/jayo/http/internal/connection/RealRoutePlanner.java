@@ -52,7 +52,8 @@ final class RealRoutePlanner implements RoutePlanner {
     private final boolean fastFallback;
     private final @NonNull Address address;
     private final @NonNull RouteDatabase routeDatabase;
-    private final @NonNull ConnectionUser connectionUser;
+    private final @NonNull RealCall call;
+    private final boolean doExtensiveHealthChecks;
 
     private RouteSelector.@Nullable Selection routeSelection = null;
     private @Nullable RouteSelector routeSelector = null;
@@ -69,14 +70,16 @@ final class RealRoutePlanner implements RoutePlanner {
                      final boolean fastFallback,
                      final @NonNull Address address,
                      final @NonNull RouteDatabase routeDatabase,
-                     final @NonNull ConnectionUser connectionUser) {
+                     final @NonNull RealCall call,
+                     final @NonNull ClientRequest request) {
         assert taskRunner != null;
         assert connectionPool != null;
         assert readTimeout != null;
         assert writeTimeout != null;
         assert address != null;
         assert routeDatabase != null;
-        assert connectionUser != null;
+        assert call != null;
+        assert request != null;
 
         this.taskRunner = taskRunner;
         this.connectionPool = connectionPool;
@@ -87,7 +90,9 @@ final class RealRoutePlanner implements RoutePlanner {
         this.fastFallback = fastFallback;
         this.address = address;
         this.routeDatabase = routeDatabase;
-        this.connectionUser = connectionUser;
+        this.call = call;
+
+        this.doExtensiveHealthChecks = !request.getMethod().equals("GET");
     }
 
     @Override
@@ -102,7 +107,7 @@ final class RealRoutePlanner implements RoutePlanner {
 
     @Override
     public boolean isCanceled() {
-        return connectionUser.isCanceled();
+        return call.isCanceled();
     }
 
     @Override
@@ -144,24 +149,24 @@ final class RealRoutePlanner implements RoutePlanner {
      */
     private @Nullable ReusePlan planReuseCallConnection() {
         // This may be mutated by releaseConnectionNoEvents()!
-        final var candidate = connectionUser.candidateConnection();
+        final var candidate = call.connection;
         if (candidate == null) {
             return null;
         }
 
         // Make sure this connection is healthy and eligible for new exchanges. If it's no longer necessary, then we're
         // on the hook to close it.
-        final var healthy = candidate.isHealthy(connectionUser.doExtensiveHealthChecks());
-        var noNewExchangesEvent = false;
+        final var healthy = candidate.isHealthy(doExtensiveHealthChecks);
+//        var noNewExchangesEvent = false;
         final Socket toClose;
         candidate.lock.lock();
         try {
             if (!healthy) {
-                noNewExchangesEvent = !candidate.noNewExchanges;
+//                noNewExchangesEvent = !candidate.noNewExchanges;
                 candidate.noNewExchanges = true;
-                toClose = connectionUser.releaseConnectionNoEvents();
+                toClose = call.releaseConnectionNoEvents();
             } else if (candidate.noNewExchanges || !sameHostAndPort(candidate.route().getAddress().getUrl())) {
-                toClose = connectionUser.releaseConnectionNoEvents();
+                toClose = call.releaseConnectionNoEvents();
             } else {
                 toClose = null;
             }
@@ -171,7 +176,7 @@ final class RealRoutePlanner implements RoutePlanner {
 
         // If the call's connection wasn't released, reuse it. We don't call connectionAcquired() here because we
         // already acquired it.
-        if (connectionUser.candidateConnection() != null) {
+        if (call.connection != null) {
             if (toClose != null) {
                 throw new IllegalStateException();
             }
@@ -182,13 +187,13 @@ final class RealRoutePlanner implements RoutePlanner {
         if (toClose != null) {
             Jayo.closeQuietly(toClose);
         }
-        connectionUser.connectionReleased(candidate);
-        connectionUser.connectionConnectionReleased(candidate);
-        if (toClose != null) {
-            connectionUser.connectionConnectionClosed(candidate);
-        } else if (noNewExchangesEvent) {
-            connectionUser.noNewExchanges(candidate);
-        }
+        call.eventListener.connectionReleased(call, candidate);
+//        candidate.connectionListener.connectionReleased(candidate, call);
+//        if (toClose != null) {
+//            candidate.connectionListener.connectionClosed(candidate);
+//        } else if (noNewExchangesEvent) {
+//            candidate.connectionListener.noNewExchanges(candidate);
+//        }
         return null;
     }
 
@@ -216,7 +221,7 @@ final class RealRoutePlanner implements RoutePlanner {
             newRouteSelector = new RouteSelector(
                     address,
                     routeDatabase,
-                    connectionUser,
+                    call,
                     fastFallback
             );
             routeSelector = newRouteSelector;
@@ -262,7 +267,7 @@ final class RealRoutePlanner implements RoutePlanner {
                 writeTimeout,
                 pingIntervalMillis,
                 retryOnConnectionFailure,
-                connectionUser,
+                call,
                 this,
                 route,
                 routes,
@@ -386,9 +391,9 @@ final class RealRoutePlanner implements RoutePlanner {
     ReusePlan planReusePooledConnection(final @Nullable ConnectPlan planToReplace,
                                         final @Nullable List<@NonNull Route> routes) {
         final var result = connectionPool.callAcquirePooledConnection(
-                connectionUser.doExtensiveHealthChecks(),
+                doExtensiveHealthChecks,
                 address,
-                connectionUser,
+                call,
                 routes,
                 planToReplace != null && planToReplace.isReady());
         if (result == null) {
@@ -402,8 +407,8 @@ final class RealRoutePlanner implements RoutePlanner {
             planToReplace.closeQuietly();
         }
 
-        connectionUser.connectionAcquired(result);
-        connectionUser.connectionConnectionAcquired(result);
+        call.eventListener.connectionAcquired(call, result);
+//    result.connectionListener.connectionAcquired(result, call);
         return new ReusePlan(result);
     }
 }

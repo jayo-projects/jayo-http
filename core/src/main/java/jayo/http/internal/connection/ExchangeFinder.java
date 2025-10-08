@@ -21,7 +21,6 @@
 
 package jayo.http.internal.connection;
 
-import jayo.http.Address;
 import org.jspecify.annotations.NonNull;
 
 sealed interface ExchangeFinder permits FastFallbackExchangeFinder, SequentialExchangeFinder {
@@ -30,8 +29,4 @@ sealed interface ExchangeFinder permits FastFallbackExchangeFinder, SequentialEx
 
     @NonNull
     RealConnection find();
-
-    interface Factory {
-        ExchangeFinder newExchangeFinder(RealConnectionPool connectionPool, Address address, ConnectionUser user);
-    }
 }
