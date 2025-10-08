@@ -108,15 +108,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         if (builder.connectionPool != null) {
             this.connectionPool = builder.connectionPool;
         } else {
-            this.connectionPool = new RealConnectionPool(
-                    taskRunner,
-                    readTimeout,
-                    writeTimeout,
-                    pingIntervalMillis,
-                    retryOnConnectionFailure,
-                    fastFallback,
-                    routeDatabase
-            );
+            this.connectionPool = new RealConnectionPool(taskRunner, 5, Duration.ofMinutes(5));
             // Cache the pool in the builder so that it will be shared with other clients
             builder.connectionPool = connectionPool;
         }

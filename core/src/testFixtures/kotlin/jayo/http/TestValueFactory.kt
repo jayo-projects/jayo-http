@@ -81,7 +81,6 @@ class TestValueFactory : Closeable {
         val result =
             RealConnection.newTestConnection(
                 taskRunner,
-                pool,
                 route,
                 NetworkSocket.connectTcp(networkServer!!.localAddress),
                 idleAtNanos,
@@ -93,29 +92,11 @@ class TestValueFactory : Closeable {
     fun newConnectionPool(
         taskRunner: TaskRunner = this.taskRunner,
         maxIdleConnections: Int = Int.MAX_VALUE,
-        routePlanner: RoutePlanner? = null,
     ): RealConnectionPool =
         RealConnectionPool(
             taskRunner,
             maxIdleConnections,
             Duration.ofNanos(100L),
-            { pool, address, user ->
-                FastFallbackExchangeFinder(
-                    routePlanner ?: RealRoutePlanner(
-                        taskRunner,
-                        pool,
-                        Duration.ofMillis(10_000),
-                        Duration.ofMillis(10_000),
-                        10_000,
-                        false,
-                        true,
-                        address,
-                        RouteDatabase(),
-                        user,
-                    ),
-                    taskRunner,
-                )
-            },
         )
 
     /** Returns an address that's without a TLS socket builder or hostname verifier.  */

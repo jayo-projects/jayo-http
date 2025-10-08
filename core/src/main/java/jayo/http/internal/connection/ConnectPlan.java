@@ -289,7 +289,6 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             assert protocol != null;
             final var connection = new RealConnection(
                     taskRunner,
-                    connectionPool,
                     route,
                     _rawSocket,
                     socket,
