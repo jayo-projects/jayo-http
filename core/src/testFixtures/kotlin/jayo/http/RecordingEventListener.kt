@@ -109,7 +109,7 @@ open class RecordingEventListener(
         return result
     }
 
-    fun recordedEventTypes() = eventSequence.map { it.name }
+    fun recordedEventTypes() = eventSequence.map { it::class }
 
     fun clearAllEvents() {
         while (eventSequence.isNotEmpty()) {

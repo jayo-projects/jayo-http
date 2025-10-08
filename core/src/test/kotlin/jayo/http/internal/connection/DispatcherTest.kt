@@ -300,7 +300,7 @@ class DispatcherTest {
         client.newCall(request).enqueue(callback)
         callback.await(request.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(listener.recordedEventTypes())
-            .containsExactly("CallStart", "CallFailed")
+            .containsExactly(CallStart::class, CallFailed::class)
     }
 
     @Test
@@ -313,7 +313,7 @@ class DispatcherTest {
         client.newCall(request2).enqueue(callback)
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(listener.recordedEventTypes())
-            .containsExactly("CallStart", "CallStart", "CallFailed")
+            .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
     }
 
     @Test
@@ -326,7 +326,7 @@ class DispatcherTest {
         client.newCall(request2).enqueue(callback)
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(listener.recordedEventTypes())
-            .containsExactly("CallStart", "CallStart", "CallFailed")
+            .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
     }
 
     @Test
@@ -340,7 +340,7 @@ class DispatcherTest {
         executor.finishJob("http://a/1") // Trigger promotion.
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(listener.recordedEventTypes())
-            .containsExactly("CallStart", "CallStart", "CallFailed")
+            .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
     }
 
     private fun makeSynchronousCall(call: Call): Thread {
