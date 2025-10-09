@@ -297,7 +297,8 @@ public final class RealDispatcher implements Dispatcher {
         }
     }
 
-    int queuedCallsCount() {
+    @Override
+    public int queuedCallsCount() {
         lock.lock();
         try {
             return readyAsyncCalls.size();

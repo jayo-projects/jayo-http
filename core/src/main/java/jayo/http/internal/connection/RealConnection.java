@@ -487,6 +487,15 @@ public final class RealConnection extends Http2Connection.Listener implements Co
         return socket;
     }
 
+    @Override
+    public @NonNull String toString() {
+        return "Connection{" + route.getAddress().getUrl().getHost() + ":" + route.getAddress().getUrl().getPort() + "," +
+                " proxy=" + route.getAddress().getProxy() +
+                " hostAddress=" + route.getSocketAddress() +
+                " cipherSuite=" + (handshake != null ? handshake.getCipherSuite() : "none") +
+                " protocol=" + protocol + "}";
+    }
+
     public static @NonNull RealConnection newTestConnection(final @NonNull TaskRunner taskRunner,
                                                             final @NonNull Route route,
                                                             final @NonNull NetworkSocket networkSocket,
