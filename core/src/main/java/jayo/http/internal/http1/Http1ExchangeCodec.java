@@ -291,8 +291,8 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
 
             final var responseBuilder = ClientResponse.builder()
                     .protocol(statusLine.protocol)
-                    .code(statusLine.code)
-                    .message(statusLine.message)
+                    .statusCode(statusLine.code)
+                    .statusMessage(statusLine.message)
                     .headers(headersReader.readHeaders());
 
             if (expectContinue && statusLine.code == HTTP_CONTINUE) {

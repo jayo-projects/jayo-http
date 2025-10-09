@@ -271,8 +271,8 @@ public final class Http2ExchangeCodec implements ExchangeCodec {
 
         return new RealClientResponse.Builder()
                 .protocol(protocol)
-                .code(statusLine.code)
-                .message(statusLine.message)
+                .statusCode(statusLine.code)
+                .statusMessage(statusLine.message)
                 .headers(headersBuilder.build());
     }
 }
