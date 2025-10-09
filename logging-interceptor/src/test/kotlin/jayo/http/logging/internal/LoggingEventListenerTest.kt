@@ -213,8 +213,8 @@ class LoggingEventListenerTest {
         val response =
             ClientResponse.builder()
                 .request(request)
-                .code(200)
-                .message("")
+                .statusCode(200)
+                .statusMessage("")
                 .protocol(jayo.tls.Protocol.HTTP_2)
                 .build()
         val listener = loggingEventListenerFactory.create(call)

@@ -300,13 +300,13 @@ public final class RealClientResponse implements ClientResponse {
         }
 
         @Override
-        public @NonNull Builder code(final int code) {
+        public @NonNull Builder statusCode(final int code) {
             this.statusCode = code;
             return this;
         }
 
         @Override
-        public @NonNull Builder message(final @NonNull String message) {
+        public @NonNull Builder statusMessage(final @NonNull String message) {
             this.statusMessage = Objects.requireNonNull(message);
             return this;
         }

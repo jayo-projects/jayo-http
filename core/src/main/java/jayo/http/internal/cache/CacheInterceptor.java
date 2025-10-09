@@ -82,8 +82,8 @@ public final class CacheInterceptor implements Interceptor {
             final var response = ClientResponse.builder()
                     .request(chain.request())
                     .protocol(Protocol.HTTP_1_1)
-                    .code(HTTP_GATEWAY_TIMEOUT)
-                    .message("Unsatisfiable Request (only-if-cached)")
+                    .statusCode(HTTP_GATEWAY_TIMEOUT)
+                    .statusMessage("Unsatisfiable Request (only-if-cached)")
                     .sentRequestAt(Instant.MIN)
                     .receivedResponseAt(Instant.now())
                     .build();

@@ -301,8 +301,8 @@ final class RealRoutePlanner implements RoutePlanner {
                 ClientResponse.builder()
                         .request(proxyConnectRequest)
                         .protocol(Protocol.HTTP_1_1)
-                        .code(HttpURLConnection.HTTP_PROXY_AUTH)
-                        .message("Preemptive Authenticate")
+                        .statusCode(HttpURLConnection.HTTP_PROXY_AUTH)
+                        .statusMessage("Preemptive Authenticate")
                         .header("Proxy-Authenticate", JAYO_PREEMPTIVE_CHALLENGE)
                         .build();
 

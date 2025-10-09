@@ -69,10 +69,10 @@ class JavaNetAuthenticatorTest {
             .get()
         val response = ClientResponse.builder()
             .request(request)
-            .code(401)
+            .statusCode(401)
             .header("WWW-Authenticate", "Basic realm=\"User Visible Realm\"")
             .protocol(HTTP_2)
-            .message("Unauthorized")
+            .statusMessage("Unauthorized")
             .build()
         val authRequest = authenticator.authenticate(route, response)
 
@@ -93,10 +93,10 @@ class JavaNetAuthenticatorTest {
             .get()
         val response = ClientResponse.builder()
             .request(request)
-            .code(407)
+            .statusCode(407)
             .header("Proxy-Authenticate", "Basic realm=\"User Visible Realm\"")
             .protocol(HTTP_2)
-            .message("Unauthorized")
+            .statusMessage("Unauthorized")
             .build()
         val authRequest = authenticator.authenticate(route, response)
 
@@ -112,10 +112,10 @@ class JavaNetAuthenticatorTest {
 
         val response = ClientResponse.builder()
             .request(request)
-            .code(401)
+            .statusCode(401)
             .header("WWW-Authenticate", "UnsupportedScheme realm=\"User Visible Realm\"")
             .protocol(HTTP_2)
-            .message("Unauthorized")
+            .statusMessage("Unauthorized")
             .build()
 
         val authRequest = authenticator.authenticate(null, response)

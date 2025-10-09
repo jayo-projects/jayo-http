@@ -109,8 +109,8 @@ class ClientResponseTest {
                         .get(),
                 )
                 .protocol(Protocol.HTTP_1_1)
-                .code(200)
-                .message("OK")
+                .statusCode(200)
+                .statusMessage("OK")
                 .build()
         assertThat(response.body.contentType()).isNull()
         assertThat(response.body.contentByteSize()).isEqualTo(0L)
@@ -154,8 +154,8 @@ class ClientResponseTest {
                     .get(),
             )
             .protocol(Protocol.HTTP_1_1)
-            .code(code)
-            .message("OK")
+            .statusCode(code)
+            .statusMessage("OK")
             .body(responseBody)
             .apply { fn() }
             .build()

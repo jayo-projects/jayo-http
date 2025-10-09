@@ -240,10 +240,10 @@ public sealed interface ClientResponse extends Closeable permits RealClientRespo
         Builder protocol(final @NonNull Protocol protocol);
 
         @NonNull
-        Builder code(final int code);
+        Builder statusCode(final int code);
 
         @NonNull
-        Builder message(final @NonNull String message);
+        Builder statusMessage(final @NonNull String message);
 
         @NonNull
         Builder handshake(final @Nullable Handshake handshake);
