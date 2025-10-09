@@ -65,6 +65,8 @@ public sealed interface Dispatcher permits RealDispatcher {
     @NonNull
     ExecutorService getExecutorService();
 
+    int queuedCallsCount();
+
     /**
      * The builder used to create a {@link Dispatcher} instance.
      */
