@@ -29,7 +29,7 @@ dependencies {
 
     testFixturesApi(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
     testFixturesApi(testFixtures("dev.jayo:jayo-scheduler:${catalogVersion("jayo")}"))
-    testFixturesImplementation("com.squareup.okhttp3:okhttp:${catalogVersion("okhttp")}")
+    testFixturesImplementation("com.squareup.okhttp3:mockwebserver3:${catalogVersion("okhttp")}")
     testFixturesImplementation("org.junit.jupiter:junit-jupiter:${catalogVersion("junit")}")
     testFixturesImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
 }
