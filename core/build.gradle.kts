@@ -26,6 +26,8 @@ dependencies {
 
     testImplementation(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
     testImplementation("com.squareup.okhttp3:mockwebserver3-junit5:${catalogVersion("okhttp")}")
+    testImplementation("org.hamcrest:hamcrest-library:${catalogVersion("hamcrest")}")
+    testImplementation(project(":jayo-http-logging-interceptor"))
 
     testFixturesApi(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
     testFixturesApi(testFixtures("dev.jayo:jayo-scheduler:${catalogVersion("jayo")}"))

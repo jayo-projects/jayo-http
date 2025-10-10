@@ -46,7 +46,7 @@ class DispatcherTest {
     //    val webSocketListener =
 //        object : WebSocketListener() {
 //        }
-    val dispatcherBuilder = Dispatcher.newBuilder()
+    val dispatcherBuilder = Dispatcher.builder()
         .executorService(executor)
     val dispatcher: RealDispatcher by lazy { dispatcherBuilder.build() as RealDispatcher }
     val listener = RecordingEventListener()

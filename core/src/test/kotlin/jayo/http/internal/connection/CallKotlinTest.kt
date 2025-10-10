@@ -28,8 +28,6 @@ import jayo.http.internal.DoubleInetAddressDns
 import jayo.http.internal.TestUtils
 import jayo.http.internal.TestUtils.assertSuppressed
 import jayo.http.internal.connection.RealConnection.IDLE_CONNECTION_HEALTHY_NS
-import jayo.http.internal.sslSocketFactory
-import jayo.http.internal.toJayo
 import jayo.http.testing.Flaky
 import jayo.network.Proxy
 import jayo.tls.ClientTlsSocket
@@ -244,7 +242,7 @@ class CallKotlinTest {
         client =
             client
                 .newBuilder()
-                .proxies(Proxies.create(proxy))
+                .proxies(Proxies.of(proxy))
                 .connectTimeout(Duration.ofMillis(1))
                 .build()
 

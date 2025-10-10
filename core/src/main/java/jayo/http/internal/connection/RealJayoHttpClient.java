@@ -182,6 +182,11 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     }
 
     @Override
+    public @NonNull Dns getDns() {
+        return dns;
+    }
+
+    @Override
     public EventListener.@NonNull Factory getEventListenerFactory() {
         return eventListenerFactory;
     }

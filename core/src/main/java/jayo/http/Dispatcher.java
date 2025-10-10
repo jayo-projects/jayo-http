@@ -34,7 +34,7 @@ import java.util.concurrent.ExecutorService;
  * should be able to run the {@linkplain #getMaxRequests() configured maximum} number of calls concurrently.
  */
 public sealed interface Dispatcher permits RealDispatcher {
-    static @NonNull Builder newBuilder() {
+    static @NonNull Builder builder() {
         return new RealDispatcher.Builder();
     }
 

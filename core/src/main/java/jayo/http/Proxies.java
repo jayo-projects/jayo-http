@@ -22,7 +22,7 @@ public sealed interface Proxies permits RealProxies {
     /**
      * Creates a {@link Proxies} with a single {@link Proxy} that will be used for all {@linkplain HttpUrl HTTP urls}.
      */
-    static @NonNull Proxies create(final @NonNull Proxy proxy) {
+    static @NonNull Proxies of(final @NonNull Proxy proxy) {
         Objects.requireNonNull(proxy);
         return builder().defaultProxy(proxy).build();
     }
@@ -59,15 +59,15 @@ public sealed interface Proxies permits RealProxies {
          * Associates a proxy to a given host. This specific proxy will be {@linkplain #select(HttpUrl) selected} when
          * connecting to a url that matches this host.
          * <p>
-         * Even if a {@linkplain #defaultProxy(Proxy) default proxy} is set, it will never be used for all urls that
-         * match this host.
+         * Even if a {@linkplain #defaultProxy(Proxy) default proxy} is set, it will not be used for the urls that match
+         * this host.
          *
          * @param host  can be
          *              <ul>
          *              <li>A full host like {@code test-api.example.org}.
          *              <li>A domain suffix, like {@code example.org} or {@code .example.com}.
          *              <li>An IP address like {@code test-api.example.org}
-         *              <li>An IPv4 address, like {@code 127.0.0.1}.</li>
+         *              <li>An IPv4 address, like {@code 127.0.0.1}.
          *              <li>An IPv6 address, like {@code ::1}.
          *              </ul>
          * @param proxy the proxy associated with {@code host}. It may be {@code null} to force not using the
