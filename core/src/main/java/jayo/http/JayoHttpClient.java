@@ -164,6 +164,9 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
     @NonNull
     Dispatcher getDispatcher();
 
+    @NonNull
+    Dns getDns();
+
     EventListener.@NonNull Factory getEventListenerFactory();
 
     boolean fastFallback();

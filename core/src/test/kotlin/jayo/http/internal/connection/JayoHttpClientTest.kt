@@ -330,7 +330,7 @@ class JayoHttpClientTest {
         assertThat(
             (client
                 .newBuilder()
-                .proxies(Proxies.create(Proxy.socks4(InetSocketAddress(0))))
+                .proxies(Proxies.of(Proxy.socks4(InetSocketAddress(0))))
                 .build() as RealJayoHttpClient)
                 .routeDatabase
         ).isNotSameAs(client.routeDatabase)

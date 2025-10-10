@@ -101,9 +101,9 @@ internal fun ServerHandshakeCertificates.sslSocketFactory() =
 internal fun Proxy.toJayo() =
     when (type()) {
         Proxy.Type.DIRECT -> Proxies.EMPTY
-        Proxy.Type.HTTP -> Proxies.create(jayo.network.Proxy.http(address() as InetSocketAddress))
+        Proxy.Type.HTTP -> Proxies.of(jayo.network.Proxy.http(address() as InetSocketAddress))
         // let's forget Socks 4 for simplicity
-        Proxy.Type.SOCKS -> Proxies.create(jayo.network.Proxy.socks5(address() as InetSocketAddress))
+        Proxy.Type.SOCKS -> Proxies.of(jayo.network.Proxy.socks5(address() as InetSocketAddress))
     }
 
 internal fun List<Protocol>.toOkhttp() =
