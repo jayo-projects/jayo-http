@@ -36,10 +36,7 @@ import jayo.http.internal.connection.RoutePlanner.ConnectResult;
 import jayo.http.internal.connection.RoutePlanner.Plan;
 import jayo.http.internal.http.ExchangeCodec;
 import jayo.http.internal.http1.Http1ExchangeCodec;
-import jayo.network.JayoConnectException;
-import jayo.network.JayoUnknownServiceException;
-import jayo.network.NetworkSocket;
-import jayo.network.Proxy;
+import jayo.network.*;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.*;
 import org.jspecify.annotations.NonNull;
@@ -73,6 +70,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     private final @NonNull RealConnectionPool connectionPool;
     private final @NonNull Duration readTimeout;
     private final @NonNull Duration writeTimeout;
+    private final @NonNull Duration connectTimeout;
     private final int pingIntervalMillis;
     private final boolean retryOnConnectionFailure;
     private final @NonNull RealCall call;
@@ -95,10 +93,14 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     /**
      * The low-level TCP socket.
      */
-    private /* lateinit */ NetworkSocket rawSocket = null;
+    private /* lateinit */ NetworkSocket.Unconnected rawSocket = null;
     /**
-     * The application layer socket. Either a {@link TlsSocket} layered over {@link #rawSocket}, or
-     * {@link #rawSocket} itself if this connection does not use SSL.
+     * The connected TCP socket.
+     */
+    private /* lateinit */ NetworkSocket networkSocket = null;
+    /**
+     * The application layer socket. Either a {@link TlsSocket} layered over {@link #networkSocket}, or
+     * {@link #networkSocket} itself if this connection does not use SSL.
      */
     private /* lateinit */ Socket socket = null;
     private @Nullable Handshake handshake = null;
@@ -109,6 +111,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 final @NonNull RealConnectionPool connectionPool,
                 final @NonNull Duration readTimeout,
                 final @NonNull Duration writeTimeout,
+                final @NonNull Duration connectTimeout,
                 final int pingIntervalMillis,
                 final boolean retryOnConnectionFailure,
                 final @NonNull RealCall call,
@@ -123,6 +126,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         assert connectionPool != null;
         assert readTimeout != null;
         assert writeTimeout != null;
+        assert connectTimeout != null;
         assert pingIntervalMillis >= 0;
         assert call != null;
         assert routePlanner != null;
@@ -133,6 +137,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         this.connectionPool = connectionPool;
         this.readTimeout = readTimeout;
         this.writeTimeout = writeTimeout;
+        this.connectTimeout = connectTimeout;
         this.pingIntervalMillis = pingIntervalMillis;
         this.retryOnConnectionFailure = retryOnConnectionFailure;
         this.call = call;
@@ -161,6 +166,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 connectionPool,
                 readTimeout,
                 writeTimeout,
+                connectTimeout,
                 pingIntervalMillis,
                 retryOnConnectionFailure,
                 call,
@@ -175,7 +181,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
     @Override
     public @NonNull ConnectResult connectTcp() {
-        if (rawSocket != null) {
+        if (networkSocket != null) {
             throw new IllegalStateException("TCP already connected");
         }
 
@@ -195,8 +201,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             return new ConnectResult(this, null, je);
         } finally {
             call.plansToCancel.remove(this);
-            if (!success && rawSocket != null) {
-                Jayo.closeQuietly(rawSocket);
+            if (!success && networkSocket != null) {
+                Jayo.closeQuietly(networkSocket);
             }
         }
     }
@@ -206,19 +212,9 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
      * underlying socket.
      */
     private void connectNetworkSocket() {
-        final NetworkSocket rawSocket;
-        try {
-            if (route.getAddress().getProxy() instanceof Proxy.Socks socksProxy) {
-                rawSocket = route.getAddress().getNetworkSocketBuilder()
-                        .connectTcp(route.getSocketAddress(), socksProxy);
-            } else {
-                rawSocket = route.getAddress().getNetworkSocketBuilder().connectTcp(route.getSocketAddress());
-            }
-        } catch (JayoException e) {
-            final var connectException = new JayoConnectException("Failed to connect to " + route.getSocketAddress());
-            connectException.addSuppressed(e);
-            throw connectException;
-        }
+        final var rawSocket = NetworkSocket.builder()
+                .connectTimeout(connectTimeout)
+                .openTcp();
         this.rawSocket = rawSocket;
 
         // Handle the race where cancel() precedes connectNetworkSocket(). We don't want to miss a cancel.
@@ -226,15 +222,28 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             throw new JayoException("canceled");
         }
 
-        socket = rawSocket;
+        final NetworkSocket networkSocket;
+        try {
+            if (route.getAddress().getProxy() instanceof Proxy.Socks socksProxy) {
+                networkSocket = rawSocket.connect(route.getSocketAddress(), socksProxy);
+            } else {
+                networkSocket = rawSocket.connect(route.getSocketAddress());
+            }
+        } catch (JayoException e) {
+            final var connectException = new JayoConnectException("Failed to connect to " + route.getSocketAddress());
+            connectException.addSuppressed(e);
+            throw connectException;
+        }
+        this.networkSocket = networkSocket;
+        this.socket = networkSocket;
     }
 
     @Override
     public @NonNull ConnectResult connectTlsEtc() {
-        if (rawSocket == null) {
+        if (networkSocket == null) {
             throw new IllegalStateException("TCP not connected");
         }
-        final var _rawSocket = rawSocket;
+        final var _rawSocket = networkSocket;
         if (isReady()) {
             throw new IllegalStateException("already connected");
         }
@@ -445,8 +454,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         }
 
         // The proxy decided to close the connection after an auth challenge. Retry with different auth credentials.
-        if (rawSocket != null) {
-            Jayo.closeQuietly(rawSocket);
+        if (networkSocket != null) {
+            Jayo.closeQuietly(networkSocket);
         }
 
         final var nextAttempt = attempt + 1;
@@ -480,7 +489,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                     null,
                     this,
                     socket);
-            rawSocket.setReadTimeout(readTimeout);
+            networkSocket.setReadTimeout(readTimeout);
+            networkSocket.setWriteTimeout(writeTimeout);
             tunnelCodec.writeRequest(nextRequest.getHeaders(), requestLine);
             tunnelCodec.finishRequest();
             final var responseBuilder = tunnelCodec.readResponseHeaders(false);
@@ -560,9 +570,9 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     @Override
     public void cancel() {
         canceled = true;
-        // Close the raw socket so we don't end up doing synchronous I/O.
+        // Cancel the raw socket so we don't end up doing synchronous I/O.
         if (rawSocket != null) {
-            Jayo.closeQuietly(rawSocket);
+            rawSocket.cancel();
         }
     }
 
@@ -573,6 +583,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 connectionPool,
                 readTimeout,
                 writeTimeout,
+                connectTimeout,
                 pingIntervalMillis,
                 retryOnConnectionFailure,
                 call,

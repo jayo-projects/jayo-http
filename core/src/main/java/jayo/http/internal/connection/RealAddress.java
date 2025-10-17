@@ -22,7 +22,6 @@
 package jayo.http.internal.connection;
 
 import jayo.http.*;
-import jayo.network.NetworkSocket;
 import jayo.network.Proxy;
 import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
@@ -36,7 +35,6 @@ import java.util.Objects;
 public final class RealAddress implements Address {
     private final @NonNull HttpUrl url;
     private final @NonNull Dns dns;
-    private final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final ClientTlsSocket.@Nullable Builder clientTlsSocketBuilder;
     private final @Nullable HostnameVerifier hostnameVerifier;
     private final @Nullable CertificatePinner certificatePinner;
@@ -48,7 +46,6 @@ public final class RealAddress implements Address {
     RealAddress(final @NonNull String uriHost,
                 final int uriPort,
                 final @NonNull Dns dns,
-                final NetworkSocket.@NonNull Builder networkSocketBuilder,
                 final ClientTlsSocket.@Nullable Builder clientTlsSocketBuilder,
                 final @Nullable HostnameVerifier hostnameVerifier,
                 final @Nullable CertificatePinner certificatePinner,
@@ -59,7 +56,6 @@ public final class RealAddress implements Address {
         assert uriHost != null;
         assert uriPort > 0;
         assert dns != null;
-        assert networkSocketBuilder != null;
         assert protocols != null;
         assert connectionSpecs != null;
         assert proxyAuthenticator != null;
@@ -70,7 +66,6 @@ public final class RealAddress implements Address {
                 .port(uriPort)
                 .build();
         this.dns = dns;
-        this.networkSocketBuilder = networkSocketBuilder;
         this.clientTlsSocketBuilder = clientTlsSocketBuilder;
         this.hostnameVerifier = hostnameVerifier;
         this.certificatePinner = certificatePinner;
@@ -88,11 +83,6 @@ public final class RealAddress implements Address {
     @Override
     public @NonNull List<@NonNull Protocol> getProtocols() {
         return protocols;
-    }
-
-    @Override
-    public NetworkSocket.@NonNull Builder getNetworkSocketBuilder() {
-        return networkSocketBuilder;
     }
 
     @Override
