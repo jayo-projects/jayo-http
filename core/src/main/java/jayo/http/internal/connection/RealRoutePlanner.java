@@ -47,6 +47,7 @@ final class RealRoutePlanner implements RoutePlanner {
     private final @NonNull RealConnectionPool connectionPool;
     private final @NonNull Duration readTimeout;
     private final @NonNull Duration writeTimeout;
+    private final @NonNull Duration connectTimeout;
     private final int pingIntervalMillis;
     private final boolean retryOnConnectionFailure;
     private final boolean fastFallback;
@@ -65,6 +66,7 @@ final class RealRoutePlanner implements RoutePlanner {
                      final @NonNull RealConnectionPool connectionPool,
                      final @NonNull Duration readTimeout,
                      final @NonNull Duration writeTimeout,
+                     final @NonNull Duration connectTimeout,
                      final int pingIntervalMillis,
                      final boolean retryOnConnectionFailure,
                      final boolean fastFallback,
@@ -76,6 +78,7 @@ final class RealRoutePlanner implements RoutePlanner {
         assert connectionPool != null;
         assert readTimeout != null;
         assert writeTimeout != null;
+        assert connectTimeout != null;
         assert address != null;
         assert routeDatabase != null;
         assert call != null;
@@ -85,6 +88,7 @@ final class RealRoutePlanner implements RoutePlanner {
         this.connectionPool = connectionPool;
         this.readTimeout = readTimeout;
         this.writeTimeout = writeTimeout;
+        this.connectTimeout = connectTimeout;
         this.pingIntervalMillis = pingIntervalMillis;
         this.retryOnConnectionFailure = retryOnConnectionFailure;
         this.fastFallback = fastFallback;
@@ -265,6 +269,7 @@ final class RealRoutePlanner implements RoutePlanner {
                 connectionPool,
                 readTimeout,
                 writeTimeout,
+                connectTimeout,
                 pingIntervalMillis,
                 retryOnConnectionFailure,
                 call,

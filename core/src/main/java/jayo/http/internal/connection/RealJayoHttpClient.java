@@ -26,7 +26,6 @@ import jayo.http.internal.CertificateChainCleaner;
 import jayo.http.internal.JayoHostnameVerifier;
 import jayo.http.internal.RealCertificatePinner;
 import jayo.http.internal.ws.RealWebSocket;
-import jayo.network.NetworkSocket;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.ClientHandshakeCertificates;
 import jayo.tls.ClientTlsSocket;
@@ -63,7 +62,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final @NonNull List<@NonNull Interceptor> interceptors;
     private final long minWebSocketMessageToCompress;
     private final @NonNull List<@NonNull Interceptor> networkInterceptors;
-    private final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final int pingIntervalMillis;
     private final @NonNull List<@NonNull Protocol> protocols;
     private final @NonNull Proxies proxies;
@@ -112,9 +110,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             // Cache the pool in the builder so that it will be shared with other clients
             builder.connectionPool = connectionPool;
         }
-
-        this.networkSocketBuilder = NetworkSocket.builder()
-                .connectTimeout(builder.connectTimeout);
 
         // TLS
         if (connectionSpecs.stream().noneMatch(ConnectionSpec::isTls)) {
@@ -293,7 +288,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
                 url.getHost(),
                 url.getPort(),
                 dns,
-                networkSocketBuilder,
                 useClientTlsSocketBuilder,
                 useHostnameVerifier,
                 useCertificatePinner,

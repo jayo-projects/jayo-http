@@ -22,7 +22,6 @@
 package jayo.http;
 
 import jayo.http.internal.connection.RealAddress;
-import jayo.network.NetworkSocket;
 import jayo.network.Proxy;
 import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
@@ -55,8 +54,6 @@ public sealed interface Address permits RealAddress {
      */
     @NonNull
     List<@NonNull Protocol> getProtocols();
-
-    NetworkSocket.@NonNull Builder getNetworkSocketBuilder();
 
     ClientTlsSocket.@Nullable Builder getClientTlsSocketBuilder();
 

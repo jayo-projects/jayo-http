@@ -290,6 +290,7 @@ public final class RealCall implements Call {
                     connectionPool,
                     client.getReadTimeout(),
                     client.getWriteTimeout(),
+                    client.getConnectTimeout(),
                     client.getPingIntervalMillis(),
                     client.retryOnConnectionFailure(),
                     client.fastFallback(),
