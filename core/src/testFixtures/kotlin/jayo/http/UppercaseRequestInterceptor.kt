@@ -34,12 +34,14 @@ class UppercaseRequestInterceptor : Interceptor {
     /** Returns a request that transforms `request` to be all uppercase.  */
     private fun uppercaseRequest(request: ClientRequest): ClientRequest {
         val uppercaseBody: ClientRequestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun writeTo(destination: Writer) {
                     request.body!!.writeTo(uppercaseRawWriter(destination).buffered())
                 }
 
                 override fun contentType() = request.body!!.contentType()
+
+                override fun contentByteSize() = request.body!!.contentByteSize()
 
                 override fun isDuplex() = request.body!!.isDuplex
 

@@ -263,8 +263,10 @@ class HttpLoggingInterceptorTest {
         setLevel(Level.HEADERS)
         server.enqueue(MockResponse())
         val body: ClientRequestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun contentType() = PLAIN
+
+                override fun contentByteSize(): Long = -1L
 
                 override fun writeTo(destination: Writer) {
                     destination.write("Hi!")
@@ -1039,8 +1041,10 @@ class HttpLoggingInterceptorTest {
                 .build(),
         )
         val asyncRequestBody: ClientRequestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun contentType(): MediaType? = null
+
+                override fun contentByteSize(): Long = -1L
 
                 override fun writeTo(destination: Writer) {
                     destination.write("Hello request!")
@@ -1139,10 +1143,12 @@ class HttpLoggingInterceptorTest {
                 .build(),
         )
         val asyncRequestBody: ClientRequestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 var counter = 0
 
                 override fun contentType() = null
+
+                override fun contentByteSize(): Long = -1L
 
                 override fun writeTo(destination: Writer) {
                     counter++

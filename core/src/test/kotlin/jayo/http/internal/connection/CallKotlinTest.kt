@@ -114,8 +114,10 @@ class CallKotlinTest {
     @RetryingTest(5)
     @Flaky
     fun testHeadAfterPut() {
-        class ErringRequestBody : ClientRequestBody() {
+        class ErringRequestBody : ClientRequestBody {
             override fun contentType(): MediaType = "application/xml".toMediaType()
+
+            override fun contentByteSize(): Long = -1L
 
             override fun writeTo(destination: Writer) {
                 destination.write("<el")
@@ -124,8 +126,10 @@ class CallKotlinTest {
             }
         }
 
-        class ValidRequestBody : ClientRequestBody() {
+        class ValidRequestBody : ClientRequestBody {
             override fun contentType(): MediaType = "application/xml".toMediaType()
+
+            override fun contentByteSize(): Long = -1L
 
             override fun writeTo(destination: Writer) {
                 destination.write("<element/>")

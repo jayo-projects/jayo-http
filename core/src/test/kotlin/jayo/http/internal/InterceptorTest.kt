@@ -660,7 +660,7 @@ class InterceptorTest {
     }
 
     private fun uppercase(original: ClientRequestBody?): ClientRequestBody =
-        object : ClientRequestBody() {
+        object : ClientRequestBody {
             override fun contentType(): MediaType? = original!!.contentType()
 
             override fun contentByteSize(): Long = original!!.contentByteSize()

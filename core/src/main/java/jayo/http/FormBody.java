@@ -28,12 +28,12 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-public sealed abstract class FormBody extends ClientRequestBody permits RealFormBody {
+public sealed interface FormBody extends ClientRequestBody permits RealFormBody {
     /**
      * @return a new {@link FormBody} builder that uses the UTF-8 charset to encode key-value pairs in this form-encoded
      * body.
      */
-    public static @NonNull Builder builder() {
+    static @NonNull Builder builder() {
         return new RealFormBody.Builder(StandardCharsets.UTF_8);
     }
 
@@ -41,7 +41,7 @@ public sealed abstract class FormBody extends ClientRequestBody permits RealForm
      * @return a new {@link FormBody} builder that uses {@code charset} to encode key-value pairs in this form-encoded
      * body.
      */
-    public static @NonNull Builder builder(final @NonNull Charset charset) {
+    static @NonNull Builder builder(final @NonNull Charset charset) {
         Objects.requireNonNull(charset);
         return new RealFormBody.Builder(charset);
     }
@@ -49,22 +49,17 @@ public sealed abstract class FormBody extends ClientRequestBody permits RealForm
     /**
      * @return the number of key-value pairs in this form-encoded body.
      */
-    public abstract int getSize();
+    int getSize();
 
-    public abstract @NonNull String encodedName(final int index);
+    @NonNull String encodedName(final int index);
 
-    public abstract @NonNull String name(final int index);
+    @NonNull String name(final int index);
 
-    public abstract @NonNull String encodedValue(final int index);
+    @NonNull String encodedValue(final int index);
 
-    public abstract @NonNull String value(final int index);
+    @NonNull String value(final int index);
 
-    @Override
-    public final @NonNull MediaType contentType() {
-        return CONTENT_TYPE;
-    }
-
-    public sealed interface Builder permits RealFormBody.Builder {
+    sealed interface Builder permits RealFormBody.Builder {
         @NonNull
         Builder add(final @NonNull String name, final @NonNull String value);
 
@@ -74,6 +69,4 @@ public sealed abstract class FormBody extends ClientRequestBody permits RealForm
         @NonNull
         FormBody build();
     }
-
-    private static final @NonNull MediaType CONTENT_TYPE = MediaType.get("application/x-www-form-urlencoded");
 }

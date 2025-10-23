@@ -342,10 +342,6 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
             final var index = line.indexOf(':', 1);
             if (index != -1) {
                 addLenient(line.substring(0, index), line.substring(index + 1));
-            /*} else if (line.charAt(0) == ':') {
-                    // Work around empty header names and header names that start with a colon (created by old
-                    // broken SPDY versions of the response cache).
-                    addLenient("", line.substring(1)); // Empty header name.*/
             } else {
                 // No header name.
                 addLenient("", line);

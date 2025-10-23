@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
-final class GzipClientRequestBody extends ClientRequestBody {
+final class GzipClientRequestBody implements ClientRequestBody {
     private final ClientRequestBody delegate;
 
     GzipClientRequestBody(final @NonNull ClientRequestBody body) {
@@ -41,6 +41,11 @@ final class GzipClientRequestBody extends ClientRequestBody {
     @Override
     public @Nullable MediaType contentType() {
         return delegate.contentType();
+    }
+
+    @Override
+    public long contentByteSize() {
+        return -1L;
     }
 
     @Override
