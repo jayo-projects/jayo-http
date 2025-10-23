@@ -171,6 +171,11 @@ public final class StandardClientRequestBodies {
             }
 
             @Override
+            public long contentByteSize() {
+                return -1L;
+            }
+
+            @Override
             public boolean isOneShot() {
                 return true;
             }

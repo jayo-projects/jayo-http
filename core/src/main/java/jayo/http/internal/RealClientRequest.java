@@ -214,7 +214,7 @@ public final class RealClientRequest implements ClientRequest {
         return sb.toString();
     }
 
-    public static abstract sealed class AbstractBuilder<T extends ClientRequest.AbstractBuilder<T>>
+    public static sealed abstract class AbstractBuilder<T extends ClientRequest.AbstractBuilder<T>>
             implements ClientRequest.AbstractBuilder<T> {
         @Nullable HttpUrl url = null;
         /* lateinit */ String method = null;

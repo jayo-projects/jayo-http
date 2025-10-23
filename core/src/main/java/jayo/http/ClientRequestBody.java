@@ -32,16 +32,16 @@ import java.io.FileDescriptor;
 import java.nio.file.Path;
 import java.util.Objects;
 
-public abstract class ClientRequestBody {
+public interface ClientRequestBody {
     /**
      * The empty request body with no content-type.
      */
-    public static final @NonNull ClientRequestBody EMPTY = create(ByteString.EMPTY);
+    @NonNull ClientRequestBody EMPTY = create(ByteString.EMPTY);
 
     /**
      * @return a new request body that transmits {@code content} using UTF-8 charset.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull String content) {
+    static @NonNull ClientRequestBody create(final @NonNull String content) {
         return StandardClientRequestBodies.create(content, null);
     }
 
@@ -49,8 +49,8 @@ public abstract class ClientRequestBody {
      * @return a new request body that transmits {@code content}. If {@code contentType} lacks a charset, it will use
      * UTF-8.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull String content,
-                                                    final @NonNull MediaType contentType) {
+    static @NonNull ClientRequestBody create(final @NonNull String content,
+                                             final @NonNull MediaType contentType) {
         Objects.requireNonNull(contentType);
         Objects.requireNonNull(content);
         return StandardClientRequestBodies.create(content, contentType);
@@ -59,7 +59,7 @@ public abstract class ClientRequestBody {
     /**
      * @return a new request body that transmits {@code content} using UTF-8 charset.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull ByteString content) {
+    static @NonNull ClientRequestBody create(final @NonNull ByteString content) {
         return StandardClientRequestBodies.create(content, null);
     }
 
@@ -67,8 +67,8 @@ public abstract class ClientRequestBody {
      * @return a new request body that transmits {@code content}. If {@code contentType} lacks a charset, it will use
      * UTF-8.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull ByteString content,
-                                                    final @NonNull MediaType contentType) {
+    static @NonNull ClientRequestBody create(final @NonNull ByteString content,
+                                             final @NonNull MediaType contentType) {
         Objects.requireNonNull(contentType);
         Objects.requireNonNull(content);
         return StandardClientRequestBodies.create(content, contentType);
@@ -77,7 +77,7 @@ public abstract class ClientRequestBody {
     /**
      * @return a new request body that transmits all bytes from {@code content} using UTF-8 charset.
      */
-    public static @NonNull ClientRequestBody create(final byte @NonNull [] content) {
+    static @NonNull ClientRequestBody create(final byte @NonNull [] content) {
         Objects.requireNonNull(content);
         return create(content, 0, content.length);
     }
@@ -86,8 +86,8 @@ public abstract class ClientRequestBody {
      * @return a new request body that transmits all bytes from {@code content}. If {@code contentType} lacks a charset,
      * it will use UTF-8.
      */
-    public static @NonNull ClientRequestBody create(final byte @NonNull [] content,
-                                                    final @NonNull MediaType contentType) {
+    static @NonNull ClientRequestBody create(final byte @NonNull [] content,
+                                             final @NonNull MediaType contentType) {
         Objects.requireNonNull(content);
         Objects.requireNonNull(contentType);
         return create(content, contentType, 0, content.length);
@@ -99,9 +99,9 @@ public abstract class ClientRequestBody {
      * @throws IndexOutOfBoundsException if {@code offset} or {@code byteCount} is out of range of {@code content}
      *                                   indices.
      */
-    public static @NonNull ClientRequestBody create(final byte @NonNull [] content,
-                                                    final int offset,
-                                                    final int byteCount) {
+    static @NonNull ClientRequestBody create(final byte @NonNull [] content,
+                                             final int offset,
+                                             final int byteCount) {
         Objects.requireNonNull(content);
         return StandardClientRequestBodies.create(content, null, offset, byteCount);
     }
@@ -112,10 +112,10 @@ public abstract class ClientRequestBody {
      * @throws IndexOutOfBoundsException if {@code offset} or {@code byteCount} is out of range of {@code content}
      *                                   indices.
      */
-    public static @NonNull ClientRequestBody create(final byte @NonNull [] content,
-                                                    final @NonNull MediaType contentType,
-                                                    final int offset,
-                                                    final int byteCount) {
+    static @NonNull ClientRequestBody create(final byte @NonNull [] content,
+                                             final @NonNull MediaType contentType,
+                                             final int offset,
+                                             final int byteCount) {
         Objects.requireNonNull(content);
         Objects.requireNonNull(contentType);
         return StandardClientRequestBodies.create(content, contentType, offset, byteCount);
@@ -124,7 +124,7 @@ public abstract class ClientRequestBody {
     /**
      * @return a new request body that transmits {@code content} using UTF-8 charset.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull Path content) {
+    static @NonNull ClientRequestBody create(final @NonNull Path content) {
         Objects.requireNonNull(content);
         return StandardClientRequestBodies.create(content, null);
     }
@@ -133,7 +133,7 @@ public abstract class ClientRequestBody {
      * @return a new request body that transmits {@code content}. If {@code contentType} lacks a charset, it will use
      * UTF-8.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull Path content, final @NonNull MediaType contentType) {
+    static @NonNull ClientRequestBody create(final @NonNull Path content, final @NonNull MediaType contentType) {
         Objects.requireNonNull(content);
         Objects.requireNonNull(contentType);
         return StandardClientRequestBodies.create(content, contentType);
@@ -142,7 +142,7 @@ public abstract class ClientRequestBody {
     /**
      * @return a new request body that transmits {@code content} using UTF-8 charset.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull File content) {
+    static @NonNull ClientRequestBody create(final @NonNull File content) {
         Objects.requireNonNull(content);
         return StandardClientRequestBodies.create(content, null);
     }
@@ -151,7 +151,7 @@ public abstract class ClientRequestBody {
      * @return a new request body that transmits {@code content}. If {@code contentType} lacks a charset, it will use
      * UTF-8.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull File content, final @NonNull MediaType contentType) {
+    static @NonNull ClientRequestBody create(final @NonNull File content, final @NonNull MediaType contentType) {
         Objects.requireNonNull(content);
         Objects.requireNonNull(contentType);
         return StandardClientRequestBodies.create(content, contentType);
@@ -161,7 +161,7 @@ public abstract class ClientRequestBody {
      * @return a new request body that transmits the content of the file associated with {@code fileDescriptor} using
      * UTF-8 charset. This file descriptor represents an existing connection to an actual file in the file system.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull FileDescriptor fileDescriptor) {
+    static @NonNull ClientRequestBody create(final @NonNull FileDescriptor fileDescriptor) {
         Objects.requireNonNull(fileDescriptor);
         return StandardClientRequestBodies.create(fileDescriptor, null);
     }
@@ -171,8 +171,8 @@ public abstract class ClientRequestBody {
      * {@code contentType} lacks a charset, it will use UTF-8. This file descriptor represents an existing connection to
      * an actual file in the file system.
      */
-    public static @NonNull ClientRequestBody create(final @NonNull FileDescriptor fileDescriptor,
-                                                    final @NonNull MediaType contentType) {
+    static @NonNull ClientRequestBody create(final @NonNull FileDescriptor fileDescriptor,
+                                             final @NonNull MediaType contentType) {
         Objects.requireNonNull(fileDescriptor);
         Objects.requireNonNull(contentType);
         return StandardClientRequestBodies.create(fileDescriptor, contentType);
@@ -181,20 +181,18 @@ public abstract class ClientRequestBody {
     /**
      * @return the Content-Type header for this body.
      */
-    public abstract @Nullable MediaType contentType();
+    @Nullable MediaType contentType();
 
     /**
      * @return the number of bytes that will be written to the writer in a call to {@link #writeTo(Writer)}, or
      * {@code -1L} if that count is unknown.
      */
-    public long contentByteSize() {
-        return -1L;
-    }
+    long contentByteSize();
 
     /**
      * Writes the content of this request to {@code destination}.
      */
-    public abstract void writeTo(final @NonNull Writer destination);
+    void writeTo(final @NonNull Writer destination);
 
     /**
      * A duplex request body is special in how it is <b>transmitted</b> on the network and in the <b>API contract</b>
@@ -220,7 +218,7 @@ public abstract class ClientRequestBody {
      * request bodies, {@link #writeTo(Writer)} should return quickly, possibly by handing off the provided request body
      * to another thread to perform writing.
      */
-    public boolean isDuplex() {
+    default boolean isDuplex() {
         return false;
     }
 
@@ -241,7 +239,7 @@ public abstract class ClientRequestBody {
      * <li>A misdirected request (HTTP 421) on a coalesced connection.
      * </ul>
      */
-    public boolean isOneShot() {
+    default boolean isOneShot() {
         return false;
     }
 }

@@ -645,8 +645,10 @@ class DuplexTest {
                 ClientRequest.builder()
                     .url(server.url("/").toJayo())
                     .post(
-                        object : ClientRequestBody() {
+                        object : ClientRequestBody {
                             override fun contentType(): MediaType? = null
+
+                            override fun contentByteSize(): Long = -1L
 
                             override fun writeTo(destination: Writer) {
                                 try {
@@ -832,10 +834,12 @@ class DuplexTest {
     private inner class DelayedRequestBody(
         private val delegate: ClientRequestBody,
         delay: Duration,
-    ) : ClientRequestBody() {
+    ) : ClientRequestBody {
         private val delayMillis = delay.toMillis()
 
         override fun contentType() = delegate.contentType()
+
+        override fun contentByteSize() = -1L
 
         override fun isDuplex() = true
 

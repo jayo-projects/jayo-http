@@ -2066,10 +2066,12 @@ class CallTest {
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
             .post(
-                object : ClientRequestBody() {
+                object : ClientRequestBody {
                     var attempt = 0
 
                     override fun contentType(): MediaType? = null
+
+                    override fun contentByteSize(): Long = -1L
 
                     override fun writeTo(destination: Writer) {
                         destination.write("attempt " + attempt++)
@@ -2101,10 +2103,12 @@ class CallTest {
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
             .post(
-                object : ClientRequestBody() {
+                object : ClientRequestBody {
                     var attempt = 0
 
                     override fun contentType(): MediaType? = null
+
+                    override fun contentByteSize(): Long = -1L
 
                     override fun writeTo(destination: Writer) {
                         destination.write("attempt " + attempt++)
@@ -3257,8 +3261,10 @@ class CallTest {
         server.enqueue(MockResponse(body = "Response 1"))
         server.enqueue(MockResponse(body = "Response 2"))
         val requestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun contentType(): MediaType? = null
+
+                override fun contentByteSize(): Long = -1L
 
                 override fun writeTo(destination: Writer) {
                     destination.write("abc")
@@ -4067,7 +4073,7 @@ class CallTest {
     ): ClientRequestBody {
         val buffer = ByteArray(writeSize)
         Arrays.fill(buffer, 'x'.code.toByte())
-        return object : ClientRequestBody() {
+        return object : ClientRequestBody {
             override fun contentType() = "text/plain; charset=utf-8".toMediaType()
 
             override fun contentByteSize(): Long = if (chunked) -1L else size
@@ -4231,8 +4237,10 @@ class CallTest {
     fun postWithFileNotFound() {
         val called = AtomicInteger(0)
         val body: ClientRequestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun contentType(): MediaType = "application/octet-stream".toMediaType()
+
+                override fun contentByteSize(): Long = -1L
 
                 override fun writeTo(destination: Writer) {
                     called.incrementAndGet()
@@ -4326,8 +4334,10 @@ class CallTest {
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
             .post(
-                object : ClientRequestBody() {
+                object : ClientRequestBody {
                     override fun contentType(): MediaType? = null
+
+                    override fun contentByteSize(): Long = -1L
 
                     override fun writeTo(destination: Writer) {
                         destination.flush() // For determinism, always send a partial request to the server.
@@ -4443,7 +4453,7 @@ class CallTest {
 
     private fun makeFailingCall() {
         val requestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun contentType() = null
 
                 override fun contentByteSize() = 1L

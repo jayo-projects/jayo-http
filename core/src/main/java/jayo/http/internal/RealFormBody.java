@@ -24,6 +24,7 @@ package jayo.http.internal;
 import jayo.Buffer;
 import jayo.Writer;
 import jayo.http.FormBody;
+import jayo.http.MediaType;
 import jayo.tools.JayoUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -35,7 +36,9 @@ import java.util.Objects;
 
 import static jayo.http.internal.UrlUtils.*;
 
-public final class RealFormBody extends FormBody {
+public final class RealFormBody implements FormBody {
+    private static final @NonNull MediaType CONTENT_TYPE = MediaType.get("application/x-www-form-urlencoded");
+
     final @NonNull List<@NonNull String> encodedNames;
     final @NonNull List<@NonNull String> encodedValues;
 
@@ -81,6 +84,11 @@ public final class RealFormBody extends FormBody {
                 0,
                 encodedValue.length(),
                 true);
+    }
+
+    @Override
+    public @NonNull MediaType contentType() {
+        return CONTENT_TYPE;
     }
 
     public long contentByteSize() {

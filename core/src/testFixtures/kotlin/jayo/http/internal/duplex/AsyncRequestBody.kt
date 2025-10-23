@@ -30,10 +30,12 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit.SECONDS
 
 /** A duplex request body that keeps the provided writers so they can be written to later.  */
-class AsyncRequestBody : ClientRequestBody() {
+class AsyncRequestBody : ClientRequestBody {
     private val requestBodyWriters: BlockingQueue<Writer> = LinkedBlockingQueue()
 
     override fun contentType(): MediaType? = null
+
+    override fun contentByteSize(): Long = -1L
 
     override fun writeTo(destination: Writer) {
         requestBodyWriters.add(destination)

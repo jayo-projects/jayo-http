@@ -1390,7 +1390,7 @@ class EventListenerTest {
         assertThat(request.je).isNotNull()
     }
 
-    private inner class NonCompletingRequestBody : ClientRequestBody() {
+    private inner class NonCompletingRequestBody : ClientRequestBody {
         private val chunk: ByteArray = ByteArray(1024 * 1024)
         var je: JayoException? = null
 
@@ -1418,7 +1418,7 @@ class EventListenerTest {
     @Test
     fun requestBodyMultipleFailuresReportedOnlyOnce() {
         val requestBody: ClientRequestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun contentType() = "text/plain".toMediaType()
 
                 override fun contentByteSize(): Long = 1024 * 1024 * 256
@@ -1504,8 +1504,10 @@ class EventListenerTest {
     @Test
     fun requestBodySuccessStreaming() {
         val requestBody: ClientRequestBody =
-            object : ClientRequestBody() {
+            object : ClientRequestBody {
                 override fun contentType() = "text/plain".toMediaType()
+
+                override fun contentByteSize(): Long = -1L
 
                 override fun writeTo(destination: Writer) {
                     destination.write(ByteArray(8192))
@@ -1670,8 +1672,10 @@ class EventListenerTest {
                 ClientRequest.builder()
                     .url(server.url("/").toJayo())
                     .post(
-                        object : ClientRequestBody() {
+                        object : ClientRequestBody {
                             override fun contentType(): MediaType? = null
+
+                            override fun contentByteSize(): Long = -1L
 
                             override fun writeTo(destination: Writer) {
                                 try {
