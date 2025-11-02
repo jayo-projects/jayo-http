@@ -34,6 +34,7 @@ dependencies {
     testFixturesImplementation("com.squareup.okhttp3:mockwebserver3:${catalogVersion("okhttp")}")
     testFixturesImplementation("org.junit.jupiter:junit-jupiter:${catalogVersion("junit")}")
     testFixturesImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
+    testFixturesImplementation("ch.qos.logback:logback-classic:${catalogVersion("logback")}")
 }
 
 fun ByteArray.toByteStringExpression(): String {

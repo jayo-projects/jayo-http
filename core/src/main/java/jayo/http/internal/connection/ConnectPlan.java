@@ -50,7 +50,7 @@ import java.util.List;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.net.HttpURLConnection.HTTP_PROXY_AUTH;
 import static jayo.http.internal.UrlUtils.toHostHeader;
-import static jayo.tools.JayoUtils.createHandshake;
+import static jayo.tools.JayoTlsUtils.createHandshake;
 
 /**
  * A single attempt to connect to a remote server, including these steps:
@@ -71,7 +71,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     private final @NonNull Duration readTimeout;
     private final @NonNull Duration writeTimeout;
     private final @NonNull Duration connectTimeout;
-    private final int pingIntervalMillis;
+    private final @NonNull Duration pingInterval;
     private final boolean retryOnConnectionFailure;
     private final @NonNull RealCall call;
     private final @NonNull RealRoutePlanner routePlanner;
@@ -112,7 +112,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 final @NonNull Duration readTimeout,
                 final @NonNull Duration writeTimeout,
                 final @NonNull Duration connectTimeout,
-                final int pingIntervalMillis,
+                final @NonNull Duration pingInterval,
                 final boolean retryOnConnectionFailure,
                 final @NonNull RealCall call,
                 final @NonNull RealRoutePlanner routePlanner,
@@ -127,7 +127,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         assert readTimeout != null;
         assert writeTimeout != null;
         assert connectTimeout != null;
-        assert pingIntervalMillis >= 0;
+        assert pingInterval != null;
         assert call != null;
         assert routePlanner != null;
         assert route != null;
@@ -138,7 +138,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         this.readTimeout = readTimeout;
         this.writeTimeout = writeTimeout;
         this.connectTimeout = connectTimeout;
-        this.pingIntervalMillis = pingIntervalMillis;
+        this.pingInterval = pingInterval;
         this.retryOnConnectionFailure = retryOnConnectionFailure;
         this.call = call;
         this.routePlanner = routePlanner;
@@ -167,7 +167,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 readTimeout,
                 writeTimeout,
                 connectTimeout,
-                pingIntervalMillis,
+                pingInterval,
                 retryOnConnectionFailure,
                 call,
                 routePlanner,
@@ -306,7 +306,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                     socket,
                     handshake,
                     protocol,
-                    pingIntervalMillis
+                    pingInterval
             );
             this.connection = connection;
             connection.start();
@@ -584,7 +584,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 readTimeout,
                 writeTimeout,
                 connectTimeout,
-                pingIntervalMillis,
+                pingInterval,
                 retryOnConnectionFailure,
                 call,
                 routePlanner,

@@ -30,7 +30,7 @@ import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-final class UnreadableResponseBody extends ClientResponseBody implements RawReader {
+public final class UnreadableResponseBody extends ClientResponseBody implements RawReader {
     private final MediaType mediaType;
     private final long contentLength;
 

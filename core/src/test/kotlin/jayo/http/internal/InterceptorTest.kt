@@ -596,9 +596,7 @@ class InterceptorTest {
         call.enqueue(callback)
         val recordedResponse = callback.await(server.url("/").toJayo())
         assertThat(recordedResponse.failure).message().isEqualTo("canceled due to java.lang.RuntimeException: boom!")
-        recordedResponse.failure!!.assertSuppressed { throwables: List<Throwable>? ->
-            assertThat(throwables!!).contains(boom)
-        }
+        assertThat(recordedResponse.failure?.cause?.cause).isEqualTo(boom)
         assertThat(call.isCanceled()).isTrue()
         assertThat(executor.takeException()).isEqualTo(boom)
     }

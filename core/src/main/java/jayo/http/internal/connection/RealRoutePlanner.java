@@ -48,7 +48,7 @@ final class RealRoutePlanner implements RoutePlanner {
     private final @NonNull Duration readTimeout;
     private final @NonNull Duration writeTimeout;
     private final @NonNull Duration connectTimeout;
-    private final int pingIntervalMillis;
+    private final @NonNull Duration pingInterval;
     private final boolean retryOnConnectionFailure;
     private final boolean fastFallback;
     private final @NonNull Address address;
@@ -67,7 +67,7 @@ final class RealRoutePlanner implements RoutePlanner {
                      final @NonNull Duration readTimeout,
                      final @NonNull Duration writeTimeout,
                      final @NonNull Duration connectTimeout,
-                     final int pingIntervalMillis,
+                     final @NonNull Duration pingInterval,
                      final boolean retryOnConnectionFailure,
                      final boolean fastFallback,
                      final @NonNull Address address,
@@ -79,6 +79,7 @@ final class RealRoutePlanner implements RoutePlanner {
         assert readTimeout != null;
         assert writeTimeout != null;
         assert connectTimeout != null;
+        assert pingInterval != null;
         assert address != null;
         assert routeDatabase != null;
         assert call != null;
@@ -89,7 +90,7 @@ final class RealRoutePlanner implements RoutePlanner {
         this.readTimeout = readTimeout;
         this.writeTimeout = writeTimeout;
         this.connectTimeout = connectTimeout;
-        this.pingIntervalMillis = pingIntervalMillis;
+        this.pingInterval = pingInterval;
         this.retryOnConnectionFailure = retryOnConnectionFailure;
         this.fastFallback = fastFallback;
         this.address = address;
@@ -270,7 +271,7 @@ final class RealRoutePlanner implements RoutePlanner {
                 readTimeout,
                 writeTimeout,
                 connectTimeout,
-                pingIntervalMillis,
+                pingInterval,
                 retryOnConnectionFailure,
                 call,
                 this,

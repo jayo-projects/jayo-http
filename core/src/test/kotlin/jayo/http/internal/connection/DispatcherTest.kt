@@ -43,9 +43,9 @@ class DispatcherTest {
     private val executor = RecordingExecutor(this)
     val callback = RecordingCallback()
 
-    //    val webSocketListener =
-//        object : WebSocketListener() {
-//        }
+    val webSocketListener =
+        object : WebSocketListener() {
+        }
     val dispatcherBuilder = Dispatcher.builder()
         .executorService(executor)
     val dispatcher: RealDispatcher by lazy { dispatcherBuilder.build() as RealDispatcher }
@@ -117,14 +117,14 @@ class DispatcherTest {
 
     }
 
-//    @Test
-//    fun maxPerHostNotEnforcedForWebSockets() {
-//        dispatcherBuilder.maxRequestsPerHost(2)
-//        client.newWebSocket(newRequest("http://a/1"), webSocketListener)
-//        client.newWebSocket(newRequest("http://a/2"), webSocketListener)
-//        client.newWebSocket(newRequest("http://a/3"), webSocketListener)
-//        executor.assertJobs("http://a/1", "http://a/2", "http://a/3")
-//    }
+    @Test
+    fun maxPerHostNotEnforcedForWebSockets() {
+        dispatcherBuilder.maxRequestsPerHost(2)
+        client.newWebSocket(newRequest("http://a/1"), webSocketListener)
+        client.newWebSocket(newRequest("http://a/2"), webSocketListener)
+        client.newWebSocket(newRequest("http://a/3"), webSocketListener)
+        executor.assertJobs("http://a/1", "http://a/2", "http://a/3")
+    }
 
     @Test
     fun oldJobFinishesNewJobCanRunDifferentHost() {

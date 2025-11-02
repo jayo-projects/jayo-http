@@ -62,7 +62,7 @@ class JayoHttpClientTest {
         assertThat(client.readTimeout).isEqualTo(Duration.ofSeconds(10L))
         assertThat(client.webSocketCloseTimeout).isEqualTo(Duration.ofSeconds(60L))
         assertThat(client.writeTimeout).isEqualTo(Duration.ofSeconds(10L))
-        assertThat(client.pingIntervalMillis).isEqualTo(0)
+        assertThat(client.pingInterval).isEqualTo(Duration.ZERO)
     }
 
     @Test
@@ -357,16 +357,14 @@ class JayoHttpClientTest {
         ).isNotSameAs(client.routeDatabase)
     }
 
-//    @Test
-//    fun minWebSocketMessageToCompressNegative() {
-//        val builder = JayoHttpClient.builder()
-//        assertFailsWith<IllegalArgumentException> {
-//            builder.minWebSocketMessageToCompress(-1024)
-//        }.also { expected ->
-//            assertThat(expected.message)
-//                .isEqualTo("minWebSocketMessageToCompress must be positive: -1024")
-//        }
-//    }
+    @Test
+    fun minWebSocketMessageToCompressNegative() {
+        val builder = JayoHttpClient.builder()
+        assertThatThrownBy {
+            builder.minWebSocketMessageToCompress(-1024)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("minWebSocketMessageToCompress < 0L: -1024")
+    }
 
     companion object {
         //        private val DEFAULT_PROXY_SELECTOR = ProxySelector.getDefault()

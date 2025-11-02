@@ -43,6 +43,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.ref.Reference;
+import java.net.SocketException;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -70,7 +71,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     private final @NonNull Socket socket;
     private final @Nullable Handshake handshake;
     private final @NonNull Protocol protocol;
-    private final int pingIntervalMillis;
+    private final @NonNull Duration pingInterval;
     // todo (maybe) : ConnectionListener
 
     private @Nullable Http2Connection http2Connection = null;
@@ -124,13 +125,13 @@ public final class RealConnection extends Http2Connection.Listener implements Co
                    final @NonNull Socket socket,
                    final @Nullable Handshake handshake,
                    final @NonNull Protocol protocol,
-                   final int pingIntervalMillis) {
+                   final @NonNull Duration pingInterval) {
         assert taskRunner != null;
         assert route != null;
         assert rawSocket != null;
         assert socket != null;
         assert protocol != null;
-        assert pingIntervalMillis >= 0;
+        assert pingInterval != null;
 
         this.taskRunner = taskRunner;
         this.route = route;
@@ -138,7 +139,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
         this.socket = socket;
         this.handshake = handshake;
         this.protocol = protocol;
-        this.pingIntervalMillis = pingIntervalMillis;
+        this.pingInterval = pingInterval;
     }
 
     /**
@@ -197,7 +198,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
         final var http2Connection = new Http2Connection.Builder(true, taskRunner)
                 .socket(socket, route.getAddress().getUrl().getHost())
                 .listener(this)
-                .pingIntervalMillis(pingIntervalMillis)
+                .pingInterval(pingInterval)
                 .build();
         this.http2Connection = http2Connection;
         this.allocationLimit = Http2Connection.DEFAULT_SETTINGS.maxConcurrentStreams();
@@ -317,7 +318,13 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     }
 
     void useAsSocket() {
-        rawSocket.setReadTimeout(Duration.ZERO);
+        if (rawSocket.getUnderlying() instanceof java.net.Socket javaNetSocket) {
+            try {
+                javaNetSocket.setSoTimeout(0);
+            } catch (SocketException se) {
+                throw JayoException.buildJayoException(se);
+            }
+        }
         noNewExchanges();
     }
 
@@ -536,7 +543,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
                 socket,
                 null,
                 Protocol.HTTP_2,
-                0
+                Duration.ZERO
         );
         result.idleAtNs = idleAtNs;
         return result;

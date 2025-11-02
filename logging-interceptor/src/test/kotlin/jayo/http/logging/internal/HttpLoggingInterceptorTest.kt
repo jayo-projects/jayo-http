@@ -1069,69 +1069,6 @@ class HttpLoggingInterceptorTest {
             .assertNoMoreLogs()
     }
 
-//    @Test // todo websockets
-//    fun duplexRequestsAreStreamable() {
-//        server.useHttps(clientHandshakeCertificate.sslSocketFactory()) // HTTP/2
-//        url = server.url("/").toJayo()
-//        setLevel(Level.STREAMING)
-//
-//        val body =
-//            MockSocketHandler()
-//                .receiveRequest("request A\n")
-//                .sendResponse("response B\n")
-//                .receiveRequest("request C\n")
-//                .sendResponse("response D\n")
-//                .receiveRequest("request E\n")
-//                .sendResponse("response F\n")
-//                .exhaustRequest()
-//                .exhaustResponse()
-//        server.enqueue(
-//            MockResponse
-//                .Builder()
-//                .clearHeaders()
-//                .socketHandler(body)
-//                .build(),
-//        )
-//        val call =
-//            client.newCall(
-//                ClientRequest.builder()
-//                    .url(server.url("/").toJayo())
-//                    .post(AsyncRequestBody())
-//            )
-//        call.execute().use { response ->
-//            val requestBody = (call.request().body as AsyncRequestBody?)!!.takeSink()
-//            requestBody.writeUtf8("request A\n")
-//            requestBody.flush()
-//            val responseBody = response.body.source()
-//            assertThat(responseBody.readUtf8Line())
-//                .isEqualTo("response B")
-//            requestBody.writeUtf8("request C\n")
-//            requestBody.flush()
-//            assertThat(responseBody.readUtf8Line())
-//                .isEqualTo("response D")
-//            requestBody.writeUtf8("request E\n")
-//            requestBody.flush()
-//            assertThat(responseBody.readUtf8Line())
-//                .isEqualTo("response F")
-//            requestBody.close()
-//            assertThat(responseBody.readUtf8Line()).isNull()
-//        }
-//        body.awaitSuccess()
-//
-//        applicationLogs
-//            .assertLogEqual("--> POST $url")
-//            .assertLogMatch(Regex("""<-- 200 $url \(\d+ms, unknown-length body\)"""))
-//            .assertLogEqual("> request A\n")
-//            .assertLogEqual("< response B\n")
-//            .assertLogEqual("> request C\n")
-//            .assertLogEqual("< response D\n")
-//            .assertLogEqual("> request E\n")
-//            .assertLogEqual("< response F\n")
-//            .assertLogEqual("--> END POST (streaming body)")
-//            .assertLogEqual("<-- END HTTP (streaming body)")
-//            .assertNoMoreLogs()
-//    }
-
     @Test
     fun oneShotRequestsAreNotLogged() {
         url = server.url("/").toJayo()
@@ -1180,7 +1117,7 @@ class HttpLoggingInterceptorTest {
     internal class LogRecorder(
         val prefix: Regex = Regex(""),
     ) : HttpLoggingInterceptor.Logger {
-        val logs = mutableListOf<String>()
+        private val logs = mutableListOf<String>()
         private var index = 0
 
         fun assertLogEqual(expected: String) =
