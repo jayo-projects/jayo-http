@@ -111,7 +111,7 @@ import static jayo.tools.JayoUtils.executorService;
  * Jayo HTTP uses daemon threads for HTTP/2 connections that are also virtual for Java 21+. These will exit
  * automatically if they remain idle.
  */
-public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttpClient {
+public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory permits RealJayoHttpClient {
     static @NonNull Builder builder() {
         return new RealJayoHttpClient.Builder();
     }
@@ -199,9 +199,10 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
     List<@NonNull Interceptor> getNetworkInterceptors();
 
     /**
-     * @return the web socket and HTTP/2 ping interval (in milliseconds). If unset in the builder, pings are not sent.
+     * @return the web socket and HTTP/2 ping interval. If unset in the builder, pings are not sent.
      */
-    int getPingIntervalMillis();
+    @NonNull
+    Duration getPingInterval();
 
     @NonNull
     List<@NonNull Protocol> getProtocols();
@@ -385,14 +386,6 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
         Builder addInterceptor(final @NonNull Interceptor interceptor);
 
         /**
-         * Sets the minimum outbound web socket message size (in bytes) that will be compressed. Default is 1024.
-         * <p>
-         * Set to {@code 0L} to enable compression for all outbound messages.
-         */
-        @NonNull
-        Builder minWebSocketMessageToCompress(final long bytes);
-
-        /**
          * @return a modifiable list of interceptors that observe a single network request and response. These
          * interceptors must call {@link Interceptor.Chain#proceed(ClientRequest)} exactly once: it is an error for a
          * network interceptor to short-circuit or repeat a network request.
@@ -468,7 +461,7 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
          * silently recovers from the following problems:
          * <ul>
          * <li><b>Unreachable IP addresses.</b> If the URL's host has multiple IP addresses, failure to reach any
-         * individual IP address doesn't fail the overall request. This can increase availability of multi-homed
+         * individual IP address doesn't fail the overall request. This can increase the availability of multi-homed
          * services.
          * <li><b>Stale pooled connections.</b> The {@link ConnectionPool} reuses sockets to decrease request latency,
          * but these connections will occasionally time out.
@@ -508,11 +501,38 @@ public sealed interface JayoHttpClient extends Call.Factory permits RealJayoHttp
         Builder tlsClientBuilder(final ClientTlsSocket.@NonNull Builder clientTlsSocketBuilder);
 
         /**
+         * Sets the interval between HTTP/2 and web socket pings initiated by this client. Use this to automatically
+         * send ping frames until either the connection fails or it is closed. This keeps the connection alive and may
+         * detect connectivity failures.
+         * <p>
+         * Default is zero. A value of zero disables client-initiated pings.
+         * <p>
+         * If the server does not respond to each ping with a pong within {@code interval}, this client will assume that
+         * connectivity has been lost.
+         * <ul>
+         * <li>When this happens on a web socket, the connection is canceled and its listener is
+         * {@link WebSocketListener#onFailure(WebSocket, Throwable, ClientResponse) notified}.
+         * <li>When it happens on an HTTP/2 connection, the connection is closed, and any calls it is carrying will fail
+         * with a {@link jayo.JayoException}.
+         * </ul>
+         */
+        @NonNull
+        Builder pingInterval(final @NonNull Duration interval);
+
+        /**
+         * Sets the minimum outbound web socket message size (in bytes) that will be compressed. Default is 1024. Set to
+         * zero to enable compression for all outbound messages.
+         */
+        @NonNull
+        Builder minWebSocketMessageToCompress(final long bytes);
+
+        /**
          * Sets the close timeout for web socket connections. Default is 60 seconds. A timeout of zero is interpreted as
          * an infinite timeout.
          * <p>
-         * This close timeout is the maximum amount of time after the client calls {@link WebSocket#close(int, String)}
-         * to wait for a graceful shutdown. If the server doesn't respond, the web socket will be canceled.
+         * This close timeout is the maximum amount of time after the client calls
+         * {@link WebSocket#close(short, String)} to wait for a graceful shutdown. If the server doesn't respond, the
+         * web socket will be canceled.
          */
         @NonNull
         Builder webSocketCloseTimeout(final @NonNull Duration webSocketCloseTimeout);

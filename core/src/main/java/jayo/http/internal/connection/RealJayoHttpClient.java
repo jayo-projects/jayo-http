@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 
 public final class RealJayoHttpClient implements JayoHttpClient {
     static final System.Logger LOGGER = System.getLogger("jayo.http.JayoHttpClient");
@@ -62,7 +63,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final @NonNull List<@NonNull Interceptor> interceptors;
     private final long minWebSocketMessageToCompress;
     private final @NonNull List<@NonNull Interceptor> networkInterceptors;
-    private final int pingIntervalMillis;
+    private final @NonNull Duration pingInterval;
     private final @NonNull List<@NonNull Protocol> protocols;
     private final @NonNull Proxies proxies;
     private final @NonNull Authenticator proxyAuthenticator;
@@ -92,7 +93,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         this.interceptors = List.copyOf(builder.interceptors);
         this.minWebSocketMessageToCompress = builder.minWebSocketMessageToCompress;
         this.networkInterceptors = List.copyOf(builder.networkInterceptors);
-        this.pingIntervalMillis = builder.pingIntervalMillis;
+        this.pingInterval = builder.pingInterval;
         this.protocols = List.copyOf(builder.protocols);
         this.proxies = (builder.proxies != null) ? builder.proxies : Proxies.builder().build();
         this.proxyAuthenticator = builder.proxyAuthenticator;
@@ -237,8 +238,8 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     }
 
     @Override
-    public int getPingIntervalMillis() {
-        return pingIntervalMillis;
+    public @NonNull Duration getPingInterval() {
+        return pingInterval;
     }
 
     @Override
@@ -305,6 +306,27 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     }
 
     @Override
+    public @NonNull WebSocket newWebSocket(final @NonNull ClientRequest request,
+                                           final @NonNull WebSocketListener listener) {
+        Objects.requireNonNull(request);
+        Objects.requireNonNull(listener);
+
+        final var webSocket = new RealWebSocket(
+                taskRunner,
+                request,
+                listener,
+                new Random(),
+                pingInterval,
+                // `extensions` is always null for clients:
+                null,
+                minWebSocketMessageToCompress,
+                webSocketCloseTimeout
+        );
+        webSocket.connect(this);
+        return webSocket;
+    }
+
+    @Override
     public @NonNull Builder newBuilder() {
         return new Builder(this);
     }
@@ -315,7 +337,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private static final @NonNull List<@NonNull Protocol> DEFAULT_PROTOCOLS =
                 List.of(Protocol.HTTP_1_1, Protocol.HTTP_2);
         private static final @NonNull Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
-        private static final @NonNull Duration DEFAULT_WEB_SOCKET_CLOSE_TIMEOUT = Duration.ofSeconds(60);
         private static final @NonNull Duration NO_TIMEOUT = Duration.ZERO;
 
         private @NonNull Authenticator authenticator;
@@ -338,7 +359,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private final @NonNull List<@NonNull Interceptor> interceptors = new ArrayList<>();
         private long minWebSocketMessageToCompress = RealWebSocket.DEFAULT_MINIMUM_DEFLATE_SIZE;
         private final @NonNull List<@NonNull Interceptor> networkInterceptors = new ArrayList<>();
-        private int pingIntervalMillis = 0;
+        private @NonNull Duration pingInterval;
         private @NonNull List<@NonNull Protocol> protocols;
         private @NonNull Proxies proxies;
         private @NonNull Authenticator proxyAuthenticator;
@@ -360,12 +381,13 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.dns = Dns.SYSTEM;
             this.eventListenerFactory = ignoredCall -> EventListener.NONE;
             this.hostnameVerifier = JayoHostnameVerifier.INSTANCE;
+            this.pingInterval = NO_TIMEOUT;
             this.protocols = DEFAULT_PROTOCOLS;
             proxies = Proxies.EMPTY;
             this.proxyAuthenticator = Authenticator.DEFAULT_PROXY_AUTHENTICATOR;
             this.readTimeout = DEFAULT_TIMEOUT;
             this.taskRunner = DEFAULT_TASK_RUNNER;
-            this.webSocketCloseTimeout = DEFAULT_WEB_SOCKET_CLOSE_TIMEOUT;
+            this.webSocketCloseTimeout = RealWebSocket.CANCEL_AFTER_CLOSE_TIMEOUT;
             this.writeTimeout = DEFAULT_TIMEOUT;
         }
 
@@ -392,7 +414,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.interceptors.addAll(jayoHttpClient.interceptors);
             this.minWebSocketMessageToCompress = jayoHttpClient.minWebSocketMessageToCompress;
             this.networkInterceptors.addAll(jayoHttpClient.networkInterceptors);
-            this.pingIntervalMillis = jayoHttpClient.pingIntervalMillis;
+            this.pingInterval = jayoHttpClient.pingInterval;
             this.protocols = jayoHttpClient.protocols;
             this.proxies = jayoHttpClient.proxies;
             this.proxyAuthenticator = jayoHttpClient.proxyAuthenticator;
@@ -625,7 +647,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
-        public JayoHttpClient.@NonNull Builder retryOnConnectionFailure(final boolean retryOnConnectionFailure) {
+        public @NonNull Builder retryOnConnectionFailure(final boolean retryOnConnectionFailure) {
             this.retryOnConnectionFailure = retryOnConnectionFailure;
             return this;
         }
@@ -641,6 +663,12 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.clientTlsSocketBuilderOrNull = clientTlsSocketBuilder;
             final var x509TrustManager = clientTlsSocketBuilder.getHandshakeCertificates().getTrustManager();
             this.certificateChainCleaner = new CertificateChainCleaner(x509TrustManager);
+            return this;
+        }
+
+        @Override
+        public @NonNull Builder pingInterval(@NonNull Duration interval) {
+            this.pingInterval = checkDuration("pingInterval", interval);
             return this;
         }
 
@@ -679,7 +707,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             if (timeout.isNegative()) {
                 throw new IllegalArgumentException(name + " < 0");
             }
-            if (timeout.compareTo(MIN_DURATION) < 0) {
+            if (!timeout.isZero() && timeout.compareTo(MIN_DURATION) < 0) {
                 throw new IllegalArgumentException(name + " < 1ms");
             }
             if (timeout.compareTo(MAX_DURATION) > 0) {

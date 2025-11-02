@@ -21,20 +21,24 @@
 
 package jayo.http
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.AppenderBase
 import jayo.http.JayoHttpClientTestRule.Companion.plus
 import jayo.http.internal.connection.ClientRuleEventListener
 import jayo.http.internal.connection.RealConnectionPool
-import jayo.http.internal.http2.Http2Connection
 import jayo.http.testing.Flaky
-import jayo.scheduler.TaskRunner
 import jayo.scheduler.internal.activeQueues
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.extension.AfterEachCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
+import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
-import java.util.logging.*
+
 
 /**
  * Apply this rule to all tests. It adds additional checks for leaked resources and uncaught exceptions.
@@ -77,22 +81,21 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
             },
         )
 
-    private val testLogHandler = object : Handler() {
-        override fun publish(record: LogRecord) {
+    private val appender = object : AppenderBase<ILoggingEvent>() {
+        override fun append(eventObject: ILoggingEvent) {
             val recorded =
-                when (record.loggerName) {
-                    TaskRunner::class.java.name -> recordTaskRunner
-                    Http2Connection::class.java.name -> recordFrames
-                    "javax.net.ssl" -> recordTlsDebug && !tlsExcludeFilter.matches(record.message)
+                when (eventObject.loggerName) {
+                    "jayo.scheduler.TaskRunner" -> recordTaskRunner
+                    "jayo.http.http2.Http2Connection" -> recordFrames
+                    "javax.net.ssl" -> recordTlsDebug && !tlsExcludeFilter.matches(eventObject.message)
                     else -> false
                 }
-
             if (recorded) {
                 synchronized(clientEventsList) {
-                    clientEventsList.add(record.message)
+                    clientEventsList.add(eventObject.message)
 
-                    if (record.loggerName == "javax.net.ssl") {
-                        val parameters = record.parameters
+                    if (eventObject.loggerName == "javax.net.ssl") {
+                        val parameters = eventObject.argumentArray
 
                         if (parameters != null) {
                             clientEventsList.add(parameters.first().toString())
@@ -101,22 +104,14 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
                 }
             }
         }
-
-        override fun flush() {
-        }
-
-        override fun close() {
-        }
-    }.apply {
-        level = Level.FINEST
     }
 
     private fun applyLogger(fn: Logger.() -> Unit) {
-        Logger.getLogger(JayoHttpClient::class.java.`package`.name).fn()
-        Logger.getLogger(JayoHttpClient::class.java.name).fn()
-        Logger.getLogger(Http2Connection::class.java.name).fn()
-        Logger.getLogger(TaskRunner::class.java.name).fn()
-        Logger.getLogger("javax.net.ssl").fn()
+        (LoggerFactory.getLogger(JayoHttpClient::class.java.`package`.name) as Logger).fn()
+        (LoggerFactory.getLogger("jayo.http.JayoHttpClient") as Logger).fn()
+        (LoggerFactory.getLogger("jayo.http.http2.Http2Connection") as Logger).fn()
+        (LoggerFactory.getLogger("jayo.scheduler.TaskRunner") as Logger).fn()
+        (LoggerFactory.getLogger("javax.net.ssl") as Logger).fn()
     }
 
     fun wrap(eventListener: EventListener) =
@@ -219,10 +214,11 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
 
         taskQueuesWereIdle = JayoHttpClient.DEFAULT_TASK_RUNNER.activeQueues().isEmpty()
 
+        appender.start()
+
         applyLogger {
-            addHandler(testLogHandler)
-            level = Level.FINEST
-            useParentHandlers = false
+            addAppender(appender)
+            level = Level.TRACE
         }
     }
 
@@ -237,7 +233,8 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
             logEvents()
         }
 
-        LogManager.getLogManager().reset()
+        val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
+        loggerContext.reset()
 
         var result: Throwable? = failure
         Thread.setDefaultUncaughtExceptionHandler(defaultUncaughtExceptionHandler)

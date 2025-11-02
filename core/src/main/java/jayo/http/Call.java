@@ -54,7 +54,7 @@ public interface Call extends Cloneable {
      * leaking resources callers must {@linkplain ClientResponseBody#close() close the response body} or the response.
      * <h3>Receiving a response does not mean your call is a success</h3>
      * Note that transport-layer success (receiving HTTP response code, headers and body) does not necessarily
-     * indicate application-layer success: the {@linkplain ClientResponse#getStatus() response status} may still
+     * indicate application-layer success: the {@linkplain ClientResponse#getStatusCode() response status} may still
      * indicate an unhappy HTTP response code like {@code 404} or {@code 500}.
      * <h3>Cancellation and timeout</h3>
      * You can use Jayo's cancellation support to configure timeout and manually cancel this call using the cancellable
@@ -134,6 +134,9 @@ public interface Call extends Cloneable {
     Call clone();
 
     interface Factory {
+        /**
+         * Prepares the {@code request} to be executed at some point in the future.
+         */
         @NonNull
         Call newCall(final @NonNull ClientRequest request);
     }

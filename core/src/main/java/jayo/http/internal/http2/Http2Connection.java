@@ -213,13 +213,15 @@ public final class Http2Connection implements Closeable {
         writer = new Http2Writer(socket.getWriter(), client);
         readerRunnable = new ReaderRunnable(new Http2Reader(socket.getReader(), client));
 
-        if (builder.pingIntervalMillis != 0) {
-            initializePingIntervalMillis(builder.pingIntervalMillis);
+        if (!builder.pingInterval.equals(Duration.ZERO)) {
+            initializePingInterval(builder.pingInterval);
         }
     }
 
-    private void initializePingIntervalMillis(final int pingIntervalMillis) {
-        final var pingIntervalNanos = Duration.ofMillis(pingIntervalMillis).toNanos();
+    private void initializePingInterval(final @NonNull Duration pingInterval) {
+        assert pingInterval != null;
+
+        final var pingIntervalNanos = pingInterval.toNanos();
         writerQueue.schedule(connectionName + " ping", pingIntervalNanos, () -> {
             boolean failDueToMissingPong;
             lock.lock();
@@ -297,7 +299,7 @@ public final class Http2Connection implements Closeable {
     /**
      * @param associatedStreamId the stream that triggered the sender to create this stream.
      * @param out                true to create an output stream that we can use to send data to the remote peer.
-     *                           Corresponds to `FLAG_FIN`.
+     *                           Corresponds to {@code FLAG_FIN}.
      * @return a new server-initiated stream.
      * @throws JayoException an IO Exception.
      */
@@ -700,7 +702,7 @@ public final class Http2Connection implements Closeable {
         private /* lateinit */ String connectionName;
         private @NonNull Listener listener = Listener.REFUSE_INCOMING_STREAMS;
         private @NonNull PushObserver pushObserver = PushObserver.CANCEL;
-        private int pingIntervalMillis = 0;
+        private @NonNull Duration pingInterval = Duration.ZERO;
         private @NonNull FlowControlListener flowControlListener = FlowControlListener.NONE;
 
         public Builder(final boolean client, final @NonNull TaskRunner taskRunner) {
@@ -730,8 +732,9 @@ public final class Http2Connection implements Closeable {
             return this;
         }
 
-        public @NonNull Builder pingIntervalMillis(final int pingIntervalMillis) {
-            this.pingIntervalMillis = pingIntervalMillis;
+        public @NonNull Builder pingInterval(final @NonNull Duration pingInterval) {
+            assert pingInterval != null;
+            this.pingInterval = pingInterval;
             return this;
         }
 

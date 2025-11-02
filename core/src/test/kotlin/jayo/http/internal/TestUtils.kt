@@ -23,6 +23,7 @@ package jayo.http.internal
 
 import jayo.Buffer
 import jayo.RawReader
+import jayo.bytestring.ByteString
 import jayo.http.Cookie
 import jayo.http.Headers
 import jayo.http.HttpUrl
@@ -30,6 +31,7 @@ import jayo.http.Proxies
 import jayo.tls.Protocol
 import jayo.tls.ServerHandshakeCertificates
 import jayo.tools.JayoTlsUtils
+import okio.ByteString.Companion.toByteString
 import java.io.Closeable
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -87,6 +89,28 @@ object TestUtils {
         Arrays.fill(array, c)
         return String(array)
     }
+
+    /**
+     * Jayo buffers are internally implemented as a linked list of byte arrays. Usually this implementation detail is
+     * invisible to the caller, but subtle use of certain APIs may depend on these internal structures.
+     *
+     * We make such subtle calls in [jayo.http.internal.ws.MessageInflater] because we try to read a compressed stream
+     * that is terminated in a web socket frame even though the DEFLATE stream is not terminated.
+     *
+     * Use this method to create a degenerate Jayo Buffer where each byte is in a separate segment of the internal list.
+     */
+    @JvmStatic
+    fun fragmentBuffer(buffer: Buffer): Buffer {
+        // Write each byte into a new buffer, then clone it so that the segments are shared.
+        // Shared segments cannot be compacted, so we'll get a long chain of short segments.
+        val result = Buffer()
+        while (!buffer.exhausted()) {
+            val box = Buffer()
+            box.writeFrom(buffer, 1)
+            result.writeFrom(box.clone(), 1)
+        }
+        return result
+    }
 }
 
 internal infix fun Byte.and(mask: Int): Int = toInt() and mask
@@ -114,6 +138,8 @@ internal fun Headers.toOkhttp() =
     okhttp3.Headers.Builder().apply {
         forEach { h -> addLenient(h.name, h.value) }
     }.build()
+
+internal fun ByteString.toOkio() = toByteArray().toByteString()
 
 internal abstract class ForwardingRawReader(
     private val delegate: RawReader,

@@ -159,7 +159,7 @@ class TestValueFactory : Closeable {
             client.readTimeout,
             client.writeTimeout,
             client.connectTimeout,
-            client.pingIntervalMillis,
+            client.pingInterval,
             client.retryOnConnectionFailure(),
             client.fastFallback(),
             address,

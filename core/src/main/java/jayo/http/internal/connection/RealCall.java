@@ -30,6 +30,7 @@ import jayo.tools.AsyncTimeout;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -122,9 +123,9 @@ public final class RealCall implements Call {
 
     final @NonNull Collection<RoutePlanner.@NonNull Plan> plansToCancel = new CopyOnWriteArrayList<>();
 
-    RealCall(final @NonNull RealJayoHttpClient client,
-             final @NonNull ClientRequest originalRequest,
-             final boolean forWebSocket) {
+    public RealCall(final @NonNull RealJayoHttpClient client,
+                    final @NonNull ClientRequest originalRequest,
+                    final boolean forWebSocket) {
         assert client != null;
         assert originalRequest != null;
 
@@ -188,7 +189,8 @@ public final class RealCall implements Call {
     @Override
     public void enqueue(final @NonNull Callback responseCallback) {
         Objects.requireNonNull(responseCallback);
-        enqueuePrivate(responseCallback, 0L);
+        enqueuePrivate(responseCallback,
+                (client.getCallTimeout() != null) ? client.getCallTimeout().toNanos() : 0L);
     }
 
     @Override
@@ -291,7 +293,7 @@ public final class RealCall implements Call {
                     client.getReadTimeout(),
                     client.getWriteTimeout(),
                     client.getConnectTimeout(),
-                    client.getPingIntervalMillis(),
+                    client.getPingInterval(),
                     client.retryOnConnectionFailure(),
                     client.fastFallback(),
                     client.address(request.getUrl()),
@@ -677,11 +679,20 @@ public final class RealCall implements Call {
             } catch (Throwable t) {
                 cancel();
                 if (!signalledCallback) {
-                    final var canceledException = new JayoException("canceled due to " + t);
-                    canceledException.addSuppressed(t);
+                    final IOException cause;
+                    if (t instanceof IOException ioException) {
+                        cause = ioException;
+                    } else {
+                        cause = new IOException(t);
+                    }
+                    final var canceledException = new JayoException("canceled due to " + t, cause);
                     responseCallback.onFailure(RealCall.this, canceledException);
                 }
-                throw t;
+                if (t instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                } else {
+                    throw t;
+                }
             } finally {
                 client.dispatcher.finished(this);
                 // Revert to the old thread name
