@@ -31,6 +31,8 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -39,16 +41,18 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 import static java.lang.System.Logger.Level.INFO;
 import static jayo.http.internal.connection.RealJayoHttpClient.LOGGER;
+import static jayo.http.internal.connection.Tags.EmptyTags;
 
 /**
- * Bridge between Jayo HTTP's application and network layers. This class exposes high-level application layer
+ * The bridge between Jayo HTTP's application and network layers. This class exposes high-level application layer
  * primitives: connections, requests, responses, and streams.
  * <p>
  * This class supports {@linkplain #cancel() asynchronous canceling}. This is intended to have the smallest blast radius
@@ -69,7 +73,21 @@ public final class RealCall implements Call {
 
     private final @NonNull Lock lock = new ReentrantLock();
 
-    private final @NonNull AtomicBoolean executed = new AtomicBoolean();
+    @SuppressWarnings("FieldMayBeFinal")
+    private volatile int state = STATE_NOT_STARTED;
+    // VarHandle mechanics
+    private static final @NonNull VarHandle STATE_HANDLE;
+    static {
+        try {
+            STATE_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "state", int.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+    private static final int STATE_NOT_STARTED = 0; // 00
+    private static final int STATE_CANCELED_BEFORE_START = 1; // 01
+    private static final int STATE_EXECUTING = 2; // 10
+    private static final int STATE_CANCELED = 3; // 11
 
 
     // These properties are only accessed by the thread executing the call.
@@ -117,17 +135,38 @@ public final class RealCall implements Call {
     // These properties are accessed by cancelling threads. Any thread can cancel a call, and once it's canceled, it's
     // canceled forever.
 
-    private volatile boolean canceled = false;
-
     private volatile @Nullable Exchange exchange = null;
 
     final @NonNull Collection<RoutePlanner.@NonNull Plan> plansToCancel = new CopyOnWriteArrayList<>();
 
+    private final @NonNull Tags initialTags;
+    private final @NonNull AtomicReference<@NonNull Tags> tagsRef;
+
     public RealCall(final @NonNull RealJayoHttpClient client,
                     final @NonNull ClientRequest originalRequest,
+                    final @NonNull Tag<?> @NonNull [] tags,
                     final boolean forWebSocket) {
+        this(client, originalRequest, buildTags(tags), forWebSocket);
+    }
+
+    @SuppressWarnings({"unchecked", "RawUseOfParameterized"})
+    private static Tags buildTags(final @NonNull Tag @NonNull [] tagList) {
+        assert tagList != null;
+
+        Tags tags = EmptyTags.INSTANCE;
+        for (final var tag : tagList) {
+            tags = tags.plus(tag.type(), tag.value());
+        }
+        return tags;
+    }
+
+    private RealCall(final @NonNull RealJayoHttpClient client,
+                     final @NonNull ClientRequest originalRequest,
+                     final @NonNull Tags tags,
+                     final boolean forWebSocket) {
         assert client != null;
         assert originalRequest != null;
+        assert tags != null;
 
         this.client = client;
         this.originalRequest = originalRequest;
@@ -136,6 +175,9 @@ public final class RealCall implements Call {
         this.connectionPool = (RealConnectionPool) client.getConnectionPool();
         this.eventListener = client.getEventListenerFactory().create(this);
         this.timeout = AsyncTimeout.create(this::cancel);
+
+        this.initialTags = tags;
+        this.tagsRef = new AtomicReference<>(tags);
     }
 
     /**
@@ -149,11 +191,15 @@ public final class RealCall implements Call {
      */
     @Override
     public void cancel() {
-        if (canceled) {
-            return; // Already canceled.
+        var casSuccess = false;
+        while (!casSuccess) {
+            final var currentState = state;
+            if ((currentState & 1) == 1) {
+                return; // Already canceled.
+            }
+            final var updated = currentState | 1;
+            casSuccess = STATE_HANDLE.compareAndSet(this, currentState, updated);
         }
-
-        canceled = true;
         final var _exchange = exchange;
         if (_exchange != null) {
             _exchange.cancel();
@@ -167,13 +213,56 @@ public final class RealCall implements Call {
 
     @Override
     public boolean isCanceled() {
-        return canceled;
+        final var currentState = state;
+        return (currentState & 1) == 1;
+    }
+
+    @Override
+    public void addEventListener(final @NonNull EventListener eventListener) {
+        Objects.requireNonNull(eventListener);
+        throw new UnsupportedOperationException("Event listeners are not supported yet");
+    }
+
+    @Override
+    public <T> @Nullable T tag(final @NonNull Class<? extends T> type) {
+        Objects.requireNonNull(type);
+        return type.cast(tagsRef.get().get(type));
+    }
+
+    @Override
+    public <T> @NonNull T tag(final @NonNull Class<T> type, final @NonNull Supplier<@NonNull T> computeIfAbsent) {
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(computeIfAbsent);
+
+        T computed = null;
+
+        while (true) {
+            final var tags = tagsRef.get();
+
+            // If the element is already present. Return it.
+            final var existing = tags.get(type);
+            if (existing != null) {
+                return existing;
+            }
+
+            if (computed == null) {
+                computed = computeIfAbsent.get();
+            }
+
+            // If we successfully add the computed element, we're done.
+            final var newTags = tags.plus(type, computed);
+            if (tagsRef.compareAndSet(tags, newTags)) {
+                return computed;
+            }
+
+            // We lost the race. Possibly to other code that was putting a *different* key. Try again!
+        }
     }
 
     @Override
     public @NonNull ClientResponse execute() {
-        if (!executed.compareAndSet(false, true)) {
-            throw new IllegalStateException("Already Executed");
+        if (!STATE_HANDLE.compareAndSet(this, STATE_NOT_STARTED, STATE_EXECUTING)) {
+            throw new IllegalStateException("Already executed or canceled");
         }
 
         timeoutNode = timeout.enter(client.getCallTimeout().toNanos());
@@ -206,8 +295,8 @@ public final class RealCall implements Call {
     private void enqueuePrivate(final @NonNull Callback responseCallback, final long timeoutNanos) {
         assert responseCallback != null;
         assert timeoutNanos >= 0L;
-        if (!executed.compareAndSet(false, true)) {
-            throw new IllegalStateException("Already Executed");
+        if (!STATE_HANDLE.compareAndSet(this, STATE_NOT_STARTED, STATE_EXECUTING)) {
+            throw new IllegalStateException("Already executed or canceled");
         }
 
         callStart();
@@ -343,7 +432,7 @@ public final class RealCall implements Call {
             lock.unlock();
         }
 
-        if (canceled) {
+        if (isCanceled()) {
             throw new JayoException("Canceled");
         }
         return result;
@@ -351,13 +440,14 @@ public final class RealCall implements Call {
 
     @Override
     public boolean isExecuted() {
-        return executed.get();
+        final var currentState = state;
+        return (currentState & 2) == 2;
     }
 
     @SuppressWarnings("MethodDoesntCallSuperMethod") // We are a final type and this saves clearing state.
     @Override
     public @NonNull Call clone() {
-        return new RealCall(client, originalRequest, forWebSocket);
+        return new RealCall(client, originalRequest, initialTags, forWebSocket);
     }
 
     @Override

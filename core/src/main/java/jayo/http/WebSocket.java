@@ -117,6 +117,8 @@ public sealed interface WebSocket permits RealWebSocket {
          * notified. The caller must either close or cancel the returned web socket when it is no longer in use.
          */
         @NonNull
-        WebSocket newWebSocket(final @NonNull ClientRequest request, final @NonNull WebSocketListener listener);
+        WebSocket newWebSocket(final @NonNull ClientRequest request,
+                               final @NonNull WebSocketListener listener,
+                               final @NonNull Tag<?> @NonNull ... tags);
     }
 }

@@ -24,6 +24,7 @@ package jayo.http.internal.connection
 import jayo.JayoException
 import jayo.JayoInterruptedIOException
 import jayo.http.*
+import jayo.http.CallEvent.*
 import jayo.http.internal.RecordingCallback
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -34,8 +35,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertFailsWith
-
-import jayo.http.CallEvent.*
 
 class DispatcherTest {
     @RegisterExtension
@@ -173,7 +172,7 @@ class DispatcherTest {
     @Test
     fun cancelingRunningJobTakesNoEffectUntilJobFinishes() {
         dispatcherBuilder.maxRequests(1)
-        val c1 = client.newCall(newRequest("http://a/1", "tag1"))
+        val c1 = client.newCall(newRequest("http://a/1"))
         val c2 = client.newCall(newRequest("http://a/2"))
         c1.enqueue(callback)
         c2.enqueue(callback)
@@ -349,7 +348,7 @@ class DispatcherTest {
                 try {
                     call.execute()
                     throw AssertionError()
-                } catch (expected: JayoException) {
+                } catch (_: JayoException) {
                 }
             }
         thread.start()
@@ -357,12 +356,4 @@ class DispatcherTest {
     }
 
     private fun newRequest(url: String): ClientRequest = ClientRequest.builder().url(url).get()
-
-    private fun newRequest(
-        url: String,
-        tag: String,
-    ): ClientRequest = ClientRequest.builder()
-        .url(url)
-        .tag(tag)
-        .get()
 }

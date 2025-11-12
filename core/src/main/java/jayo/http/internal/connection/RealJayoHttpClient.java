@@ -300,16 +300,20 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     }
 
     @Override
-    public @NonNull Call newCall(final @NonNull ClientRequest request) {
+    public @NonNull Call newCall(final @NonNull ClientRequest request, final @NonNull Tag<?> @NonNull ... tags) {
         Objects.requireNonNull(request);
-        return new RealCall(this, request, false);
+        Objects.requireNonNull(tags);
+
+        return new RealCall(this, request, tags, false);
     }
 
     @Override
     public @NonNull WebSocket newWebSocket(final @NonNull ClientRequest request,
-                                           final @NonNull WebSocketListener listener) {
+                                           final @NonNull WebSocketListener listener,
+                                           final @NonNull Tag<?> @NonNull ... tags) {
         Objects.requireNonNull(request);
         Objects.requireNonNull(listener);
+        Objects.requireNonNull(tags);
 
         final var webSocket = new RealWebSocket(
                 taskRunner,
@@ -322,7 +326,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
                 minWebSocketMessageToCompress,
                 webSocketCloseTimeout
         );
-        webSocket.connect(this);
+        webSocket.connect(this, tags);
         return webSocket;
     }
 

@@ -151,6 +151,7 @@ class TestValueFactory : Closeable {
         val call = RealCall(
             client as RealJayoHttpClient,
             ClientRequest.get(address.url),
+            arrayOf(),
             false,
         )
         return RealRoutePlanner(

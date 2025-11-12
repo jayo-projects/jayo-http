@@ -22,6 +22,7 @@
 package jayo.http
 
 import java.time.Duration
+import java.util.function.Supplier
 
 open class FailingCall : Call {
     override fun request(): ClientRequest = error("unexpected")
@@ -37,6 +38,12 @@ open class FailingCall : Call {
     override fun isExecuted(): Boolean = error("unexpected")
 
     override fun isCanceled(): Boolean = error("unexpected")
+
+    override fun addEventListener(eventListener: EventListener) = error("unexpected")
+
+    override fun <T> tag(type: Class<out T>): T? = error("unexpected")
+
+    override fun <T> tag(type: Class<T>, computeIfAbsent: Supplier<T>): T & Any = error("unexpected")
 
     override fun clone(): Call = error("unexpected")
 }

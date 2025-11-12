@@ -236,8 +236,9 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
         call.cancel();
     }
 
-    public void connect(final @NonNull JayoHttpClient client) {
+    public void connect(final @NonNull JayoHttpClient client, final @NonNull Tag<?> @NonNull [] tags) {
         assert client != null;
+        assert tags != null;
 
         if (originalRequest.header("Sec-WebSocket-Extensions") != null) {
             failWebSocket(new JayoProtocolException("Request header not permitted: 'Sec-WebSocket-Extensions'"),
@@ -256,7 +257,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
                 .header("Sec-WebSocket-Version", "13")
                 .header("Sec-WebSocket-Extensions", "permessage-deflate")
                 .build();
-        call = new RealCall((RealJayoHttpClient) webSocketClient, request, true);
+        call = new RealCall((RealJayoHttpClient) webSocketClient, request, tags, true);
         call.enqueue(new Callback() {
             @Override
             public void onResponse(final @NonNull Call call, final @NonNull ClientResponse response) {
