@@ -27,36 +27,6 @@ import jayo.JayoDslMarker
 import java.net.URL
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import kotlin.reflect.KClass
-
-@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to a reified type
-/** @return the tag attached with [T] as a key, or null if no tag is attached with that key. */
-public inline fun <reified T : Any> ClientRequest.tag(): T? = tag(T::class.java)
-
-/** @return the tag attached with [type] as a key, or null if no tag is attached with that key. */
-public fun <T : Any> ClientRequest.tag(type: KClass<T>): T? = tag(type.java)
-
-@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to a reified type
-/**
- * Attaches [tag] to the request using [T] as a key. Tags can be read from a request using [ClientRequest.tag]. Use null
- * to remove any existing tag assigned for [T].
- *
- * Use this API to attach timing, debugging, or other application data to a request so that you may read it in
- * interceptors, event listeners, or callbacks.
- */
-public inline fun <reified T : Any> ClientRequest.Builder.tag(tag: T?): ClientRequest.Builder = tag(T::class.java, tag)
-
-@Suppress("EXTENSION_SHADOWED_BY_MEMBER") // method is in fact not shadowed due to a reified type
-/**
- * Attaches [tag] to the request using [T] as a key. Tags can be read from a request using [ClientRequest.tag]. Use null
- * to remove any existing tag assigned for [T].
- *
- * Use this API to attach timing, debugging, or other application data to a request so that you may read it in
- * interceptors, event listeners, or callbacks.
- */
-public inline fun <reified T : Any> ClientRequest.FromClientRequestBuilder.tag(
-    tag: T?
-): ClientRequest.FromClientRequestBuilder = tag(T::class.java, tag)
 
 public fun ClientRequest.Builder.build(config: NewClientRequestBuilderDsl.() -> Unit): ClientRequest.Builder {
     contract { callsInPlace(config, InvocationKind.EXACTLY_ONCE) }
@@ -153,31 +123,6 @@ public open class ClientRequestBuilderDsl internal constructor(private val build
         set(value) {
             builder.cacheControl(value)
         }
-
-    /**
-     * Attaches [tag] to the request using [T] as a key. Tags can be read from a request using [ClientRequest.tag]. Use
-     * null to remove any existing tag assigned for [T].
-     *
-     * Use this API to attach timing, debugging, or other application data to a request so that you may read it in
-     * interceptors, event listeners, or callbacks.
-     */
-    public inline fun <reified T : Any> tag(tag: T?) {
-        tag(T::class, tag)
-    }
-
-    /**
-     * Attaches [tag] to the request using [type] as a key. Tags can be read from a request using [ClientRequest.tag].
-     * Use null to remove any existing tag assigned for [type].
-     *
-     * Use this API to attach timing, debugging, or other application data to a request so that you may read it in
-     * interceptors, event listeners, or callbacks.
-     */
-    public fun <T : Any> tag(
-        type: KClass<T>,
-        tag: T?,
-    ) {
-        builder.tag(type.java, tag)
-    }
 
     /**
      * Override the [ClientRequest.url][ClientRequest.getUrl] for caching, if it is either polluted with transient query

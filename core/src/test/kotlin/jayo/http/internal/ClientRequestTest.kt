@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test
 import java.io.File
 import java.io.FileWriter
 import java.net.URI
-import java.util.*
 import kotlin.test.assertFailsWith
 
 class ClientRequestTest {
@@ -51,7 +50,6 @@ class ClientRequestTest {
         assertThat(request.headers).isEqualTo(httpHeaders)
         assertThat(request.method).isEqualTo("PUT")
         assertThat(request.body).isEqualTo(body)
-        assertThat(request.tags).isEmpty()
     }
 
     @Test
@@ -66,7 +64,6 @@ class ClientRequestTest {
         assertThat(request.headers).isEqualTo(httpHeaders)
         assertThat(request.method).isEqualTo("GET")
         assertThat(request.body).isNull()
-        assertThat(request.tags).isEmpty()
     }
 
     @Test
@@ -83,7 +80,6 @@ class ClientRequestTest {
         assertThat(request.headers).isEqualTo(httpHeaders)
         assertThat(request.method).isEqualTo("POST")
         assertThat(request.body).isEqualTo(body)
-        assertThat(request.tags).isEmpty()
     }
 
     @Test
@@ -98,7 +94,6 @@ class ClientRequestTest {
         assertThat(request.headers).isEqualTo(httpHeaders)
         assertThat(request.method).isEqualTo("DELETE")
         assertThat(request.body).isEqualTo(ClientRequestBody.EMPTY)
-        assertThat(request.tags).isEmpty()
     }
 
     @Test
@@ -115,7 +110,6 @@ class ClientRequestTest {
         assertThat(request.headers).isEqualTo(httpHeaders)
         assertThat(request.method).isEqualTo("DELETE")
         assertThat(request.body).isEqualTo(body)
-        assertThat(request.tags).isEmpty()
     }
 
     @Test
@@ -329,181 +323,6 @@ class ClientRequestTest {
         assertFailsWith<IllegalArgumentException> {
             builder.addHeader("Name", s)
         }
-    }
-
-    @Test
-    fun noTag() {
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .get()
-        assertThat(request.tag(Any::class.java)).isNull()
-        assertThat(request.tag(UUID::class.java)).isNull()
-        assertThat(request.tag(String::class.java)).isNull()
-
-        // Alternate access APIs also work.
-        assertThat(request.tag<String>()).isNull()
-        assertThat(request.tag(String::class)).isNull()
-    }
-
-    @Test
-    fun defaultTag() {
-        val tag = UUID.randomUUID()
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag(tag)
-                .get()
-        assertThat(request.tag()).isSameAs(tag)
-        assertThat(request.tag(Any::class.java)).isSameAs(tag)
-        assertThat(request.tag(UUID::class.java)).isNull()
-        assertThat(request.tag(String::class.java)).isNull()
-
-        // Alternate access APIs also work.
-        assertThat(request.tag<Any>()).isSameAs(tag)
-        assertThat(request.tag(Any::class)).isSameAs(tag)
-    }
-
-    @Test
-    fun nullRemovesTag() {
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag("a")
-                .tag(null)
-                .get()
-        assertThat(request.tag()).isNull()
-    }
-
-    @Test
-    fun removeAbsentTag() {
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag("a")
-                .tag(null)
-                .get()
-        assertThat(request.tag()).isNull()
-    }
-
-    @Test
-    fun objectTag() {
-        val tag = UUID.randomUUID()
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag(Any::class.java, tag)
-                .get()
-        assertThat(request.tag()).isSameAs(tag)
-        assertThat(request.tag(Any::class.java)).isSameAs(tag)
-        assertThat(request.tag(UUID::class.java)).isNull()
-        assertThat(request.tag(String::class.java)).isNull()
-
-        // Alternate access APIs also work.
-        assertThat(request.tag(Any::class)).isSameAs(tag)
-        assertThat(request.tag<Any>()).isSameAs(tag)
-    }
-
-    @Test
-    fun javaClassTag() {
-        val uuidTag = UUID.randomUUID()
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag(UUID::class.java, uuidTag) // Use the Class<*> parameter.
-                .get()
-        assertThat(request.tag()).isNull()
-        assertThat(request.tag(Any::class.java)).isNull()
-        assertThat(request.tag(UUID::class.java)).isSameAs(uuidTag)
-        assertThat(request.tag(String::class.java)).isNull()
-
-        // Alternate access APIs also work.
-        assertThat(request.tag(UUID::class)).isSameAs(uuidTag)
-        assertThat(request.tag<UUID>()).isSameAs(uuidTag)
-    }
-
-    @Test
-    fun kotlinReifiedTag() {
-        val uuidTag = UUID.randomUUID()
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag<UUID>(uuidTag) // Use the type parameter.
-                .get()
-        assertThat(request.tag()).isNull()
-        assertThat(request.tag<Any>()).isNull()
-        assertThat(request.tag<UUID>()).isSameAs(uuidTag)
-        assertThat(request.tag<String>()).isNull()
-
-        // Alternate access APIs also work.
-        assertThat(request.tag(UUID::class.java)).isSameAs(uuidTag)
-        assertThat(request.tag(UUID::class)).isSameAs(uuidTag)
-    }
-
-    @Test
-    fun kotlinClassTag() {
-        val uuidTag = UUID.randomUUID()
-        val request =
-            ClientRequest.builder().build {
-                url = "https://jayo.dev".toHttpUrl()
-                tag(UUID::class, uuidTag) // Use the KClass<*> parameter.
-            }.get()
-        assertThat(request.tag()).isNull()
-        assertThat(request.tag(Any::class)).isNull()
-        assertThat(request.tag(UUID::class)).isSameAs(uuidTag)
-        assertThat(request.tag(String::class)).isNull()
-
-        // Alternate access APIs also work.
-        assertThat(request.tag(UUID::class.java)).isSameAs(uuidTag)
-        assertThat(request.tag<UUID>()).isSameAs(uuidTag)
-    }
-
-    @Test
-    fun replaceOnlyTag() {
-        val uuidTag1 = UUID.randomUUID()
-        val uuidTag2 = UUID.randomUUID()
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag(UUID::class.java, uuidTag1)
-                .tag(UUID::class.java, uuidTag2)
-                .get()
-        assertThat(request.tag(UUID::class.java)).isSameAs(uuidTag2)
-    }
-
-    @Test
-    fun multipleTags() {
-        val uuidTag = UUID.randomUUID()
-        val stringTag = "dilophosaurus"
-        val longTag = 20170815L as Long?
-        val objectTag = Any()
-        val request =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-                .tag(Any::class.java, objectTag)
-                .tag(UUID::class.java, uuidTag)
-                .tag(String::class.java, stringTag)
-                .tag(Long::class.javaObjectType, longTag)
-                .get()
-        assertThat(request.tag()).isSameAs(objectTag)
-        assertThat(request.tag(Any::class.java)).isSameAs(objectTag)
-        assertThat(request.tag(UUID::class.java)).isSameAs(uuidTag)
-        assertThat(request.tag(String::class.java)).isSameAs(stringTag)
-        assertThat(request.tag(Long::class.javaObjectType)).isSameAs(longTag)
-    }
-
-    /** Confirm that we don't accidentally share the backing map between objects. */
-    @Test
-    fun tagsAreImmutable() {
-        val builder =
-            ClientRequest.builder()
-                .url("https://jayo.dev")
-        val requestA = builder.tag(String::class.java, "a").get()
-        val requestB = builder.tag(String::class.java, "b").delete()
-        val requestC = requestA.newBuilder().tag(String::class.java, "c").build()
-        assertThat(requestA.tag(String::class.java)).isSameAs("a")
-        assertThat(requestB.tag(String::class.java)).isSameAs("b")
-        assertThat(requestC.tag(String::class.java)).isSameAs("c")
     }
 
     @Test

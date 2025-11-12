@@ -22,8 +22,10 @@
 package jayo.http;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.function.Supplier;
 
 /**
  * A call is a request that has been prepared for execution. A call can be canceled. As this object represents a single
@@ -128,7 +130,56 @@ public interface Call extends Cloneable {
     boolean isCanceled();
 
     /**
-     * Create a new, identical call to this one which can be executed even if this call has already been.
+     * Configure this call to publish all future events to {@code eventListener}, in addition to the listeners
+     * configured by {@link JayoHttpClient.Builder#eventListener(EventListener)} and other calls to this function.
+     * <p>
+     * If this call is later {@linkplain #clone() cloned}, {@code eventListener} will not be notified of its events.
+     * <p>
+     * There is no mechanism to remove an event listener. Implementations should instead ignore events that they are not
+     * interested in.
+     *
+     * @see EventListener for semantics and restrictions on listener implementations.
+     */
+    void addEventListener(final @NonNull EventListener eventListener);
+
+    /**
+     * @return the tag attached with {@code type} as a key, or null if no tag is attached with that key.
+     * <p>
+     * The tags on a call are seeded from the {@linkplain Factory#newCall(ClientRequest, Tag[]) call creation}. This set
+     * will grow if new tags are computed.
+     */
+    <T> @Nullable T tag(final @NonNull Class<? extends @NonNull T> type);
+
+    /**
+     * @return the tag attached with {@code type} as a key. If it is absent, then {@code computeIfAbsent} is called and
+     * that value is both inserted and returned.
+     * <p>
+     * If multiple calls to this function are made concurrently with the same {@code type}, multiple values may be
+     * computed. But only one value will be inserted, and that inserted value will be returned to all callers.
+     * <p>
+     * If computing multiple values is problematic, use an appropriate concurrency mechanism in your
+     * {@code computeIfAbsent} implementation. No locks are held while calling this function.
+     */
+    <T> @NonNull T tag(final @NonNull Class<T> type, final @NonNull Supplier<@NonNull T> computeIfAbsent);
+
+    /**
+     * Create a new, identical call to this one which can be enqueued or executed even if this call has already been.
+     * <p>
+     * The tags on the returned call will equal the tags passed at
+     * {@linkplain Factory#newCall(ClientRequest, Tag[]) call creation}. Any tags that were computed for this call
+     * afterward will not be included on the cloned call. If necessary, you may manually copy over specific tags by
+     * re-computing them:
+     * <pre>
+     * {@code
+     * Call copy = original.clone();
+     * MyTag myTag = original.tag(MyTag.class);
+     * if (myTag != null) {
+     *     copy.tag(MyTag.class, () -> myTag);
+     * }
+     * }
+     * </pre>
+     * If any event listeners were installed on this call with {@link #addEventListener(EventListener)}, they will not
+     * be installed on this copy.
      */
     @NonNull
     Call clone();
@@ -136,8 +187,14 @@ public interface Call extends Cloneable {
     interface Factory {
         /**
          * Prepares the {@code request} to be executed at some point in the future.
+         * <p>
+         * You can provide some {@code tags} that will be attached to the call. Tags can be read from the call using
+         * {@link Call#tag(Class)}.
+         * <p>
+         * Note: Use tags to attach timing, debugging, or other application data to a call so that you may read them in
+         * interceptors, event listeners, or callbacks.
          */
         @NonNull
-        Call newCall(final @NonNull ClientRequest request);
+        Call newCall(final @NonNull ClientRequest request, final @NonNull Tag<?> @NonNull ... tags);
     }
 }

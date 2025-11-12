@@ -74,17 +74,6 @@ public sealed interface ClientRequest permits RealClientRequest {
     CacheControl getCacheControl();
 
     /**
-     * @return the tag attached with {@code type} as a key, or null if no tag is attached with that key.
-     */
-    <T> @Nullable T tag(final @NonNull Class<T> type);
-
-    /**
-     * @return the tag attached with {@code Object.class} as a key, or null if no tag is attached with that key.
-     */
-    @Nullable
-    Object tag();
-
-    /**
      * @return a builder based on this request.
      */
     @NonNull
@@ -173,22 +162,6 @@ public sealed interface ClientRequest permits RealClientRequest {
          */
         @NonNull
         T cacheControl(final @NonNull CacheControl cacheControl);
-
-        /**
-         * Attaches {@code tag} to the request using {@code type} as a key. Tags can be read from a request using
-         * {@link ClientRequest#tag(Class)}. Use null to remove any existing tag assigned for {@code type}.
-         * <p>
-         * Use this API to attach timing, debugging, or other application data to a request so that you may read it in
-         * interceptors, event listeners, or callbacks.
-         */
-        @NonNull
-        <U> T tag(final @NonNull Class<U> type, final @Nullable U tag);
-
-        /**
-         * Attaches {@code tag} to the request using `Object.class` as a key.
-         */
-        @NonNull
-        T tag(final @Nullable Object tag);
 
         /**
          * Override the {@linkplain ClientRequest#getUrl() ClientRequest.getUrl()} for caching, if it is either polluted

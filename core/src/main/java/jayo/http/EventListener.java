@@ -486,7 +486,8 @@ public abstract class EventListener {
          * Creates an instance of the {@link EventListener} for a particular {@link Call}. The returned
          * {@link EventListener} instance will be used during the lifecycle of {@code call}.
          * <p>
-         * This method is invoked after {@code call} is created. See {@link JayoHttpClient#newCall(ClientRequest)}.
+         * This method is invoked after {@code call} is created. See
+         * {@link JayoHttpClient#newCall(ClientRequest, Tag[])}.
          * <p>
          * <b>It is an error for implementations to issue any mutating operations on the {@code call} instance from this
          * method.</b>

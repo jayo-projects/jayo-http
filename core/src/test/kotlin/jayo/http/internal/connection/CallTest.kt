@@ -50,6 +50,7 @@ import mockwebserver3.junit5.StartStop
 import okhttp3.Headers.Companion.headersOf
 import okio.ByteString
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.data.Offset
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertArrayEquals
@@ -94,7 +95,7 @@ class CallTest {
             .build()
     private val callback = RecordingCallback()
 //    private val fileSystem = FakeFileSystem()
-//    private val cache =
+//    private val cache = todo cache
 //        Cache(
 //            fileSystem = LoggingFilesystem(fileSystem),
 //            directory = "/cache".toPath(),
@@ -639,12 +640,12 @@ class CallTest {
         assertFailsWith<IllegalStateException> {
             call.execute()
         }.also { expected ->
-            assertThat(expected.message).isEqualTo("Already Executed")
+            assertThat(expected.message).isEqualTo("Already executed or canceled")
         }
         assertFailsWith<IllegalStateException> {
             call.enqueue(callback)
         }.also { expected ->
-            assertThat(expected.message).isEqualTo("Already Executed")
+            assertThat(expected.message).isEqualTo("Already executed or canceled")
         }
         assertThat(server.takeRequest().headers["User-Agent"]).isEqualTo("SyncApiTest")
     }
@@ -666,12 +667,12 @@ class CallTest {
         assertFailsWith<IllegalStateException> {
             call.execute()
         }.also { expected ->
-            assertThat(expected.message).isEqualTo("Already Executed")
+            assertThat(expected.message).isEqualTo("Already executed or canceled")
         }
         assertFailsWith<IllegalStateException> {
             call.enqueue(callback)
         }.also { expected ->
-            assertThat(expected.message).isEqualTo("Already Executed")
+            assertThat(expected.message).isEqualTo("Already executed or canceled")
         }
         assertThat(server.takeRequest().headers["User-Agent"]).isEqualTo("SyncApiTest")
         callback.await(request.url).assertSuccessful()
@@ -2451,7 +2452,7 @@ class CallTest {
     fun canceledBeforeExecute() {
         val call = client.newCall(ClientRequest.get(server.url("/a").toJayo()))
         call.cancel()
-        assertFailsWith<JayoException> {
+        assertFailsWith<IllegalStateException> {
             call.execute()
         }
         assertThat(server.requestCount).isEqualTo(0)
@@ -2583,12 +2584,13 @@ class CallTest {
             object : mockwebserver3.Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     call.cancel()
+                    Thread.sleep(200)
                     return MockResponse(body = "A")
                 }
             }
-        assertFailsWith<JayoException> {
+        assertThatThrownBy {
             call.execute()
-        }
+        }.isInstanceOf(JayoException::class.java)
         assertThat(server.takeRequest().url.encodedPath).isEqualTo("/a")
     }
 
@@ -2746,7 +2748,7 @@ class CallTest {
                 }.build()
         val call = client.newCall(ClientRequest.get(server.url("/a").toJayo()))
         call.cancel()
-        assertFailsWith<JayoException> {
+        assertFailsWith<IllegalStateException> {
             call.execute()
         }
         assertThat(server.requestCount).isEqualTo(0)

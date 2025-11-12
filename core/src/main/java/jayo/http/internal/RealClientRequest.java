@@ -28,9 +28,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import static jayo.http.internal.Utils.isSensitiveHeader;
@@ -43,7 +41,6 @@ public final class RealClientRequest implements ClientRequest {
     private final @NonNull Headers headers;
     private final @Nullable ClientRequestBody body;
     private final @Nullable HttpUrl cacheUrlOverride;
-    final @NonNull Map<Class<?>, ?> tags;
     private @Nullable CacheControl lazyCacheControl = null;
 
     RealClientRequest(final @NonNull AbstractBuilder<?> builder) {
@@ -57,7 +54,6 @@ public final class RealClientRequest implements ClientRequest {
         this.headers = builder.headers.build();
         this.body = builder.body;
         this.cacheUrlOverride = builder.cacheUrlOverride;
-        this.tags = Map.copyOf(builder.tags);
 
         final var connectionHeader = headers.get("Connection");
         if ("upgrade".equalsIgnoreCase(connectionHeader)) {
@@ -115,17 +111,6 @@ public final class RealClientRequest implements ClientRequest {
             lazyCacheControl = CacheControl.parse(headers);
         }
         return lazyCacheControl;
-    }
-
-    @Override
-    public <T> @Nullable T tag(final @NonNull Class<T> type) {
-        Objects.requireNonNull(type);
-        return type.cast(tags.get(type));
-    }
-
-    @Override
-    public @Nullable Object tag() {
-        return tag(Object.class);
     }
 
     @Override
@@ -205,10 +190,6 @@ public final class RealClientRequest implements ClientRequest {
             }
             sb.append(']');
         }
-        if (!tags.isEmpty()) {
-            sb.append(", tags=");
-            sb.append(tags);
-        }
         sb.append('}');
 
         return sb.toString();
@@ -223,8 +204,6 @@ public final class RealClientRequest implements ClientRequest {
         ClientRequestBody body = null;
         @Nullable
         HttpUrl cacheUrlOverride = null;
-        @NonNull
-        Map<Class<?>, Object> tags = new HashMap<>();
         private boolean gzip = false;
 
         AbstractBuilder() {
@@ -298,22 +277,6 @@ public final class RealClientRequest implements ClientRequest {
                 header("Cache-Control", value);
             }
             return getThis();
-        }
-
-        @Override
-        public final @NonNull <U> T tag(final @NonNull Class<U> type, final @Nullable U tag) {
-            Objects.requireNonNull(type);
-            if (tag == null) {
-                tags.remove(type);
-            } else {
-                tags.put(type, tag);
-            }
-            return getThis();
-        }
-
-        @Override
-        public final @NonNull T tag(final @Nullable Object tag) {
-            return tag(Object.class, tag);
         }
 
         @Override
@@ -436,19 +399,9 @@ public final class RealClientRequest implements ClientRequest {
             implements ClientRequest.FromClientRequestBuilder {
 
         private FromClientRequestBuilder(final @NonNull ClientRequest request) {
-            if (!(request instanceof RealClientRequest _request)) {
-                throw new IllegalArgumentException();
-            }
-
             this.url = request.getUrl();
             this.method = request.getMethod();
             this.body = request.getBody();
-            final var requestTags = _request.tags;
-            if (requestTags.isEmpty()) {
-                this.tags = new HashMap<>();
-            } else {
-                this.tags = new HashMap<>(requestTags);
-            }
             this.headers = request.getHeaders().newBuilder();
             this.cacheUrlOverride = request.getCacheUrlOverride();
         }

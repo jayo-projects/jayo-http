@@ -318,12 +318,10 @@ class EventListenerTest {
             )
         call.cancel()
         assertThatThrownBy { call.execute() }
-            .isInstanceOf(JayoException::class.java)
-            .hasMessage("Canceled")
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessage("Already executed or canceled")
         assertThat(listener.recordedEventTypes()).containsExactly(
             Canceled::class,
-            CallStart::class,
-            CallFailed::class,
         )
     }
 

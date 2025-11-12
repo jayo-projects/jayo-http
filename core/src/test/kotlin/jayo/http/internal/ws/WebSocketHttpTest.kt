@@ -1215,7 +1215,7 @@ class WebSocketHttpTest {
                 0L,
                 client.webSocketCloseTimeout,
             )
-        webSocket.connect(client)
+        webSocket.connect(client, arrayOf())
         return webSocket
     }
 
