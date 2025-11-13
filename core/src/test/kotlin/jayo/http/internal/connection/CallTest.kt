@@ -30,6 +30,7 @@ import jayo.http.CertificatePinner.pin
 import jayo.http.CookieJar.javaNetCookieJar
 import jayo.http.Credentials.basic
 import jayo.http.EventListener
+import jayo.http.MediaType
 import jayo.http.internal.*
 import jayo.http.internal.TestUtils.awaitGarbageCollection
 import jayo.http.internal.Utils.USER_AGENT
@@ -52,14 +53,10 @@ import okio.ByteString
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.assertj.core.data.Offset
-import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertArrayEquals
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
-import org.junit.jupiter.api.fail
 import java.net.*
 import java.time.Duration
 import java.util.*
@@ -86,11 +83,11 @@ class CallTest {
     @StartStop
     private val server2 = MockWebServer()
 
-    private var listener = RecordingEventListener()
+    private var eventRecorder = EventRecorder()
     private var client =
         clientTestRule
             .newClientBuilder()
-            .eventListenerFactory(clientTestRule.wrap(listener))
+            .eventListenerFactory(clientTestRule.wrap(eventRecorder))
             .protocols(listOf(Protocol.HTTP_1_1))
             .build()
     private val callback = RecordingCallback()
@@ -1049,36 +1046,36 @@ class CallTest {
         dispatcher.enqueue(MockResponse.Builder().onResponseStart(CloseSocket()).build())
         dispatcher.enqueue(MockResponse(body = "retry success"))
         server.dispatcher = dispatcher
-        listener =
-            object : RecordingEventListener() {
+        val requestFinishedListener =
+            object : EventListener() {
                 override fun requestHeadersEnd(
                     call: Call,
                     request: ClientRequest,
                 ) {
                     requestFinished.countDown()
-                    super.responseHeadersStart(call)
                 }
             }
         client =
             client
                 .newBuilder()
                 .dns(DoubleInetAddressDns())
-                .eventListenerFactory(clientTestRule.wrap(listener))
-                .build()
+                .eventListenerFactory(
+                    clientTestRule.wrap(eventRecorder.eventListener + requestFinishedListener),
+                ).build()
         assertThat(client.retryOnConnectionFailure()).isTrue()
         executeSynchronously("/").assertBody("seed connection pool")
         executeSynchronously("/").assertBody("retry success")
 
         // The call that seeds the connection pool.
-        listener.removeUpToEvent(CallEnd::class.java)
+        eventRecorder.removeUpToEvent(CallEnd::class.java)
 
         // The ResponseFailed event is not necessarily fatal!
-        listener.removeUpToEvent(ConnectionAcquired::class.java)
-        listener.removeUpToEvent(ResponseFailed::class.java)
-        listener.removeUpToEvent(ConnectionReleased::class.java)
-        listener.removeUpToEvent(ConnectionAcquired::class.java)
-        listener.removeUpToEvent(ConnectionReleased::class.java)
-        listener.removeUpToEvent(CallEnd::class.java)
+        eventRecorder.removeUpToEvent(ConnectionAcquired::class.java)
+        eventRecorder.removeUpToEvent(ResponseFailed::class.java)
+        eventRecorder.removeUpToEvent(ConnectionReleased::class.java)
+        eventRecorder.removeUpToEvent(ConnectionAcquired::class.java)
+        eventRecorder.removeUpToEvent(ConnectionReleased::class.java)
+        eventRecorder.removeUpToEvent(CallEnd::class.java)
     }
 
     @Test
@@ -1387,7 +1384,7 @@ class CallTest {
         val response1 = client.newCall(request1).execute()
         assertThat(response1.body.string()).isEqualTo("abc")
 
-        listener.clearAllEvents()
+        eventRecorder.clearAllEvents()
 
         val request2 = ClientRequest.builder()
             .url(server.url("/").toJayo())
@@ -1398,7 +1395,7 @@ class CallTest {
             assertThat(expected.message!!).startsWith("unexpected end of stream on http://")
         }
 
-        assertThat(listener.recordedEventTypes()).containsExactly(
+        assertThat(eventRecorder.recordedEventTypes()).containsExactly(
             CallStart::class,
             ConnectionAcquired::class,
             RequestHeadersStart::class,
@@ -1410,13 +1407,13 @@ class CallTest {
             ConnectionReleased::class,
             CallFailed::class,
         )
-        assertThat(listener.findEvent<RetryDecision>()).hasFieldOrPropertyWithValue("retry", false)
-        listener.clearAllEvents()
+        assertThat(eventRecorder.findEvent<RetryDecision>()).hasFieldOrPropertyWithValue("retry", false)
+        eventRecorder.clearAllEvents()
 
         val response3 = client.newCall(request1).execute()
         assertThat(response3.body.string()).isEqualTo("abc")
 
-        assertThat(listener.recordedEventTypes()).containsExactly(
+        assertThat(eventRecorder.recordedEventTypes()).containsExactly(
             CallStart::class,
             ProxySelected::class,
             DnsStart::class,
@@ -3287,7 +3284,7 @@ class CallTest {
             assertThat(response.body.string()).isNotEmpty()
         }
         val connectCount =
-            listener.eventSequence
+            eventRecorder.eventSequence
                 .stream()
                 .filter { event: CallEvent? -> event is ConnectStart }
                 .count()

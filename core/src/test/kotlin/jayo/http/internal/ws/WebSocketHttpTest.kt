@@ -903,33 +903,33 @@ class WebSocketHttpTest {
         serverListener.assertClosed(1000, "goodbye")
     }
 
-//  @Test todo EventRecorder
-//  fun webSocketsDontTriggerEventListener() {
-//    val eventRecorder = EventRecorder()
-//    client =
-//      client
-//        .newBuilder()
-//        .eventListenerFactory(clientTestRule.wrap(eventRecorder))
-//        .build()
-//    webServer.enqueue(
-//      MockResponse
-//        .Builder()
-//        .webSocketUpgrade(serverListener)
-//        .build(),
-//    )
-//    val webSocket: WebSocket = newWebSocket()
-//    clientListener.assertOpen()
-//    val server = serverListener.assertOpen()
-//    webSocket.send("Web Sockets and Events?!")
-//    serverListener.assertTextMessage("Web Sockets and Events?!")
-//    webSocket.close(1000, "")
-//    serverListener.assertClosing(1000, "")
-//    server.close(1000, "")
-//    clientListener.assertClosing(1000, "")
-//    clientListener.assertClosed(1000, "")
-//    serverListener.assertClosed(1000, "")
-//    assertThat(eventRecorder.recordedEventTypes()).isEmpty()
-//  }
+    @Test
+    fun webSocketsDontTriggerEventListener() {
+        val eventRecorder = EventRecorder()
+        client =
+            client
+                .newBuilder()
+                .eventListenerFactory(clientTestRule.wrap(eventRecorder))
+                .build()
+        webServer.enqueue(
+            MockResponse
+                .Builder()
+                .webSocketUpgrade(serverListener)
+                .build(),
+        )
+        val webSocket: WebSocket = newWebSocket()
+        clientListener.assertOpen()
+        val server = serverListener.assertOpen()
+        webSocket.send("Web Sockets and Events?!")
+        serverListener.assertTextMessage("Web Sockets and Events?!")
+        webSocket.close(1000, "")
+        serverListener.assertClosing(1000, "")
+        server.close(1000, "")
+        clientListener.assertClosing(1000, "")
+        clientListener.assertClosed(1000, "")
+        serverListener.assertClosed(1000, "")
+        assertThat(eventRecorder.recordedEventTypes()).isEmpty()
+    }
 
     @Test
     fun callTimeoutAppliesToSetup() {

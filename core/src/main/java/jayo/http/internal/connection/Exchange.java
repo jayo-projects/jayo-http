@@ -35,7 +35,6 @@ import org.jspecify.annotations.Nullable;
  */
 public final class Exchange {
     private final @NonNull RealCall call;
-    private final @NonNull EventListener eventListener;
     final @NonNull ExchangeFinder finder;
     private final @NonNull ExchangeCodec codec;
 
@@ -55,16 +54,13 @@ public final class Exchange {
     boolean hasFailure = false;
 
     Exchange(final @NonNull RealCall call,
-             final @NonNull EventListener eventListener,
              final @NonNull ExchangeFinder finder,
              final @NonNull ExchangeCodec codec) {
         assert call != null;
-        assert eventListener != null;
         assert finder != null;
         assert codec != null;
 
         this.call = call;
-        this.eventListener = eventListener;
         this.finder = finder;
         this.codec = codec;
     }
@@ -85,11 +81,11 @@ public final class Exchange {
         assert request != null;
 
         try {
-            eventListener.requestHeadersStart(call);
+            call.eventListener.requestHeadersStart(call);
             codec.writeRequestHeaders(request);
-            eventListener.requestHeadersEnd(call, request);
+            call.eventListener.requestHeadersEnd(call, request);
         } catch (JayoException e) {
-            eventListener.requestFailed(call, e);
+            call.eventListener.requestFailed(call, e);
             trackFailure(e);
             throw e;
         }
@@ -102,7 +98,7 @@ public final class Exchange {
         this.isDuplex = duplex;
         assert request.getBody() != null;
         final var contentLength = request.getBody().contentByteSize();
-        eventListener.requestBodyStart(call);
+        call.eventListener.requestBodyStart(call);
         final var rawRequestBody = codec.createRequestBody(request, contentLength);
         return new RequestBodyRawWriter(rawRequestBody, contentLength);
     }
@@ -111,7 +107,7 @@ public final class Exchange {
         try {
             codec.flushRequest();
         } catch (JayoException e) {
-            eventListener.requestFailed(call, e);
+            call.eventListener.requestFailed(call, e);
             trackFailure(e);
             throw e;
         }
@@ -121,14 +117,14 @@ public final class Exchange {
         try {
             codec.finishRequest();
         } catch (JayoException e) {
-            eventListener.requestFailed(call, e);
+            call.eventListener.requestFailed(call, e);
             trackFailure(e);
             throw e;
         }
     }
 
     void responseHeadersStart() {
-        eventListener.responseHeadersStart(call);
+        call.eventListener.responseHeadersStart(call);
     }
 
     RealClientResponse.@Nullable Builder readResponseHeaders(boolean expectContinue) {
@@ -139,7 +135,7 @@ public final class Exchange {
             }
             return result;
         } catch (JayoException e) {
-            eventListener.responseFailed(call, e);
+            call.eventListener.responseFailed(call, e);
             trackFailure(e);
             throw e;
         }
@@ -147,7 +143,7 @@ public final class Exchange {
 
     void responseHeadersEnd(final @NonNull ClientResponse response) {
         assert response != null;
-        eventListener.responseHeadersEnd(call, response);
+        call.eventListener.responseHeadersEnd(call, response);
     }
 
     @NonNull
@@ -159,7 +155,7 @@ public final class Exchange {
             final var reader = new ResponseBodyRawReader(rawReader, contentLength);
             return StandardClientResponseBodies.create(Jayo.buffer(reader), contentType, contentLength);
         } catch (JayoException e) {
-            eventListener.responseFailed(call, e);
+            call.eventListener.responseFailed(call, e);
             trackFailure(e);
             throw e;
         }
@@ -221,16 +217,16 @@ public final class Exchange {
         }
         if (requestDone) {
             if (e != null) {
-                eventListener.requestFailed(call, e);
+                call.eventListener.requestFailed(call, e);
             } else {
-                eventListener.requestBodyEnd(call, bytesRead);
+                call.eventListener.requestBodyEnd(call, bytesRead);
             }
         }
         if (responseDone) {
             if (e != null) {
-                eventListener.responseFailed(call, e);
+                call.eventListener.responseFailed(call, e);
             } else {
-                eventListener.responseBodyEnd(call, bytesRead);
+                call.eventListener.responseBodyEnd(call, bytesRead);
             }
         }
         return call.messageDone(this, requestDone, responseDone, e);
@@ -275,7 +271,7 @@ public final class Exchange {
             try {
                 if (invokeStartEvent) {
                     invokeStartEvent = false;
-                    eventListener.requestBodyStart(call);
+                    call.eventListener.requestBodyStart(call);
                 }
                 delegate.writeFrom(reader, byteCount);
                 bytesReceived += byteCount;
@@ -352,7 +348,7 @@ public final class Exchange {
 
                 if (invokeStartEvent) {
                     invokeStartEvent = false;
-                    eventListener.responseBodyStart(call);
+                    call.eventListener.responseBodyStart(call);
                 }
 
                 if (read == -1L) {
@@ -399,7 +395,7 @@ public final class Exchange {
             // If the body is closed without reading any bytes, send a responseBodyStart() now.
             if (e == null && invokeStartEvent) {
                 invokeStartEvent = false;
-                eventListener.responseBodyStart(call);
+                call.eventListener.responseBodyStart(call);
             }
             return bodyComplete(bytesReceived, true, false, e);
         }

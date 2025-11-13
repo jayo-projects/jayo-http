@@ -67,7 +67,8 @@ public final class RealCall implements Call {
     private final @NonNull ClientRequest originalRequest;
     final boolean forWebSocket;
     private final @NonNull RealConnectionPool connectionPool;
-    final @NonNull EventListener eventListener;
+    volatile @NonNull EventListener eventListener;
+
     private final @NonNull AsyncTimeout timeout;
     private volatile AsyncTimeout.Node timeoutNode = null;
 
@@ -75,15 +76,7 @@ public final class RealCall implements Call {
 
     @SuppressWarnings("FieldMayBeFinal")
     private volatile int state = STATE_NOT_STARTED;
-    // VarHandle mechanics
-    private static final @NonNull VarHandle STATE_HANDLE;
-    static {
-        try {
-            STATE_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "state", int.class);
-        } catch (ReflectiveOperationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
-    }
+
     private static final int STATE_NOT_STARTED = 0; // 00
     private static final int STATE_CANCELED_BEFORE_START = 1; // 01
     private static final int STATE_EXECUTING = 2; // 10
@@ -141,6 +134,19 @@ public final class RealCall implements Call {
 
     private final @NonNull Tags initialTags;
     private final @NonNull AtomicReference<@NonNull Tags> tagsRef;
+
+    // VarHandle mechanics
+    private static final @NonNull VarHandle STATE_HANDLE;
+    private static final @NonNull VarHandle EVENT_LISTENER_HANDLE;
+
+    static {
+        try {
+            STATE_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "state", int.class);
+            EVENT_LISTENER_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "eventListener", EventListener.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
 
     public RealCall(final @NonNull RealJayoHttpClient client,
                     final @NonNull ClientRequest originalRequest,
@@ -220,7 +226,12 @@ public final class RealCall implements Call {
     @Override
     public void addEventListener(final @NonNull EventListener eventListener) {
         Objects.requireNonNull(eventListener);
-        throw new UnsupportedOperationException("Event listeners are not supported yet");
+
+        // Atomically replace the current eventListener with a composite one.
+        var previous = this.eventListener;
+        while (!EVENT_LISTENER_HANDLE.compareAndSet(this, previous, previous.plus(eventListener))) {
+            previous = this.eventListener;
+        }
     }
 
     @Override
@@ -313,7 +324,7 @@ public final class RealCall implements Call {
         final var interceptors = new ArrayList<>(client.getInterceptors());
         interceptors.add(new RetryAndFollowUpInterceptor(client));
         interceptors.add(new BridgeInterceptor(client.getCookieJar()));
-        interceptors.add(new CacheInterceptor(client.getCache()));
+        interceptors.add(new CacheInterceptor(this, client.getCache()));
         interceptors.add(ConnectInterceptor.INSTANCE);
         if (!forWebSocket) {
             interceptors.addAll(client.getNetworkInterceptors());
@@ -420,7 +431,7 @@ public final class RealCall implements Call {
         assert exchangeFinder != null;
         final var connection = exchangeFinder.find();
         final var codec = connection.newCodec(client);
-        final var result = new Exchange(this, eventListener, exchangeFinder, codec);
+        final var result = new Exchange(this, exchangeFinder, codec);
         this.interceptorScopedExchange = result;
         this.exchange = result;
 
