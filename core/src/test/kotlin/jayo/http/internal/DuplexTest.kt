@@ -31,6 +31,7 @@ import jayo.http.internal.duplex.MockSocketHandler
 import jayo.tls.ClientTlsSocket
 import jayo.tls.JssePlatformRule
 import jayo.tls.Protocol
+import jayo.tools.JayoTlsUtils
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.junit5.StartStop
@@ -57,11 +58,11 @@ class DuplexTest {
     @StartStop
     private val server = MockWebServer()
 
-    private var listener = RecordingEventListener()
+    private var eventRecorder = EventRecorder()
     private var client =
         clientTestRule
             .newClientBuilder()
-            .eventListenerFactory(clientTestRule.wrap(listener))
+            .eventListenerFactory(clientTestRule.wrap(eventRecorder))
             .build()
     private val executorService = Executors.newScheduledThreadPool(1)
 
@@ -274,7 +275,7 @@ class DuplexTest {
             requestBody.close()
         }
         body.awaitSuccess()
-        assertThat(listener.recordedEventTypes()).containsExactly(
+        assertThat(eventRecorder.recordedEventTypes()).containsExactly(
             CallStart::class,
             ProxySelected::class,
             DnsStart::class,
@@ -341,28 +342,25 @@ class DuplexTest {
      */
     @Test
     fun duplexWithRedirect() {
+        platform.assumeConscrypt() // whatever works
+
         enableProtocol(Protocol.HTTP_2)
         val duplexResponseSent = CountDownLatch(1)
-        listener =
-            object : RecordingEventListener() {
-                override fun responseHeadersEnd(
+        val requestHeadersEndListener =
+            object : EventListener() {
+                override fun requestHeadersEnd(
                     call: Call,
-                    response: ClientResponse,
+                    request: ClientRequest,
                 ) {
-                    try {
-                        // Wait for the server to send the duplex response before acting on the 301 response
-                        // and resetting the stream.
-                        duplexResponseSent.await()
-                    } catch (_: InterruptedException) {
-                        throw kotlin.AssertionError()
-                    }
-                    super.responseHeadersEnd(call, response)
+                    // Wait for the server to send the duplex response before acting on the 301 response
+                    // and resetting the stream.
+                    duplexResponseSent.await()
                 }
             }
         client =
             client
                 .newBuilder()
-                .eventListener(listener)
+                .eventListener(eventRecorder.eventListener + requestHeadersEndListener)
                 .build()
         val body =
             MockSocketHandler()
@@ -403,7 +401,7 @@ class DuplexTest {
             .hasMessage("stream was reset: CANCEL")
 
         body.awaitSuccess()
-        assertThat(listener.recordedEventTypes()).containsExactly(
+        assertThat(eventRecorder.recordedEventTypes()).containsExactly(
             CallStart::class,
             ProxySelected::class,
             DnsStart::class,
@@ -432,7 +430,7 @@ class DuplexTest {
             CallEnd::class,
             RequestFailed::class,
         )
-        assertThat(listener.findEvent<FollowUpDecision>()).matches {
+        assertThat(eventRecorder.findEvent<FollowUpDecision>()).matches {
             it.nextRequest != null
         }
     }
@@ -820,7 +818,7 @@ class DuplexTest {
     }
 
     private fun enableTls() {
-        val handshakeCertificates = platform.localhostHandshakeCertificates()
+        val handshakeCertificates = JayoTlsUtils.localhost()
 
         client =
             client

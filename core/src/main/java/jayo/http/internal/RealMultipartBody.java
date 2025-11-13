@@ -182,7 +182,7 @@ public final class RealMultipartBody extends AbstractList<Part> implements Multi
         return false;
     }
 
-    public final static class RealPart implements MultipartBody.Part {
+    public static final class RealPart implements MultipartBody.Part {
         public static Part create(final @Nullable Headers headers, final @NonNull ClientRequestBody body) {
             if (headers != null && headers.get("Content-Type") != null) {
                 throw new IllegalArgumentException("Unexpected header: Content-Type");
@@ -264,7 +264,7 @@ public final class RealMultipartBody extends AbstractList<Part> implements Multi
         }
     }
 
-    public final static class Builder implements MultipartBody.Builder {
+    public static final class Builder implements MultipartBody.Builder {
         private @Nullable String boundary;
         private @NonNull MediaType type = MIXED;
         private final @NonNull List<@NonNull Part> parts = new ArrayList<>();

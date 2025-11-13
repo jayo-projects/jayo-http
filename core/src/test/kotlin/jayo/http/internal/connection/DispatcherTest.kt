@@ -48,13 +48,13 @@ class DispatcherTest {
     val dispatcherBuilder = Dispatcher.builder()
         .executorService(executor)
     val dispatcher: RealDispatcher by lazy { dispatcherBuilder.build() as RealDispatcher }
-    val listener = RecordingEventListener()
+    val eventRecorder = EventRecorder()
     val client: JayoHttpClient by lazy {
         clientTestRule
             .newClientBuilder()
             .dns { throw UnknownHostException() }
             .dispatcher(dispatcher)
-            .eventListenerFactory(clientTestRule.wrap(listener))
+            .eventListenerFactory(clientTestRule.wrap(eventRecorder))
             .build()
     }
 
@@ -62,7 +62,7 @@ class DispatcherTest {
     fun setUp() {
         dispatcherBuilder.maxRequests(20)
         dispatcherBuilder.maxRequestsPerHost(10)
-        listener.forbidLock(dispatcherBuilder)
+        eventRecorder.forbidLock(dispatcherBuilder)
     }
 
     @Test
@@ -84,8 +84,8 @@ class DispatcherTest {
         client.newCall(newRequest("http://a/1")).enqueue(callback)
         executor.assertJobs("http://a/1")
 
-        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueStart }
-        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueEnd }
+        assertThat(eventRecorder.eventSequence).noneMatch { it is DispatcherQueueStart }
+        assertThat(eventRecorder.eventSequence).noneMatch { it is DispatcherQueueEnd }
     }
 
     @Test
@@ -97,9 +97,9 @@ class DispatcherTest {
         client.newCall(newRequest("http://b/2")).enqueue(callback)
         executor.assertJobs("http://a/1", "http://a/2", "http://b/1")
 
-        val dispatcherQueueStart = listener.removeUpToEvent<DispatcherQueueStart>()
+        val dispatcherQueueStart = eventRecorder.removeUpToEvent<DispatcherQueueStart>()
         assertThat(dispatcherQueueStart.call.request().url).isEqualTo("http://b/2".toHttpUrl())
-        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueEnd }
+        assertThat(eventRecorder.eventSequence).noneMatch { it is DispatcherQueueEnd }
     }
 
     @Test
@@ -110,9 +110,9 @@ class DispatcherTest {
         client.newCall(newRequest("http://a/3")).enqueue(callback)
         executor.assertJobs("http://a/1", "http://a/2")
 
-        val dispatcherQueueStart = listener.removeUpToEvent<DispatcherQueueStart>()
+        val dispatcherQueueStart = eventRecorder.removeUpToEvent<DispatcherQueueStart>()
         assertThat(dispatcherQueueStart.call.request().url).isEqualTo("http://a/3".toHttpUrl())
-        assertThat(listener.eventSequence).noneMatch { it is DispatcherQueueEnd }
+        assertThat(eventRecorder.eventSequence).noneMatch { it is DispatcherQueueEnd }
 
     }
 
@@ -298,7 +298,7 @@ class DispatcherTest {
         executor.shutdown()
         client.newCall(request).enqueue(callback)
         callback.await(request.url).assertFailure(JayoInterruptedIOException::class.java)
-        assertThat(listener.recordedEventTypes())
+        assertThat(eventRecorder.recordedEventTypes())
             .containsExactly(CallStart::class, CallFailed::class)
     }
 
@@ -311,7 +311,7 @@ class DispatcherTest {
         executor.shutdown()
         client.newCall(request2).enqueue(callback)
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
-        assertThat(listener.recordedEventTypes())
+        assertThat(eventRecorder.recordedEventTypes())
             .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
     }
 
@@ -324,7 +324,7 @@ class DispatcherTest {
         executor.shutdown()
         client.newCall(request2).enqueue(callback)
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
-        assertThat(listener.recordedEventTypes())
+        assertThat(eventRecorder.recordedEventTypes())
             .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
     }
 
@@ -338,7 +338,7 @@ class DispatcherTest {
         client.newCall(request2).enqueue(callback)
         executor.finishJob("http://a/1") // Trigger promotion.
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
-        assertThat(listener.recordedEventTypes())
+        assertThat(eventRecorder.recordedEventTypes())
             .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
     }
 

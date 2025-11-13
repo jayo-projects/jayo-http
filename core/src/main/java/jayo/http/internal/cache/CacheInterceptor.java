@@ -48,9 +48,13 @@ import static jayo.http.tools.JayoHttpUtils.promisesBody;
  * Serves requests from the cache and writes responses to the cache.
  */
 public final class CacheInterceptor implements Interceptor {
+    private final @NonNull RealCall call;
     private final @Nullable RealCache cache;
 
-    public CacheInterceptor(final @Nullable Cache cache) {
+    public CacheInterceptor(final @NonNull RealCall call, final @Nullable Cache cache) {
+        assert call != null;
+
+        this.call = call;
         this.cache = (RealCache) cache;
     }
 
@@ -58,7 +62,6 @@ public final class CacheInterceptor implements Interceptor {
     public @NonNull ClientResponse intercept(final @NonNull Chain chain) {
         assert chain != null;
 
-        final var call = chain.call();
         final var cacheCandidate = cache != null ? cache.get(requestForCache(chain.request())) : null;
 
         final var now = Instant.now();
@@ -70,7 +73,6 @@ public final class CacheInterceptor implements Interceptor {
         if (cache != null) {
             cache.trackResponse(strategy);
         }
-        final var listener = (call instanceof RealCall realCall) ? realCall.eventListener() : EventListener.NONE;
 
         if (cacheCandidate != null && cacheResponse == null) {
             // The cache candidate wasn't applicable. Close it.
@@ -87,7 +89,7 @@ public final class CacheInterceptor implements Interceptor {
                     .sentRequestAt(Instant.MIN)
                     .receivedResponseAt(Instant.now())
                     .build();
-            listener.satisfactionFailure(call, response);
+            call.eventListener().satisfactionFailure(call, response);
             return response;
         }
 
@@ -97,14 +99,14 @@ public final class CacheInterceptor implements Interceptor {
                     .newBuilder()
                     .cacheResponse(stripBody(cacheResponse).build())
                     .build();
-            listener.cacheHit(call, response);
+            call.eventListener().cacheHit(call, response);
             return response;
         }
 
         if (cacheResponse != null) {
-            listener.cacheConditionalHit(call, cacheResponse);
+            call.eventListener().cacheConditionalHit(call, cacheResponse);
         } else if (cache != null) {
-            listener.cacheMiss(call);
+            call.eventListener().cacheMiss(call);
         }
 
         ClientResponse networkResponse = null;
@@ -136,7 +138,7 @@ public final class CacheInterceptor implements Interceptor {
                 assert cache != null;
                 cache.trackConditionalCacheHit();
                 cache.update(cacheResponse, response);
-                listener.cacheHit(call, response);
+                call.eventListener().cacheHit(call, response);
                 return response;
             } else {
                 closeQuietly(cacheResponse.getBody());
@@ -157,7 +159,7 @@ public final class CacheInterceptor implements Interceptor {
                 final var cacheWritingResponse = cacheWritingResponse(cacheRequest, response);
                 if (cacheResponse != null) {
                     // This will log a conditional cache miss only.
-                    listener.cacheMiss(call);
+                    call.eventListener().cacheMiss(call);
                 }
                 return cacheWritingResponse;
             }
@@ -195,7 +197,7 @@ public final class CacheInterceptor implements Interceptor {
 
             @Override
             public long readAtMostTo(final @NonNull Buffer destination, final long byteCount) {
-                Objects.requireNonNull(destination);
+                assert destination != null;
 
                 final long bytesRead;
                 try {
