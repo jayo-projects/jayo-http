@@ -67,41 +67,39 @@ enum CallServerInterceptor implements Interceptor {
         try {
             exchange.writeRequestHeaders(request);
 
-            if (!isUpgradeRequest) {
-                if (hasRequestBody) {
-                    // If there's an "Expect: 100-continue" header on the request, wait for an "HTTP/1.1 100 Continue"
-                    // response before transmitting the request body. If we don't get that, return what we did get (such
-                    // as a 4xx response) without ever transmitting the request body.
-                    if ("100-continue".equalsIgnoreCase(request.header("Expect"))) {
+            if (hasRequestBody) {
+                // If there's an "Expect: 100-continue" header on the request, wait for an "HTTP/1.1 100 Continue"
+                // response before transmitting the request body. If we don't get that, return what we did get (such as
+                // a 4xx response) without ever transmitting the request body.
+                if ("100-continue".equalsIgnoreCase(request.header("Expect"))) {
+                    exchange.flushRequest();
+                    responseBuilder = exchange.readResponseHeaders(true);
+                    exchange.responseHeadersStart();
+                    invokeStartEvent = false;
+                }
+                if (responseBuilder == null) {
+                    if (requestBody.isDuplex()) {
+                        // Prepare a duplex body so that the application can send a request body later.
                         exchange.flushRequest();
-                        responseBuilder = exchange.readResponseHeaders(true);
-                        exchange.responseHeadersStart();
-                        invokeStartEvent = false;
-                    }
-                    if (responseBuilder == null) {
-                        if (requestBody.isDuplex()) {
-                            // Prepare a duplex body so that the application can send a request body later.
-                            exchange.flushRequest();
-                            final var bufferedRequestBody = Jayo.buffer(exchange.createRequestBody(request, true));
-                            requestBody.writeTo(bufferedRequestBody);
-                        } else {
-                            // Write the request body if the "Expect: 100-continue" expectation was met.
-                            final var bufferedRequestBody = Jayo.buffer(exchange.createRequestBody(request, false));
-                            requestBody.writeTo(bufferedRequestBody);
-                            bufferedRequestBody.close();
-                        }
+                        final var bufferedRequestBody = Jayo.buffer(exchange.createRequestBody(request, true));
+                        requestBody.writeTo(bufferedRequestBody);
                     } else {
-                        exchange.noRequestBody();
-                        if (!exchange.connection().isMultiplexed()) {
-                            // If the "Expect: 100-continue" expectation wasn't met, prevent the HTTP/1 connection from
-                            // being reused. Otherwise, we're still obligated to transmit the request body to leave the
-                            // connection in a consistent state.
-                            exchange.noNewExchangesOnConnection();
-                        }
+                        // Write the request body if the "Expect: 100-continue" expectation was met.
+                        final var bufferedRequestBody = Jayo.buffer(exchange.createRequestBody(request, false));
+                        requestBody.writeTo(bufferedRequestBody);
+                        bufferedRequestBody.close();
                     }
                 } else {
                     exchange.noRequestBody();
+                    if (!exchange.connection().isMultiplexed()) {
+                        // If the "Expect: 100-continue" expectation wasn't met, prevent the HTTP/1 connection from
+                        // being reused. Otherwise, we're still obligated to transmit the request body to leave the
+                        // connection in a consistent state.
+                        exchange.noNewExchangesOnConnection();
+                    }
                 }
+            } else {
+                exchange.noRequestBody();
             }
 
             if (requestBody == null || !requestBody.isDuplex()) {
@@ -167,9 +165,6 @@ enum CallServerInterceptor implements Interceptor {
                         .build();
             } else {
                 // This is not an upgrade response.
-                if (isUpgradeRequest) {
-                    exchange.noRequestBody(); // Failed upgrade request has no outbound data.
-                }
                 final var responseBody = exchange.openResponseBody(response);
                 response = response.newBuilder()
                         .body(responseBody)

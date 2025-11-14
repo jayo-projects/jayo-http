@@ -54,13 +54,6 @@ public final class RealClientRequest implements ClientRequest {
         this.headers = builder.headers.build();
         this.body = builder.body;
         this.cacheUrlOverride = builder.cacheUrlOverride;
-
-        final var connectionHeader = headers.get("Connection");
-        if ("upgrade".equalsIgnoreCase(connectionHeader)) {
-            if (!(body == null || body.contentByteSize() == 0L)) {
-                throw new IllegalArgumentException("expected a null or empty request body with 'Connection: upgrade'");
-            }
-        }
     }
 
     @Override
