@@ -36,7 +36,6 @@ import jayo.scheduler.TaskRunner;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.io.Closeable;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.locks.Condition;
@@ -55,7 +54,7 @@ import static jayo.http.internal.http2.Settings.DEFAULT_INITIAL_WINDOW_SIZE;
  * Java but atypical for HTTP/2. This is motivated by exception transparency: a {@link JayoException} that was triggered
  * by a certain caller can be caught and handled by that caller.
  */
-public final class Http2Connection implements Closeable {
+public final class Http2Connection implements AutoCloseable {
     private static final System.Logger LOGGER = System.getLogger("jayo.http.http2.Http2Connection");
 
     // The internal state of this connection is guarded by 'lock'. No blocking operations may be performed while holding

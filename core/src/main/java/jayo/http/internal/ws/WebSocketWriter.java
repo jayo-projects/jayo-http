@@ -30,7 +30,6 @@ import jayo.tools.JayoUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.io.Closeable;
 import java.util.Random;
 
 import static jayo.http.internal.ws.WebSocketProtocol.*;
@@ -40,7 +39,7 @@ import static jayo.http.internal.ws.WebSocketProtocol.*;
  * <p>
  * This class is not thread safe.
  */
-final class WebSocketWriter implements Closeable {
+final class WebSocketWriter implements AutoCloseable {
     private final boolean isClient;
     final @NonNull Writer writer;
     final @NonNull Random random;

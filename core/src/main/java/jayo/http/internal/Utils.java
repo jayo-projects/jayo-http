@@ -29,7 +29,6 @@ import jayo.http.MediaType;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.io.Closeable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -268,7 +267,7 @@ public final class Utils {
     /**
      * Closes this {@code closeable}, ignoring any checked exceptions and any {@link JayoException}.
      */
-    public static void closeQuietly(final @NonNull Closeable closeable) {
+    public static void closeQuietly(final @NonNull AutoCloseable closeable) {
         assert closeable != null;
 
         try {

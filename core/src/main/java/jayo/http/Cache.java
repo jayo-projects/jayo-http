@@ -23,9 +23,6 @@ package jayo.http;
 
 import jayo.http.internal.cache.RealCache;
 
-import java.io.Closeable;
-import java.io.Flushable;
-
 /**
  * Caches HTTP and HTTPS responses to the filesystem so they may be reused, saving time and bandwidth.
  * <p>
@@ -34,9 +31,9 @@ import java.io.Flushable;
  * <h2>Cache Optimization</h2>
  * To measure cache effectiveness, this class tracks three statistics:
  * <ul>
- * <li>{@linkplain requestCount() Request Count:} the number of HTTP requests issued since this cache was created.
- * <li>{@linkplain networkCount() Network Count:} the number of those requests that required network use.
- * <li>{@linkplain hitCount() Hit Count:} the number of those requests whose responses were served by the cache.
+ * <li>{@linkplain #requestCount() Request Count:} the number of HTTP requests issued since this cache was created.
+ * <li>{@linkplain #networkCount() Network Count:} the number of those requests that required network use.
+ * <li>{@linkplain #hitCount() Hit Count:} the number of those requests whose responses were served by the cache.
  * </ul>
  * Sometimes a request will result in a conditional cache hit. If the cache contains a stale copy of the response, the
  * client will issue a conditional {@code GET}. The server will then send either the updated response if it has changed,
@@ -105,10 +102,9 @@ import java.io.Flushable;
  * even offers convenient constants {@link CacheControl#FORCE_NETWORK} and {@link CacheControl#FORCE_CACHE} that address
  * the use cases above.
  */
-public sealed interface Cache extends Closeable, Flushable permits RealCache {
+public sealed interface Cache extends AutoCloseable permits RealCache {
     @Override
     void close();
 
-    @Override
     void flush();
 }

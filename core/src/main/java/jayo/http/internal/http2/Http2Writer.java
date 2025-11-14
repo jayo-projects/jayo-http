@@ -28,8 +28,6 @@ import jayo.http.http2.ErrorCode;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.io.Closeable;
-import java.io.Flushable;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -41,7 +39,7 @@ import static jayo.http.internal.http2.Http2.*;
 /**
  * Writes HTTP/2 transport frames.
  */
-final class Http2Writer implements Closeable, Flushable {
+final class Http2Writer implements AutoCloseable {
     private static final System.Logger LOGGER = System.getLogger("jayo.http.Http2");
 
     private final @NonNull Writer writer;
@@ -429,7 +427,6 @@ final class Http2Writer implements Closeable, Flushable {
         writer.writeByte((byte) (medium & 0xff));
     }
 
-    @Override
     public void flush() {
         lock.lock();
         try {

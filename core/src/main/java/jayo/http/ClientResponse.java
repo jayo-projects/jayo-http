@@ -27,7 +27,6 @@ import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.io.Closeable;
 import java.time.Instant;
 import java.util.List;
 
@@ -35,10 +34,10 @@ import java.util.List;
  * An HTTP response. Instances of this class are not immutable: the response body is a one-shot value that may be
  * consumed only once and then closed. All other properties are immutable.
  * <p>
- * This interface extends {@link Closeable}. Closing it simply closes its response body. See {@link ClientResponseBody}
+ * This interface extends {@link AutoCloseable}. Closing it simply closes its response body. See {@link ClientResponseBody}
  * for an explanation and examples.
  */
-public sealed interface ClientResponse extends Closeable permits RealClientResponse {
+public sealed interface ClientResponse extends AutoCloseable permits RealClientResponse {
     static @NonNull Builder builder() {
         return new RealClientResponse.Builder();
     }

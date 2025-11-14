@@ -26,7 +26,6 @@ import jayo.bytestring.ByteString
 import jayo.http.http2.ErrorCode
 import jayo.http.internal.TestUtils.threadFactory
 import jayo.http.internal.closeQuietly
-import java.io.Closeable
 import java.io.IOException
 import java.lang.System.Logger.Level.INFO
 import java.net.InetSocketAddress
@@ -36,7 +35,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 
 /** Replays prerecorded outgoing frames and records incoming frames.  */
-class MockHttp2Peer : Closeable {
+class MockHttp2Peer : AutoCloseable {
     private var frameCount = 0
     private var client = false
     private val bytesOut = Buffer()

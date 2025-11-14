@@ -32,7 +32,6 @@ import jayo.tls.ClientHandshakeCertificates
 import jayo.tls.ClientTlsSocket
 import jayo.tls.Protocol
 import jayo.tools.JayoTlsUtils.localhost
-import java.io.Closeable
 import java.net.InetSocketAddress
 import java.time.Duration
 import javax.net.ssl.HostnameVerifier
@@ -49,7 +48,7 @@ import kotlin.concurrent.withLock
  * doesn't guarantee values are internally consistent. Callers must take care to configure the factory when sample
  * values impact the correctness of the test.
  */
-class TestValueFactory : Closeable {
+class TestValueFactory : AutoCloseable {
     var taskFaker: TaskFaker = TaskFaker()
     var taskRunner: TaskRunner = taskFaker.taskRunner
     var dns: Dns = Dns.SYSTEM

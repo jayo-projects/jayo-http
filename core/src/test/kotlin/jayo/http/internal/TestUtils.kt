@@ -32,7 +32,6 @@ import jayo.tls.Protocol
 import jayo.tls.ServerHandshakeCertificates
 import jayo.tools.JayoTlsUtils
 import okio.ByteString.Companion.toByteString
-import java.io.Closeable
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.util.*
@@ -150,7 +149,7 @@ internal abstract class ForwardingRawReader(
     override fun close() = delegate.close()
 }
 
-internal fun Closeable.closeQuietly() = Utils.closeQuietly(this)
+internal fun AutoCloseable.closeQuietly() = Utils.closeQuietly(this)
 
 internal fun parseCookie(
     currentTimeMillis: Long,

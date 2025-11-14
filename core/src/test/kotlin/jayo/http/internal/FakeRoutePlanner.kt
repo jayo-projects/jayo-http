@@ -27,7 +27,6 @@ import jayo.http.internal.connection.RoutePlanner
 import jayo.http.internal.connection.RoutePlanner.ConnectResult
 import jayo.http.internal.connection.TestValueFactory
 import jayo.scheduler.internal.TaskFaker
-import java.io.Closeable
 import java.io.IOException
 import java.io.UncheckedIOException
 import java.util.*
@@ -36,8 +35,7 @@ import java.util.concurrent.LinkedBlockingDeque
 class FakeRoutePlanner(
     val factory: TestValueFactory = TestValueFactory(),
     val taskFaker: TaskFaker = factory.taskFaker,
-) : RoutePlanner,
-    Closeable {
+) : RoutePlanner, AutoCloseable {
     val pool = factory.newConnectionPool()
     val events = LinkedBlockingDeque<String>()
     var canceled = false
