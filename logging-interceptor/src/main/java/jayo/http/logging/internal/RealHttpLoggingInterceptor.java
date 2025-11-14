@@ -178,6 +178,8 @@ public final class RealHttpLoggingInterceptor implements HttpLoggingInterceptor 
                 logger.log("<-- END HTTP (encoded body omitted)");
             } else if (bodyIsStreaming(response)) {
                 logger.log("<-- END HTTP (streaming)");
+            } else if (responseBody.getClass().getName().equals("jayo.http.internal.UnreadableResponseBody")) {
+                logger.log("<-- END HTTP (unreadable body)");
             } else {
                 final var reader = responseBody.reader();
                 reader.request(Long.MAX_VALUE); // Buffer the entire body.
