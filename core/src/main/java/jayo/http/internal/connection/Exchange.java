@@ -22,7 +22,10 @@
 package jayo.http.internal.connection;
 
 import jayo.*;
-import jayo.http.*;
+import jayo.http.ClientRequest;
+import jayo.http.ClientResponse;
+import jayo.http.ClientResponseBody;
+import jayo.http.Headers;
 import jayo.http.internal.RealClientResponse;
 import jayo.http.internal.StandardClientResponseBodies;
 import jayo.http.internal.http.ExchangeCodec;
@@ -42,11 +45,6 @@ public final class Exchange {
      * True if the request body need not complete before the response body starts.
      */
     boolean isDuplex = false;
-
-    /**
-     * True if the request body should not be used, but the socket, instead.
-     */
-    boolean isSocket = false;
 
     /**
      * True if there was an exception on the connection to the peer.
@@ -100,7 +98,10 @@ public final class Exchange {
         final var contentLength = request.getBody().contentByteSize();
         call.eventListener.requestBodyStart(call);
         final var rawRequestBody = codec.createRequestBody(request, contentLength);
-        return new RequestBodyRawWriter(rawRequestBody, contentLength);
+        return new RequestBodyRawWriter(
+                rawRequestBody,
+                contentLength,
+                /*isSocket*/ false);
     }
 
     void flushRequest() {
@@ -152,7 +153,10 @@ public final class Exchange {
             final var contentType = response.header("Content-Type");
             final var contentLength = codec.reportedContentByteSize(response);
             final var rawReader = codec.openResponseBodyReader(response);
-            final var reader = new ResponseBodyRawReader(rawReader, contentLength);
+            final var reader = new ResponseBodyRawReader(
+                    rawReader,
+                    contentLength,
+                    /*isSocket*/ false);
             return StandardClientResponseBodies.create(Jayo.buffer(reader), contentType, contentLength);
         } catch (JayoException e) {
             call.eventListener.responseFailed(call, e);
@@ -167,19 +171,24 @@ public final class Exchange {
 
     @NonNull
     RawSocket upgradeToSocket() {
-        isSocket = true;
-        call.timeoutEarlyExit();
+        call.upgradeToSocket();
         ((RealConnection) codec.getCarrier()).useAsSocket();
 
         return new RawSocket() {
             @Override
             public @NonNull RawReader getReader() {
-                return new ResponseBodyRawReader(codec.getSocket().getReader(), -1L);
+                return new ResponseBodyRawReader(
+                        codec.getSocket().getReader(),
+                        -1L,
+                        /*isSocket*/ true);
             }
 
             @Override
             public @NonNull RawWriter getWriter() {
-                return new RequestBodyRawWriter(codec.getSocket().getWriter(), -1L);
+                return new RequestBodyRawWriter(
+                        codec.getSocket().getWriter(),
+                        -1L,
+                        /*isSocket*/ true);
             }
 
             @Override
@@ -203,7 +212,13 @@ public final class Exchange {
      */
     public void detachWithViolence() {
         codec.cancel();
-        call.messageDone(this, true, true, null);
+        call.messageDone(
+                /*exchange*/ this,
+                /*requestDone*/ true,
+                /*responseDone*/ true,
+                /*socketWriterDone*/ true,
+                /*socketReaderDone*/ true,
+                null);
     }
 
     private void trackFailure(final @NonNull JayoException e) {
@@ -211,7 +226,11 @@ public final class Exchange {
         codec.getCarrier().trackFailure(call, e);
     }
 
-    <E extends JayoException> E bodyComplete(final long bytesRead, boolean responseDone, boolean requestDone, E e) {
+    <E extends JayoException> E bodyComplete(final long bytesRead,
+                                             final boolean isSocket,
+                                             final boolean responseDone,
+                                             final boolean requestDone,
+                                             final @Nullable E e) {
         if (e != null) {
             trackFailure(e);
         }
@@ -229,11 +248,23 @@ public final class Exchange {
                 call.eventListener.responseBodyEnd(call, bytesRead);
             }
         }
-        return call.messageDone(this, requestDone, responseDone, e);
+        return call.messageDone(
+                /*exchange*/ this,
+                /*requestDone*/ requestDone && !isSocket,
+                /*responseDone*/ responseDone && !isSocket,
+                /*socketWriterDone*/ requestDone && isSocket,
+                /*socketReaderDone*/ responseDone && isSocket,
+                e);
     }
 
     void noRequestBody() {
-        call.messageDone(this, true, false, null);
+        call.messageDone(
+                /*exchange*/ this,
+                /*requestDone*/ true,
+                /*responseDone*/ false,
+                /*socketWriterDone*/ false,
+                /*socketReaderDone*/ false,
+                null);
     }
 
     /**
@@ -245,16 +276,23 @@ public final class Exchange {
          * The exact number of bytes to be written, or -1L if that is unknown.
          */
         private final long contentLength;
+        private final boolean isSocket;
+
         private boolean completed = false;
         private long bytesReceived = 0L;
-        private boolean invokeStartEvent = isSocket;
+        private boolean invokeStartEvent;
         private boolean closed = false;
 
-        private RequestBodyRawWriter(final @NonNull RawWriter delegate, final long contentLength) {
+        private RequestBodyRawWriter(final @NonNull RawWriter delegate,
+                                     final long contentLength,
+                                     final boolean isSocket) {
             assert delegate != null;
 
             this.delegate = delegate;
             this.contentLength = contentLength;
+            this.isSocket = isSocket;
+
+            invokeStartEvent = isSocket;
         }
 
         @Override
@@ -311,7 +349,7 @@ public final class Exchange {
                 return e;
             }
             completed = true;
-            return bodyComplete(bytesReceived, false, true, e);
+            return bodyComplete(bytesReceived, isSocket, false, true, e);
         }
     }
 
@@ -321,16 +359,22 @@ public final class Exchange {
     final class ResponseBodyRawReader implements RawReader {
         private final @NonNull RawReader delegate;
         private final long contentLength;
+        private final boolean isSocket;
+
         private long bytesReceived = 0L;
         private boolean invokeStartEvent = true;
         private boolean completed = false;
         private boolean closed = false;
 
-        ResponseBodyRawReader(final @NonNull RawReader delegate, final long contentLength) {
+        ResponseBodyRawReader(final @NonNull RawReader delegate,
+                              final long contentLength,
+                              final boolean isSocket) {
             assert delegate != null;
 
             this.delegate = delegate;
             this.contentLength = contentLength;
+            this.isSocket = isSocket;
+
             if (contentLength == 0L) {
                 complete(null);
             }
@@ -397,7 +441,7 @@ public final class Exchange {
                 invokeStartEvent = false;
                 call.eventListener.responseBodyStart(call);
             }
-            return bodyComplete(bytesReceived, true, false, e);
+            return bodyComplete(bytesReceived, isSocket, true, false, e);
         }
     }
 }

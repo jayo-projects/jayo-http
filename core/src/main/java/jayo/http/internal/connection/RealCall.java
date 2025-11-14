@@ -110,15 +110,10 @@ public final class RealCall implements Call {
     // These properties are guarded by `lock`. They are typically only accessed by the thread executing the call, but
     // they may be accessed by other threads for duplex requests.
 
-    /**
-     * True if this call still has a request body open.
-     */
     private boolean requestBodyOpen = false;
-
-    /**
-     * True if this call still has a response body open.
-     */
     private boolean responseBodyOpen = false;
+    private boolean socketWriterOpen = false;
+    private boolean socketReaderOpen = false;
 
     /**
      * True if there are more exchanges expected for this call.
@@ -379,7 +374,7 @@ public final class RealCall implements Call {
                 throw new IllegalStateException("cannot make a new request because the previous response is still" +
                         " open: please call response.close()");
             }
-            if (requestBodyOpen) {
+            if (requestBodyOpen || socketReaderOpen || socketWriterOpen) {
                 throw new IllegalStateException();
             }
         } finally {
@@ -417,10 +412,7 @@ public final class RealCall implements Call {
             if (!expectMoreExchanges) {
                 throw new IllegalStateException("released");
             }
-            if (responseBodyOpen) {
-                throw new IllegalStateException();
-            }
-            if (requestBodyOpen) {
+            if (responseBodyOpen || requestBodyOpen || socketReaderOpen || socketWriterOpen) {
                 throw new IllegalStateException();
             }
         } finally {
@@ -487,6 +479,8 @@ public final class RealCall implements Call {
     <E extends JayoException> E messageDone(final @NonNull Exchange exchange,
                                             final boolean requestDone,
                                             final boolean responseDone,
+                                            final boolean socketReaderDone,
+                                            final boolean socketWriterDone,
                                             final @Nullable E e) {
         assert exchange != null;
 
@@ -494,25 +488,38 @@ public final class RealCall implements Call {
             return e; // This exchange was detached violently!
         }
 
-        var bothStreamsDone = false;
+        var allStreamsDone = false;
         var callDone = false;
         lock.lock();
         try {
-            if ((requestDone && requestBodyOpen) || (responseDone && responseBodyOpen)) {
+            if (requestDone && requestBodyOpen ||
+                    responseDone && responseBodyOpen ||
+                    socketWriterDone && socketWriterOpen ||
+                    socketReaderDone && socketReaderOpen
+            ) {
                 if (requestDone) {
                     requestBodyOpen = false;
                 }
                 if (responseDone) {
                     responseBodyOpen = false;
                 }
-                bothStreamsDone = !requestBodyOpen && !responseBodyOpen;
-                callDone = !requestBodyOpen && !responseBodyOpen && !expectMoreExchanges;
+                if (socketWriterDone) {
+                    socketWriterOpen = false;
+                }
+                if (socketReaderDone) {
+                    socketReaderOpen = false;
+                }
+                allStreamsDone = !requestBodyOpen &&
+                        !responseBodyOpen &&
+                        !socketWriterOpen &&
+                        !socketReaderOpen;
+                callDone = allStreamsDone && !expectMoreExchanges;
             }
         } finally {
             lock.unlock();
         }
 
-        if (bothStreamsDone) {
+        if (allStreamsDone) {
             this.exchange = null;
             if (this.connection != null) {
                 this.connection.incrementSuccessCount();
@@ -532,7 +539,10 @@ public final class RealCall implements Call {
         try {
             if (expectMoreExchanges) {
                 expectMoreExchanges = false;
-                callDone = !requestBodyOpen && !responseBodyOpen;
+                callDone = !requestBodyOpen &&
+                        !responseBodyOpen &&
+                        !socketWriterOpen &&
+                        !socketReaderOpen;
             }
         } finally {
             lock.unlock();
@@ -546,8 +556,8 @@ public final class RealCall implements Call {
     }
 
     /**
-     * Complete this call. This should be called once these properties are all false:
-     * {@link #requestBodyOpen}, {@link #responseBodyOpen}, and {@link #expectMoreExchanges}.
+     * Complete this call. This should be called once these properties are all false: {@link #requestBodyOpen},
+     * {@link #responseBodyOpen}, {@link #socketWriterOpen}, {@link #socketReaderOpen} and {@link #expectMoreExchanges}.
      * <p>
      * This will release the connection if it is still held.
      * <p>
@@ -654,6 +664,22 @@ public final class RealCall implements Call {
         }
         timeoutEarlyExit = true;
         timeoutNode.exit();
+    }
+
+    void upgradeToSocket() {
+        timeoutEarlyExit();
+
+        lock.lock();
+        try {
+            if (exchange == null || socketWriterOpen || socketReaderOpen || requestBodyOpen || !responseBodyOpen) {
+                throw new IllegalStateException();
+            }
+            responseBodyOpen = false;
+            socketWriterOpen = true;
+            socketReaderOpen = true;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
