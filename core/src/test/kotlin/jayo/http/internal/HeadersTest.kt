@@ -24,8 +24,8 @@ package jayo.http.internal
 import jayo.http.Headers
 import jayo.http.toHeaders
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 import java.time.Instant
-import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
 class HeadersTest {
@@ -492,5 +492,46 @@ class HeadersTest {
         val headerMap = headers.toMultimap()
         assertThat(headerMap["cache-control"]!!.size).isEqualTo(2)
         assertThat(headerMap["Cache-Control"]!!.size).isEqualTo(2)
+    }
+
+    @Test
+    fun getOperator() {
+        val headers = Headers.of("a", "b", "c", "d")
+        assertThat(headers["a"]).isEqualTo("b")
+        assertThat(headers["c"]).isEqualTo("d")
+        assertThat(headers["e"]).isNull()
+    }
+
+    @Test
+    fun iteratorOperator() {
+        val headers = Headers.of("a", "b", "c", "d")
+
+        val pairs = mutableListOf<Pair<String, String>>()
+        for (header in headers) {
+            pairs += header.name to header.value
+        }
+
+        assertThat(pairs).containsExactly("a" to "b", "c" to "d")
+    }
+
+    @Test
+    fun builderGetOperator() {
+        val builder = Headers.builder()
+        builder.add("a", "b")
+        builder.add("c", "d")
+        assertThat(builder["a"]).isEqualTo("b")
+        assertThat(builder["c"]).isEqualTo("d")
+        assertThat(builder["e"]).isNull()
+    }
+
+    @Test
+    fun builderSetOperator() {
+        val builder = Headers.builder()
+        builder["a"] = "b"
+        builder["c"] = "d"
+        builder["e"] = Instant.EPOCH
+        assertThat(builder["a"]).isEqualTo("b")
+        assertThat(builder["c"]).isEqualTo("d")
+        assertThat(builder["e"]).isEqualTo("Thu, 01 Jan 1970 00:00:00 GMT")
     }
 }
