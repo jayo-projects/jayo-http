@@ -26,10 +26,9 @@ import jayo.InflaterRawReader;
 import jayo.Jayo;
 import org.jspecify.annotations.NonNull;
 
-import java.io.Closeable;
 import java.util.zip.Inflater;
 
-final class MessageInflater implements Closeable {
+final class MessageInflater implements AutoCloseable {
     private static final int OCTETS_TO_ADD_BEFORE_INFLATION = 0x0000ffff;
 
     private final boolean noContextTakeover;

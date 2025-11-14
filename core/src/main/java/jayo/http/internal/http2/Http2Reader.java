@@ -26,7 +26,6 @@ import jayo.bytestring.ByteString;
 import jayo.http.http2.ErrorCode;
 import org.jspecify.annotations.NonNull;
 
-import java.io.Closeable;
 import java.util.List;
 
 import static java.lang.System.Logger.Level.TRACE;
@@ -39,7 +38,7 @@ import static jayo.http.internal.http2.Http2.*;
  * This implementation assumes we do not send an increased {@linkplain Settings#maxFrameSize(int) frame} to the peer.
  * Hence, we expect all frames to have a max length of {@link Http2#INITIAL_MAX_FRAME_SIZE}.
  */
-final class Http2Reader implements Closeable {
+final class Http2Reader implements AutoCloseable {
     private static final System.Logger LOGGER = System.getLogger("jayo.http.Http2");
 
     private final @NonNull Reader reader;
@@ -546,8 +545,8 @@ final class Http2Reader implements Closeable {
                          final @NonNull List<@NonNull RealBinaryHeader> requestHeaders);
 
         /**
-         * HTTP/2 only. Expresses that resources for the connection or a client-initiated stream are available from a
-         * different network location or protocol configuration.
+         * HTTP/2 only. Expresses that resources for the connection or a client-initiated stream are
+         * available from a different network location or protocol configuration.
          * <p>
          * See <a href="https://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-01">alt-svc</a>
          *
@@ -561,6 +560,7 @@ final class Http2Reader implements Closeable {
          * @param port     the IP port associated with the service.
          * @param maxAge   time in seconds that this alternative is considered fresh.
          */
+        // Unused for now
         void alternateService(final int streamId,
                               final @NonNull String origin,
                               final @NonNull ByteString protocol,

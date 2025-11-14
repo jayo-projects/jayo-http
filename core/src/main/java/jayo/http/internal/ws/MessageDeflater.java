@@ -27,10 +27,9 @@ import jayo.RawWriter;
 import jayo.bytestring.ByteString;
 import org.jspecify.annotations.NonNull;
 
-import java.io.Closeable;
 import java.util.zip.Deflater;
 
-final class MessageDeflater implements Closeable {
+final class MessageDeflater implements AutoCloseable {
     private final @NonNull ByteString EMPTY_DEFLATE_BLOCK = ByteString.decodeHex("000000ffff");
     private static final int LAST_OCTETS_COUNT_TO_REMOVE_AFTER_DEFLATION = 4;
 

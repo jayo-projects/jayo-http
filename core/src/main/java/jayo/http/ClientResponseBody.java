@@ -29,13 +29,12 @@ import jayo.http.internal.Utils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import java.io.Closeable;
 import java.io.InputStream;
 import java.util.Objects;
 
 import static jayo.http.internal.ClientResponseBodyUtils.*;
 
-public abstract class ClientResponseBody implements Closeable {
+public abstract class ClientResponseBody implements AutoCloseable {
     /**
      * The empty response body.
      */
