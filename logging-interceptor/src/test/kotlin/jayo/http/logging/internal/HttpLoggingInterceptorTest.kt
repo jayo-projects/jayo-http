@@ -31,6 +31,7 @@ import jayo.tools.JayoTlsUtils
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.junit5.StartStop
+import okhttp3.WebSocketListener
 import okio.Buffer
 import okio.ByteString.Companion.decodeBase64
 import org.assertj.core.api.Assertions.assertThat
@@ -711,6 +712,57 @@ class HttpLoggingInterceptorTest {
             .assertLogEqual("Content-Type: text/event-stream")
             .assertLogMatch(Regex("""Transfer-encoding: chunked"""))
             .assertLogEqual("<-- END HTTP (streaming)")
+            .assertNoMoreLogs()
+    }
+
+    @Test
+    fun bodyResponseIsUnreadable() {
+        setLevel(Level.BODY)
+        val serverListener = object : WebSocketListener() {}
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .webSocketUpgrade(serverListener)
+                .build(),
+        )
+        val response =
+            client
+                .newCall(
+                    request()
+                        .header("Connection", "Upgrade")
+                        .header("Upgrade", "websocket")
+                        .header("Sec-WebSocket-Key", "abc123")
+                        .get(),
+                ).execute()
+        response.body.close()
+        networkLogs
+            .assertLogEqual("--> GET $url http/1.1")
+            .assertLogEqual("Connection: Upgrade")
+            .assertLogEqual("Upgrade: websocket")
+            .assertLogEqual("Sec-WebSocket-Key: abc123")
+            .assertLogEqual("Host: $host")
+            .assertLogEqual("Accept-Encoding: gzip")
+            .assertLogMatch(Regex("""User-Agent: jayohttp/.+"""))
+            .assertLogEqual("--> END GET")
+            .assertLogMatch(Regex("""<-- 101 Switching Protocols $url \(\d+ms\)"""))
+            .assertLogEqual("Content-Length: 0")
+            .assertLogEqual("Connection: Upgrade")
+            .assertLogEqual("Upgrade: websocket")
+            .assertLogMatch(Regex("""Sec-WebSocket-Accept: .+"""))
+            .assertLogEqual("<-- END HTTP (unreadable body)")
+            .assertNoMoreLogs()
+        applicationLogs
+            .assertLogEqual("--> GET $url")
+            .assertLogEqual("Connection: Upgrade")
+            .assertLogEqual("Upgrade: websocket")
+            .assertLogEqual("Sec-WebSocket-Key: abc123")
+            .assertLogEqual("--> END GET")
+            .assertLogMatch(Regex("""<-- 101 Switching Protocols $url \(\d+ms\)"""))
+            .assertLogEqual("Content-Length: 0")
+            .assertLogEqual("Connection: Upgrade")
+            .assertLogEqual("Upgrade: websocket")
+            .assertLogMatch(Regex("""Sec-WebSocket-Accept: .+"""))
+            .assertLogEqual("<-- END HTTP (unreadable body)")
             .assertNoMoreLogs()
     }
 
