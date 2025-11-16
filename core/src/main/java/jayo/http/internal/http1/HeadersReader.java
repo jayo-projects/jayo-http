@@ -28,13 +28,13 @@ import org.jspecify.annotations.NonNull;
 
 import java.nio.charset.StandardCharsets;
 
-final class HeadersReader {
+public final class HeadersReader {
     private static final int HEADER_LIMIT = 256 * 1024;
 
     private final @NonNull Reader reader;
     private long headerLimit = HEADER_LIMIT;
 
-    HeadersReader(final @NonNull Reader reader) {
+    public HeadersReader(final @NonNull Reader reader) {
         assert reader != null;
         this.reader = reader;
     }
@@ -52,8 +52,7 @@ final class HeadersReader {
     /**
      * Reads headers or trailers.
      */
-    @NonNull
-    Headers readHeaders() {
+    public @NonNull Headers readHeaders() {
         final var result = (RealHeaders.Builder) Headers.builder();
         while (true) {
             final var line = readLine();
