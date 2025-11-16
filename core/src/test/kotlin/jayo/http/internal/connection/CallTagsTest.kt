@@ -163,6 +163,35 @@ class CallTagsTest {
     }
 
     @Test
+    fun tagsAreLogged() {
+        val uuidTag = UUID.randomUUID()
+        val stringTag = "dilophosaurus"
+        val longTag = 20170815L
+        val request =
+            ClientRequest.builder()
+                .url("https://jayo.dev")
+                .get()
+        val call = client.newCall(
+            request,
+            Tag(UUID::class.java, uuidTag),
+            Tag(String::class.java, stringTag),
+            Tag(Long::class.javaObjectType, longTag)
+        )
+        assertThat(call.toString())
+            .isEqualTo(
+                "Call{originalRequest=ClientRequest{method=GET, url=https://jayo.dev/}" +
+                        ", state=Call not started" +
+                        ", tags={" +
+                        "class java.util.UUID=$uuidTag" +
+                        ", class java.lang.String=$stringTag" +
+                        ", class java.lang.Long=$longTag" +
+                        "}" +
+                        ", forWebSocket=false" +
+                        "}"
+            )
+    }
+
+    @Test
     fun tagsCanBeComputed() {
         val request =
             ClientRequest.builder()

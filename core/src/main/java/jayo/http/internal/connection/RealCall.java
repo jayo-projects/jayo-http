@@ -42,7 +42,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -128,16 +127,19 @@ public final class RealCall implements Call {
     final @NonNull Collection<RoutePlanner.@NonNull Plan> plansToCancel = new CopyOnWriteArrayList<>();
 
     private final @NonNull Tags initialTags;
-    private final @NonNull AtomicReference<@NonNull Tags> tagsRef;
+    @SuppressWarnings("FieldMayBeFinal")
+    private volatile @NonNull Tags tags;
 
     // VarHandle mechanics
     private static final @NonNull VarHandle STATE_HANDLE;
     private static final @NonNull VarHandle EVENT_LISTENER_HANDLE;
+    private static final @NonNull VarHandle TAGS_HANDLE;
 
     static {
         try {
             STATE_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "state", int.class);
             EVENT_LISTENER_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "eventListener", EventListener.class);
+            TAGS_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "tags", Tags.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
@@ -178,7 +180,7 @@ public final class RealCall implements Call {
         this.timeout = AsyncTimeout.create(this::cancel);
 
         this.initialTags = tags;
-        this.tagsRef = new AtomicReference<>(tags);
+        this.tags = tags;
     }
 
     /**
@@ -232,7 +234,7 @@ public final class RealCall implements Call {
     @Override
     public <T> @Nullable T tag(final @NonNull Class<? extends T> type) {
         Objects.requireNonNull(type);
-        return type.cast(tagsRef.get().get(type));
+        return type.cast(tags.get(type));
     }
 
     @Override
@@ -243,10 +245,10 @@ public final class RealCall implements Call {
         T computed = null;
 
         while (true) {
-            final var tags = tagsRef.get();
+            final var currentTags = tags;
 
             // If the element is already present. Return it.
-            final var existing = tags.get(type);
+            final var existing = currentTags.get(type);
             if (existing != null) {
                 return existing;
             }
@@ -256,8 +258,8 @@ public final class RealCall implements Call {
             }
 
             // If we successfully add the computed element, we're done.
-            final var newTags = tags.plus(type, computed);
-            if (tagsRef.compareAndSet(tags, newTags)) {
+            final var newTags = currentTags.plus(type, computed);
+            if (TAGS_HANDLE.compareAndSet(this, currentTags, newTags)) {
                 return computed;
             }
 
@@ -279,39 +281,6 @@ public final class RealCall implements Call {
         } finally {
             client.dispatcher.finished(this);
         }
-    }
-
-    @Override
-    public void enqueue(final @NonNull Callback responseCallback) {
-        Objects.requireNonNull(responseCallback);
-        enqueuePrivate(responseCallback,
-                (client.getCallTimeout() != null) ? client.getCallTimeout().toNanos() : 0L);
-    }
-
-    @Override
-    public void enqueueWithTimeout(final @NonNull Duration timeout, final @NonNull Callback responseCallback) {
-        Objects.requireNonNull(timeout);
-        Objects.requireNonNull(responseCallback);
-        if (timeout.isNegative() || timeout.isZero()) {
-            throw new IllegalArgumentException("The provided timeout must be strictly positive");
-        }
-        enqueuePrivate(responseCallback, timeout.toNanos());
-    }
-
-    private void enqueuePrivate(final @NonNull Callback responseCallback, final long timeoutNanos) {
-        assert responseCallback != null;
-        assert timeoutNanos >= 0L;
-        if (!STATE_HANDLE.compareAndSet(this, STATE_NOT_STARTED, STATE_EXECUTING)) {
-            throw new IllegalStateException("Already executed or canceled");
-        }
-
-        callStart();
-        client.dispatcher.enqueue(new AsyncCall(responseCallback, timeoutNanos));
-    }
-
-    private void callStart() {
-        this.callStackTrace = LogCloseableUtils.getStackTraceForCloseable("response.getBody().close()");
-        eventListener.callStart(this);
     }
 
     private @NonNull ClientResponse getResponseWithInterceptorChain() {
@@ -351,6 +320,39 @@ public final class RealCall implements Call {
                 noMoreExchanges(null);
             }
         }
+    }
+
+    @Override
+    public void enqueue(final @NonNull Callback responseCallback) {
+        Objects.requireNonNull(responseCallback);
+        enqueuePrivate(responseCallback,
+                (client.getCallTimeout() != null) ? client.getCallTimeout().toNanos() : 0L);
+    }
+
+    @Override
+    public void enqueueWithTimeout(final @NonNull Duration timeout, final @NonNull Callback responseCallback) {
+        Objects.requireNonNull(timeout);
+        Objects.requireNonNull(responseCallback);
+        if (timeout.isNegative() || timeout.isZero()) {
+            throw new IllegalArgumentException("The provided timeout must be strictly positive");
+        }
+        enqueuePrivate(responseCallback, timeout.toNanos());
+    }
+
+    private void enqueuePrivate(final @NonNull Callback responseCallback, final long timeoutNanos) {
+        assert responseCallback != null;
+        assert timeoutNanos >= 0L;
+        if (!STATE_HANDLE.compareAndSet(this, STATE_NOT_STARTED, STATE_EXECUTING)) {
+            throw new IllegalStateException("Already executed or canceled");
+        }
+
+        callStart();
+        client.dispatcher.enqueue(new AsyncCall(responseCallback, timeoutNanos));
+    }
+
+    private void callStart() {
+        this.callStackTrace = LogCloseableUtils.getStackTraceForCloseable("response.getBody().close()");
+        eventListener.callStart(this);
     }
 
     /**
@@ -451,6 +453,24 @@ public final class RealCall implements Call {
     @Override
     public @NonNull Call clone() {
         return new RealCall(client, originalRequest, initialTags, forWebSocket);
+    }
+
+    @Override
+    public @NonNull String toString() {
+        final var currentState = state;
+        final var stateLabel = switch (currentState) {
+            case STATE_NOT_STARTED -> "Call not started";
+            case STATE_CANCELED_BEFORE_START -> "Call canceled before its execution";
+            case STATE_EXECUTING -> "Call executing or executed";
+            case STATE_CANCELED -> "Call canceled";
+            default -> throw new IllegalStateException("Unknown state: " + currentState);
+        };
+        return "Call{" +
+                "originalRequest=" + originalRequest +
+                ", state=" + stateLabel +
+                ", tags=" + tags +
+                ", forWebSocket=" + forWebSocket +
+                '}';
     }
 
     @Override

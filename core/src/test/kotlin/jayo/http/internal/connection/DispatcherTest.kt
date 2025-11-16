@@ -251,14 +251,26 @@ class DispatcherTest {
         assertThat(dispatcher.queuedCallsCount()).isEqualTo(0)
         assertThat(dispatcher.runningCalls()).isEmpty()
         assertThat(dispatcher.queuedCalls()).isEmpty()
+
         assertThat(a1.isExecuted()).isTrue()
         assertThat(a1.isCanceled()).isFalse()
+        assertThat(a1.toString())
+            .isEqualTo("Call{originalRequest=ClientRequest{method=GET, url=http://a/1}, state=Call executing or executed, tags={}, forWebSocket=false}")
+
         assertThat(a2.isExecuted()).isTrue()
         assertThat(a2.isCanceled()).isTrue()
+        assertThat(a2.toString())
+            .isEqualTo("Call{originalRequest=ClientRequest{method=GET, url=http://a/2}, state=Call canceled, tags={}, forWebSocket=false}")
+
         assertThat(a3.isExecuted()).isFalse()
         assertThat(a3.isCanceled()).isTrue()
+        assertThat(a3.toString())
+            .isEqualTo("Call{originalRequest=ClientRequest{method=GET, url=http://a/3}, state=Call canceled before its execution, tags={}, forWebSocket=false}")
+
         assertThat(a4.isExecuted()).isFalse()
         assertThat(a4.isCanceled()).isFalse()
+        assertThat(a4.toString())
+            .isEqualTo("Call{originalRequest=ClientRequest{method=GET, url=http://a/4}, state=Call not started, tags={}, forWebSocket=false}")
     }
 
     @Test
