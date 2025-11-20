@@ -22,6 +22,7 @@
 package jayo.http;
 
 import jayo.http.internal.connection.RealJayoHttpClient;
+import jayo.network.NetworkSocket;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
@@ -31,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 import javax.net.ssl.HostnameVerifier;
 import java.time.Duration;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static jayo.tools.JayoUtils.executorService;
 
@@ -280,7 +282,7 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
 
         /**
          * Sets the certificate pinner that constrains which certificates are trusted. By default, HTTPS connections
-         * rely on only the {@linkplain #tlsClientBuilder(ClientTlsSocket.Builder) TLS client builder} to establish
+         * rely on only the {@linkplain #tlsConfig(ClientTlsSocket.Builder) TLS client builder} to establish
          * trust. Pinning certificates avoids the need to trust certificate authorities.
          */
         @NonNull
@@ -295,15 +297,6 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
 
         @NonNull
         Builder connectionSpecs(final @NonNull List<@NonNull ConnectionSpec> connectionSpecs);
-
-        /**
-         * Sets the default connect timeout for new connections. Default is 10 seconds. A timeout of zero is interpreted
-         * as an infinite timeout.
-         * <p>
-         * This connect timeout is applied when connecting a TCP or UDP socket to the target host.
-         */
-        @NonNull
-        Builder connectTimeout(final @NonNull Duration connectTimeout);
 
         /**
          * Sets the handler that can accept cookies from incoming HTTP responses and provides cookies to outgoing HTTP
@@ -397,6 +390,22 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
         Builder addNetworkInterceptor(final @NonNull Interceptor interceptor);
 
         /**
+         * Allow modifying the default network configuration. A timeout of zero is interpreted as an infinite timeout.
+         * <ul>
+         * <li>Use {@link NetworkSocket.Builder#connectTimeout(Duration)} to set the connect timeout for new
+         * connections. Default is 10 seconds.
+         * <li>Use {@link NetworkSocket.Builder#readTimeout(Duration)} to set the read timeout for new connections.
+         * Default is 10 seconds.
+         * <li>Use {@link NetworkSocket.Builder#writeTimeout(Duration)} to set the write timeout for new connections.
+         * Default is 10 seconds.
+         * <li>Use {@link NetworkSocket.Builder#useNio(boolean)} to use Java NIO sockets, false for Java IO ones.
+         * Default is true.
+         * </ul>
+         */
+        @NonNull
+        Builder networkConfig(final @NonNull Consumer<NetworkSocket.@NonNull Builder> networkConfigurer);
+
+        /**
          * Configure the protocols used by this client to communicate with remote servers. By default, this client will
          * prefer the most efficient transport available, falling back to more ubiquitous protocols. Applications should
          * only call this method to avoid specific compatibility problems, such as web servers that behave incorrectly
@@ -443,20 +452,6 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
         Builder proxyAuthenticator(final @NonNull Authenticator proxyAuthenticator);
 
         /**
-         * Sets the read timeout for new connections. Default is 10 seconds. A timeout of zero is interpreted as an
-         * infinite timeout.
-         */
-        @NonNull
-        Builder readTimeout(final @NonNull Duration readTimeout);
-
-        /**
-         * Sets the write timeout for new connections. Default is 10 seconds. A timeout of zero is interpreted as an
-         * infinite timeout.
-         */
-        @NonNull
-        Builder writeTimeout(final @NonNull Duration writeTimeout);
-
-        /**
          * Configure this client to retry or not when a connectivity problem is encountered. By default, this client
          * silently recovers from the following problems:
          * <ul>
@@ -498,7 +493,7 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
          * {@link HostnameVerifier}.
          */
         @NonNull
-        Builder tlsClientBuilder(final ClientTlsSocket.@NonNull Builder clientTlsSocketBuilder);
+        Builder tlsConfig(final ClientTlsSocket.@NonNull Builder clientTlsConfig);
 
         /**
          * Sets the interval between HTTP/2 and web socket pings initiated by this client. Use this to automatically

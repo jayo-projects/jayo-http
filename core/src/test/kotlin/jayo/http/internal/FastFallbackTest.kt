@@ -96,7 +96,9 @@ class FastFallbackTest {
             clientTestRule
                 .newClientBuilder()
                 .eventListenerFactory(clientTestRule.wrap(eventRecorder))
-                .connectTimeout(Duration.ofSeconds(60)) // Deliberately exacerbate slow fallbacks.
+                .networkConfig {
+                    it.connectTimeout(Duration.ofSeconds(60)) // Deliberately exacerbate slow fallbacks.
+                }
                 .dns { dnsResults }
                 .fastFallback(true)
                 .build()

@@ -27,6 +27,7 @@ import jayo.Socket;
 import jayo.http.*;
 import jayo.http.internal.UrlUtils;
 import jayo.network.JayoUnknownServiceException;
+import jayo.network.NetworkSocket;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
@@ -45,9 +46,7 @@ import static jayo.http.internal.Utils.USER_AGENT;
 final class RealRoutePlanner implements RoutePlanner {
     private final @NonNull TaskRunner taskRunner;
     private final @NonNull RealConnectionPool connectionPool;
-    private final @NonNull Duration readTimeout;
-    private final @NonNull Duration writeTimeout;
-    private final @NonNull Duration connectTimeout;
+    private final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final @NonNull Duration pingInterval;
     private final boolean retryOnConnectionFailure;
     private final boolean fastFallback;
@@ -64,9 +63,7 @@ final class RealRoutePlanner implements RoutePlanner {
 
     RealRoutePlanner(final @NonNull TaskRunner taskRunner,
                      final @NonNull RealConnectionPool connectionPool,
-                     final @NonNull Duration readTimeout,
-                     final @NonNull Duration writeTimeout,
-                     final @NonNull Duration connectTimeout,
+                     NetworkSocket.@NonNull Builder networkSocketBuilder,
                      final @NonNull Duration pingInterval,
                      final boolean retryOnConnectionFailure,
                      final boolean fastFallback,
@@ -76,9 +73,7 @@ final class RealRoutePlanner implements RoutePlanner {
                      final @NonNull ClientRequest request) {
         assert taskRunner != null;
         assert connectionPool != null;
-        assert readTimeout != null;
-        assert writeTimeout != null;
-        assert connectTimeout != null;
+        assert networkSocketBuilder != null;
         assert pingInterval != null;
         assert address != null;
         assert routeDatabase != null;
@@ -87,9 +82,7 @@ final class RealRoutePlanner implements RoutePlanner {
 
         this.taskRunner = taskRunner;
         this.connectionPool = connectionPool;
-        this.readTimeout = readTimeout;
-        this.writeTimeout = writeTimeout;
-        this.connectTimeout = connectTimeout;
+        this.networkSocketBuilder = networkSocketBuilder;
         this.pingInterval = pingInterval;
         this.retryOnConnectionFailure = retryOnConnectionFailure;
         this.fastFallback = fastFallback;
@@ -268,9 +261,7 @@ final class RealRoutePlanner implements RoutePlanner {
         return new ConnectPlan(
                 taskRunner,
                 connectionPool,
-                readTimeout,
-                writeTimeout,
-                connectTimeout,
+                networkSocketBuilder,
                 pingInterval,
                 retryOnConnectionFailure,
                 call,

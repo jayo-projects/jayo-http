@@ -202,7 +202,7 @@ class CallHandshakeTest {
         client =
             clientTestRule
                 .newClientBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
 

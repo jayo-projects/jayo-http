@@ -25,7 +25,6 @@ package jayo.http.internal.connection
 import jayo.JayoException
 import jayo.http.*
 import jayo.http.internal.sslSocketFactory
-import jayo.http.internal.toJayo
 import jayo.network.JayoUnknownHostException
 import jayo.network.Proxy
 import jayo.tls.*
@@ -94,7 +93,7 @@ class ConnectionCoalescingTest {
                 .newClientBuilder()
                 .fastFallback(false) // Avoid data races.
                 .dns(dns)
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .build()
         val serverHandshakeCertificates = ServerHandshakeCertificates.builder(certificate)
             .build()
@@ -560,7 +559,7 @@ class ConnectionCoalescingTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(
+                .tlsConfig(
                     ClientTlsSocket.builder(
                         ClientHandshakeCertificates.create(trustManager)
                     )

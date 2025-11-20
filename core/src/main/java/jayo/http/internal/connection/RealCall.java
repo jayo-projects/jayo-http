@@ -387,9 +387,7 @@ public final class RealCall implements Call {
             final var routePlanner = new RealRoutePlanner(
                     client.taskRunner,
                     connectionPool,
-                    client.getReadTimeout(),
-                    client.getWriteTimeout(),
-                    client.getConnectTimeout(),
+                    client.networkSocketBuilder,
                     client.getPingInterval(),
                     client.retryOnConnectionFailure(),
                     client.fastFallback(),

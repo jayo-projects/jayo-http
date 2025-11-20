@@ -337,7 +337,7 @@ class JayoHttpClientTest {
         assertThat(
             (client
                 .newBuilder()
-                .tlsClientBuilder(clientTlsSocketBuilder)
+                .tlsConfig(clientTlsSocketBuilder)
                 .build() as RealJayoHttpClient)
                 .routeDatabase
         ).isNotSameAs(client.routeDatabase)

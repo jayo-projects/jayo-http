@@ -240,7 +240,9 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         client =
             client
                 .newBuilder()
-                .readTimeout(Duration.ofMillis(250))
+                .networkConfig {
+                    it.readTimeout(Duration.ofMillis(250))
+                }
                 .build()
         val call =
             client.newCallWithListener(
@@ -283,7 +285,9 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
             client
                 .newBuilder()
                 .protocols(listOf<Protocol>(Protocol.HTTP_1_1))
-                .readTimeout(Duration.ofMillis(250))
+                .networkConfig {
+                    it.readTimeout(Duration.ofMillis(250))
+                }
                 .build()
         val call =
             client.newCallWithListener(
@@ -1731,7 +1735,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
         server.useHttps(handshakeCertificates.sslSocketFactory())

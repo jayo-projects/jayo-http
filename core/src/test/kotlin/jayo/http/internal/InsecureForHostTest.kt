@@ -61,7 +61,7 @@ class InsecureForHostTest {
         val client =
             clientTestRule
                 .newClientBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(clientCertificates))
+                .tlsConfig(ClientTlsSocket.builder(clientCertificates))
                 .build()
 
         val call = client.newCall(ClientRequest.get(server.url("/").toJayo()))
@@ -95,7 +95,7 @@ class InsecureForHostTest {
         val client =
             clientTestRule
                 .newClientBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(clientCertificates))
+                .tlsConfig(ClientTlsSocket.builder(clientCertificates))
                 .build()
 
         val call = client.newCall(ClientRequest.get(server.url("/").toJayo()))
@@ -119,7 +119,7 @@ class InsecureForHostTest {
         val client =
             clientTestRule
                 .newClientBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(clientCertificates))
+                .tlsConfig(ClientTlsSocket.builder(clientCertificates))
                 .build()
 
         val call = client.newCall(ClientRequest.get(server.url("/").toJayo()))
