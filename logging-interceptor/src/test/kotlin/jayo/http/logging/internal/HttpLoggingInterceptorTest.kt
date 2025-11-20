@@ -74,7 +74,7 @@ class HttpLoggingInterceptorTest {
                 }
             }.addNetworkInterceptor(networkInterceptor)
             .addInterceptor(applicationInterceptor)
-            .tlsClientBuilder(ClientTlsSocket.builder(clientHandshakeCertificate))
+            .tlsConfig(ClientTlsSocket.builder(clientHandshakeCertificate))
             .hostnameVerifier(hostnameVerifier)
             .build()
     }

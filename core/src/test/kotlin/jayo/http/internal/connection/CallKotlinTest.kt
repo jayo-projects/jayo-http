@@ -106,7 +106,7 @@ class CallKotlinTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .build()
         server.useHttps(handshakeCertificates.sslSocketFactory())
     }
@@ -247,7 +247,9 @@ class CallKotlinTest {
             client
                 .newBuilder()
                 .proxies(Proxies.of(proxy))
-                .connectTimeout(Duration.ofMillis(1))
+                .networkConfig {
+                    it.connectTimeout(Duration.ofMillis(1))
+                }
                 .build()
 
         val request = ClientRequest.get(server.url("/").toJayo())

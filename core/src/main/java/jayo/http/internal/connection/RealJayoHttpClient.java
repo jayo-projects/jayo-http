@@ -26,6 +26,7 @@ import jayo.http.internal.CertificateChainCleaner;
 import jayo.http.internal.JayoHostnameVerifier;
 import jayo.http.internal.RealCertificatePinner;
 import jayo.http.internal.ws.RealWebSocket;
+import jayo.network.NetworkSocket;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.ClientHandshakeCertificates;
 import jayo.tls.ClientTlsSocket;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.function.Consumer;
 
 public final class RealJayoHttpClient implements JayoHttpClient {
     static final System.Logger LOGGER = System.getLogger("jayo.http.JayoHttpClient");
@@ -51,7 +53,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final ClientTlsSocket.@Nullable Builder clientTlsSocketBuilderOrNull;
     private final @NonNull ConnectionPool connectionPool;
     private final @NonNull List<@NonNull ConnectionSpec> connectionSpecs;
-    private final @NonNull Duration connectTimeout;
+    final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final @NonNull CookieJar cookieJar;
     final @NonNull RealDispatcher dispatcher;
     private final @NonNull Dns dns;
@@ -67,12 +69,10 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final @NonNull List<@NonNull Protocol> protocols;
     private final @NonNull Proxies proxies;
     private final @NonNull Authenticator proxyAuthenticator;
-    private final @NonNull Duration readTimeout;
     private final boolean retryOnConnectionFailure;
     final @NonNull RouteDatabase routeDatabase;
     final @NonNull TaskRunner taskRunner;
     private final @NonNull Duration webSocketCloseTimeout;
-    private final @NonNull Duration writeTimeout;
 
     private RealJayoHttpClient(final @NonNull Builder builder) {
         assert builder != null;
@@ -81,7 +81,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         this.cache = builder.cache;
         this.callTimeout = builder.callTimeout;
         this.connectionSpecs = List.copyOf(builder.connectionSpecs);
-        this.connectTimeout = builder.connectTimeout;
         this.cookieJar = builder.cookieJar;
         this.dispatcher = builder.dispatcher;
         this.dns = builder.dns;
@@ -93,16 +92,15 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         this.interceptors = List.copyOf(builder.interceptors);
         this.minWebSocketMessageToCompress = builder.minWebSocketMessageToCompress;
         this.networkInterceptors = List.copyOf(builder.networkInterceptors);
+        this.networkSocketBuilder = builder.networkSocketBuilder.clone();
         this.pingInterval = builder.pingInterval;
         this.protocols = List.copyOf(builder.protocols);
         this.proxies = (builder.proxies != null) ? builder.proxies : Proxies.builder().build();
         this.proxyAuthenticator = builder.proxyAuthenticator;
-        this.readTimeout = builder.readTimeout;
         this.retryOnConnectionFailure = builder.retryOnConnectionFailure;
         this.routeDatabase = (builder.routeDatabase != null) ? builder.routeDatabase : new RouteDatabase();
         this.taskRunner = builder.taskRunner;
         this.webSocketCloseTimeout = builder.webSocketCloseTimeout;
-        this.writeTimeout = builder.writeTimeout;
 
         if (builder.connectionPool != null) {
             this.connectionPool = builder.connectionPool;
@@ -164,7 +162,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
 
     @Override
     public @NonNull Duration getConnectTimeout() {
-        return connectTimeout;
+        return networkSocketBuilder.getConnectTimeout();
     }
 
     @Override
@@ -254,7 +252,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
 
     @Override
     public @NonNull Duration getReadTimeout() {
-        return readTimeout;
+        return networkSocketBuilder.getReadTimeout();
     }
 
     @Override
@@ -269,7 +267,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
 
     @Override
     public @NonNull Duration getWriteTimeout() {
-        return writeTimeout;
+        return networkSocketBuilder.getWriteTimeout();
     }
 
     @Override
@@ -351,7 +349,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private ClientTlsSocket.@Nullable Builder clientTlsSocketBuilderOrNull = null;
         private @Nullable ConnectionPool connectionPool = null;
         private @NonNull List<@NonNull ConnectionSpec> connectionSpecs;
-        private @NonNull Duration connectTimeout;
         private @NonNull CookieJar cookieJar;
         private @NonNull RealDispatcher dispatcher;
         private @NonNull Dns dns;
@@ -363,36 +360,36 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private final @NonNull List<@NonNull Interceptor> interceptors = new ArrayList<>();
         private long minWebSocketMessageToCompress = RealWebSocket.DEFAULT_MINIMUM_DEFLATE_SIZE;
         private final @NonNull List<@NonNull Interceptor> networkInterceptors = new ArrayList<>();
+        private final NetworkSocket.@NonNull Builder networkSocketBuilder;
         private @NonNull Duration pingInterval;
         private @NonNull List<@NonNull Protocol> protocols;
         private @NonNull Proxies proxies;
         private @NonNull Authenticator proxyAuthenticator;
-        private @NonNull Duration readTimeout;
         private boolean retryOnConnectionFailure = true;
         private @Nullable RouteDatabase routeDatabase = null;
         private @NonNull TaskRunner taskRunner;
         private @NonNull Duration webSocketCloseTimeout;
-        private @NonNull Duration writeTimeout;
 
         public Builder() {
             this.authenticator = Authenticator.NONE;
             this.callTimeout = NO_TIMEOUT;
             this.certificatePinner = CertificatePinner.DEFAULT;
             this.connectionSpecs = DEFAULT_CONNECTION_SPECS;
-            this.connectTimeout = DEFAULT_TIMEOUT;
             this.cookieJar = CookieJar.NO_COOKIES;
             this.dispatcher = new RealDispatcher.Builder().build();
             this.dns = Dns.SYSTEM;
             this.eventListenerFactory = ignoredCall -> EventListener.NONE;
             this.hostnameVerifier = JayoHostnameVerifier.INSTANCE;
+            this.networkSocketBuilder = NetworkSocket.builder()
+                    .connectTimeout(DEFAULT_TIMEOUT)
+                    .readTimeout(DEFAULT_TIMEOUT)
+                    .writeTimeout(DEFAULT_TIMEOUT);
             this.pingInterval = NO_TIMEOUT;
             this.protocols = DEFAULT_PROTOCOLS;
             proxies = Proxies.EMPTY;
             this.proxyAuthenticator = Authenticator.DEFAULT_PROXY_AUTHENTICATOR;
-            this.readTimeout = DEFAULT_TIMEOUT;
             this.taskRunner = DEFAULT_TASK_RUNNER;
             this.webSocketCloseTimeout = RealWebSocket.CANCEL_AFTER_CLOSE_TIMEOUT;
-            this.writeTimeout = DEFAULT_TIMEOUT;
         }
 
         private Builder(final @NonNull RealJayoHttpClient jayoHttpClient) {
@@ -406,7 +403,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.clientTlsSocketBuilderOrNull = jayoHttpClient.clientTlsSocketBuilderOrNull;
             this.connectionPool = jayoHttpClient.connectionPool;
             this.connectionSpecs = jayoHttpClient.connectionSpecs;
-            this.connectTimeout = jayoHttpClient.connectTimeout;
             this.cookieJar = jayoHttpClient.cookieJar;
             this.dispatcher = jayoHttpClient.dispatcher;
             this.dns = jayoHttpClient.dns;
@@ -418,16 +414,15 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.interceptors.addAll(jayoHttpClient.interceptors);
             this.minWebSocketMessageToCompress = jayoHttpClient.minWebSocketMessageToCompress;
             this.networkInterceptors.addAll(jayoHttpClient.networkInterceptors);
+            this.networkSocketBuilder = jayoHttpClient.networkSocketBuilder.clone();
             this.pingInterval = jayoHttpClient.pingInterval;
             this.protocols = jayoHttpClient.protocols;
             this.proxies = jayoHttpClient.proxies;
             this.proxyAuthenticator = jayoHttpClient.proxyAuthenticator;
-            this.readTimeout = jayoHttpClient.readTimeout;
             this.retryOnConnectionFailure = jayoHttpClient.retryOnConnectionFailure;
             this.routeDatabase = jayoHttpClient.routeDatabase;
             this.taskRunner = jayoHttpClient.taskRunner;
             this.webSocketCloseTimeout = jayoHttpClient.webSocketCloseTimeout;
-            this.writeTimeout = jayoHttpClient.writeTimeout;
         }
 
         @Override
@@ -475,12 +470,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             }
 
             this.connectionSpecs = List.copyOf(connectionSpecs);
-            return this;
-        }
-
-        @Override
-        public @NonNull Builder connectTimeout(final @NonNull Duration connectTimeout) {
-            this.connectTimeout = checkDuration("connectTimeout", connectTimeout);
             return this;
         }
 
@@ -589,6 +578,14 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
+        public @NonNull Builder networkConfig(
+                final @NonNull Consumer<NetworkSocket.@NonNull Builder> networkConfigurer) {
+            Objects.requireNonNull(networkConfigurer);
+            networkConfigurer.accept(networkSocketBuilder);
+            return this;
+        }
+
+        @Override
         public @NonNull Builder protocols(final @NonNull List<@NonNull Protocol> protocols) {
             Objects.requireNonNull(protocols);
 
@@ -645,27 +642,21 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
-        public @NonNull Builder readTimeout(final @NonNull Duration readTimeout) {
-            this.readTimeout = checkDuration("readTimeout", readTimeout);
-            return this;
-        }
-
-        @Override
         public @NonNull Builder retryOnConnectionFailure(final boolean retryOnConnectionFailure) {
             this.retryOnConnectionFailure = retryOnConnectionFailure;
             return this;
         }
 
         @Override
-        public @NonNull Builder tlsClientBuilder(final ClientTlsSocket.@NonNull Builder clientTlsSocketBuilder) {
-            Objects.requireNonNull(clientTlsSocketBuilder);
+        public @NonNull Builder tlsConfig(final ClientTlsSocket.@NonNull Builder clientTlsConfig) {
+            Objects.requireNonNull(clientTlsConfig);
 
-            if (!clientTlsSocketBuilder.equals(this.clientTlsSocketBuilderOrNull)) {
+            if (!clientTlsConfig.equals(this.clientTlsSocketBuilderOrNull)) {
                 this.routeDatabase = null;
             }
 
-            this.clientTlsSocketBuilderOrNull = clientTlsSocketBuilder;
-            final var x509TrustManager = clientTlsSocketBuilder.getHandshakeCertificates().getTrustManager();
+            this.clientTlsSocketBuilderOrNull = clientTlsConfig;
+            final var x509TrustManager = clientTlsConfig.getHandshakeCertificates().getTrustManager();
             this.certificateChainCleaner = new CertificateChainCleaner(x509TrustManager);
             return this;
         }
@@ -679,12 +670,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         @Override
         public @NonNull Builder webSocketCloseTimeout(final @NonNull Duration webSocketCloseTimeout) {
             this.webSocketCloseTimeout = checkDuration("webSocketCloseTimeout", webSocketCloseTimeout);
-            return this;
-        }
-
-        @Override
-        public @NonNull Builder writeTimeout(final @NonNull Duration writeTimeout) {
-            this.writeTimeout = checkDuration("writeTimeout", writeTimeout);
             return this;
         }
 

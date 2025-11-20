@@ -84,8 +84,10 @@ class WebSocketHttpTest {
     private var client =
         clientTestRule
             .newClientBuilder()
-            .writeTimeout(Duration.ofMillis(500))
-            .readTimeout(Duration.ofMillis(500))
+            .networkConfig {
+                it.writeTimeout(Duration.ofMillis(500))
+                it.readTimeout(Duration.ofMillis(500))
+            }
             .addInterceptor { chain: Interceptor.Chain ->
                 val response = chain.proceed(chain.request())
                 // Ensure application interceptors never see a null body.
@@ -692,7 +694,7 @@ class WebSocketHttpTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
         websocketScheme("wss")
@@ -705,7 +707,7 @@ class WebSocketHttpTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
         websocketScheme("https")
@@ -942,8 +944,10 @@ class WebSocketHttpTest {
         client =
             client
                 .newBuilder()
-                .readTimeout(Duration.ZERO)
-                .writeTimeout(Duration.ZERO)
+                .networkConfig {
+                    it.readTimeout(Duration.ZERO)
+                    it.writeTimeout(Duration.ZERO)
+                }
                 .callTimeout(Duration.ofMillis(100))
                 .build()
         newWebSocket()

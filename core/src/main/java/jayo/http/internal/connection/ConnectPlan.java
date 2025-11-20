@@ -68,9 +68,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
     private final @NonNull TaskRunner taskRunner;
     private final @NonNull RealConnectionPool connectionPool;
-    private final @NonNull Duration readTimeout;
-    private final @NonNull Duration writeTimeout;
-    private final @NonNull Duration connectTimeout;
+    private final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final @NonNull Duration pingInterval;
     private final boolean retryOnConnectionFailure;
     private final @NonNull RealCall call;
@@ -109,9 +107,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
     ConnectPlan(final @NonNull TaskRunner taskRunner,
                 final @NonNull RealConnectionPool connectionPool,
-                final @NonNull Duration readTimeout,
-                final @NonNull Duration writeTimeout,
-                final @NonNull Duration connectTimeout,
+                final NetworkSocket.@NonNull Builder networkSocketBuilder,
                 final @NonNull Duration pingInterval,
                 final boolean retryOnConnectionFailure,
                 final @NonNull RealCall call,
@@ -124,9 +120,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 final boolean isTlsFallback) {
         assert taskRunner != null;
         assert connectionPool != null;
-        assert readTimeout != null;
-        assert writeTimeout != null;
-        assert connectTimeout != null;
+        assert networkSocketBuilder != null;
         assert pingInterval != null;
         assert call != null;
         assert routePlanner != null;
@@ -135,9 +129,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
         this.taskRunner = taskRunner;
         this.connectionPool = connectionPool;
-        this.readTimeout = readTimeout;
-        this.writeTimeout = writeTimeout;
-        this.connectTimeout = connectTimeout;
+        this.networkSocketBuilder = networkSocketBuilder;
         this.pingInterval = pingInterval;
         this.retryOnConnectionFailure = retryOnConnectionFailure;
         this.call = call;
@@ -164,9 +156,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                                       final boolean isTlsFallback) {
         return new ConnectPlan(taskRunner,
                 connectionPool,
-                readTimeout,
-                writeTimeout,
-                connectTimeout,
+                networkSocketBuilder,
                 pingInterval,
                 retryOnConnectionFailure,
                 call,
@@ -212,10 +202,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
      * underlying socket.
      */
     private void connectNetworkSocket() {
-        final var rawSocket = NetworkSocket.builder()
-                .connectTimeout(connectTimeout)
-                .openTcp();
-        this.rawSocket = rawSocket;
+        this.rawSocket = networkSocketBuilder.openTcp();
 
         // Handle the race where cancel() precedes connectNetworkSocket(). We don't want to miss a cancel.
         if (canceled) {
@@ -243,7 +230,6 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         if (networkSocket == null) {
             throw new IllegalStateException("TCP not connected");
         }
-        final var _rawSocket = networkSocket;
         if (isReady()) {
             throw new IllegalStateException("already connected");
         }
@@ -269,7 +255,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 // we will have buffered bytes that are needed by the SSLSocket!
                 // This check is imperfect: it doesn't tell us whether a handshake will succeed, just that it will
                 // almost certainly fail because the proxy has sent unexpected data.
-                if (_rawSocket.getReader().bytesAvailable() > 0L) {
+                if (networkSocket.getReader().bytesAvailable() > 0L) {
                     throw new JayoException("TLS tunnel buffered too many bytes!");
                 }
 
@@ -277,7 +263,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
 
                 // Create the wrapper over the connected socket.
                 final var tlsParameterizer = route.getAddress().getClientTlsSocketBuilder().createParameterizer(
-                        _rawSocket,
+                        networkSocket,
                         route.getAddress().getUrl().getHost(),
                         route.getAddress().getUrl().getPort());
 
@@ -302,7 +288,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             final var connection = new RealConnection(
                     taskRunner,
                     route,
-                    _rawSocket,
+                    networkSocket,
                     socket,
                     handshake,
                     protocol,
@@ -330,7 +316,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 if (socket != null) {
                     Jayo.closeQuietly(socket);
                 }
-                Jayo.closeQuietly(_rawSocket);
+                Jayo.closeQuietly(networkSocket);
             }
         }
     }
@@ -489,8 +475,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                     null,
                     this,
                     socket);
-            networkSocket.setReadTimeout(readTimeout);
-            networkSocket.setWriteTimeout(writeTimeout);
+            networkSocket.setReadTimeout(networkSocketBuilder.getReadTimeout());
+            networkSocket.setWriteTimeout(networkSocketBuilder.getWriteTimeout());
             tunnelCodec.writeRequest(nextRequest.getHeaders(), requestLine);
             tunnelCodec.finishRequest();
             final var responseBuilder = tunnelCodec.readResponseHeaders(false);
@@ -581,9 +567,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         return new ConnectPlan(
                 taskRunner,
                 connectionPool,
-                readTimeout,
-                writeTimeout,
-                connectTimeout,
+                networkSocketBuilder,
                 pingInterval,
                 retryOnConnectionFailure,
                 call,

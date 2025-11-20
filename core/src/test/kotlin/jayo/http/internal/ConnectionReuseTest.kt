@@ -259,7 +259,7 @@ class ConnectionReuseTest {
         val anotherClient =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .build()
 
         // This client fails to connect because the new SSL socket factory refuses.
@@ -363,7 +363,7 @@ class ConnectionReuseTest {
         client =
             client
                 .newBuilder()
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .protocols(protocols.toList())
                 .build()

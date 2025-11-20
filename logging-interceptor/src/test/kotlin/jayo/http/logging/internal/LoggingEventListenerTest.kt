@@ -60,7 +60,7 @@ class LoggingEventListenerTest {
             clientTestRule
                 .newClientBuilder()
                 .eventListenerFactory(loggingEventListenerFactory)
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .retryOnConnectionFailure(false)
                 .build()
         url = server.url("/").toJayo()

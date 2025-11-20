@@ -285,7 +285,7 @@ class HttpUpgradesTest {
             client
                 .newBuilder()
                 .protocols(protocols.toList())
-                .tlsClientBuilder(ClientTlsSocket.builder(handshakeCertificates))
+                .tlsConfig(ClientTlsSocket.builder(handshakeCertificates))
                 .hostnameVerifier(RecordingHostnameVerifier())
                 .build()
         server.useHttps(handshakeCertificates.sslSocketFactory())

@@ -1,27 +1,12 @@
-/*
- * Copyright (c) 2025-present, pull-vert and Jayo contributors.
- * Use of this source code is governed by the Apache 2.0 license.
- *
- * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
- *
- * Copyright (C) 2013 Square, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package jayo.http.internal.connection
 
-import jayo.http.*
+import jayo.http.Address
+import jayo.http.Authenticator
+import jayo.http.ClientRequest
+import jayo.http.ConnectionSpec
+import jayo.http.Dns
+import jayo.http.JayoHttpClient
+import jayo.http.Route
 import jayo.http.internal.RecordingJayoAuthenticator
 import jayo.network.NetworkServer
 import jayo.network.NetworkSocket
@@ -31,7 +16,7 @@ import jayo.scheduler.internal.TaskFaker
 import jayo.tls.ClientHandshakeCertificates
 import jayo.tls.ClientTlsSocket
 import jayo.tls.Protocol
-import jayo.tools.JayoTlsUtils.localhost
+import jayo.tools.JayoTlsUtils
 import java.net.InetSocketAddress
 import java.time.Duration
 import javax.net.ssl.HostnameVerifier
@@ -60,7 +45,7 @@ class TestValueFactory : AutoCloseable {
             ConnectionSpec.CLEARTEXT,
         )
     var protocols: List<Protocol> = listOf(Protocol.HTTP_1_1)
-    var handshakeCertificates: ClientHandshakeCertificates = localhost()
+    var handshakeCertificates: ClientHandshakeCertificates = JayoTlsUtils.localhost()
     var tlsClientSocketBuilder: ClientTlsSocket.Builder = ClientTlsSocket.builder(handshakeCertificates)
     var hostnameVerifier: HostnameVerifier? = HttpsURLConnection.getDefaultHostnameVerifier()
     var uriHost: String = "example.com"
@@ -156,9 +141,7 @@ class TestValueFactory : AutoCloseable {
         return RealRoutePlanner(
             client.taskRunner,
             client.connectionPool as RealConnectionPool,
-            client.readTimeout,
-            client.writeTimeout,
-            client.connectTimeout,
+            client.networkSocketBuilder,
             client.pingInterval,
             client.retryOnConnectionFailure(),
             client.fastFallback(),
