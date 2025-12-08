@@ -23,6 +23,7 @@
 package jayo.http.internal.connection
 
 import jayo.*
+import jayo.files.JayoFileNotFoundException
 import jayo.http.*
 import jayo.http.Authenticator.JAYO_PREEMPTIVE_CHALLENGE
 import jayo.http.CallEvent.*
@@ -39,6 +40,7 @@ import jayo.http.internal.http.HttpStatusCodes.HTTP_PROCESSING
 import jayo.http.testing.Flaky
 import jayo.internal.GzipRawWriter
 import jayo.network.JayoConnectException
+import jayo.network.JayoUnknownHostException
 import jayo.network.JayoUnknownServiceException
 import jayo.tls.*
 import jayo.tools.JayoTlsUtils
@@ -58,12 +60,14 @@ import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.extension.RegisterExtension
 import java.net.*
+import java.nio.file.Files
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.io.path.deleteIfExists
 import kotlin.test.assertFailsWith
 
 @Timeout(30)
@@ -91,19 +95,14 @@ class CallTest {
             .protocols(listOf(Protocol.HTTP_1_1))
             .build()
     private val callback = RecordingCallback()
-//    private val fileSystem = FakeFileSystem()
-//    private val cache = todo cache
-//        Cache(
-//            fileSystem = LoggingFilesystem(fileSystem),
-//            directory = "/cache".toPath(),
-//            maxSize = Int.MAX_VALUE.toLong(),
-//        )
+    private var cache: Cache? = null
 
     @AfterEach
     fun tearDown() {
         Thread.sleep(10)
-//        cache.close()
-//        fileSystem.checkNoOpenFiles()
+        if (cache != null) {
+            cache!!.delete()
+        }
     }
 
     @Test
@@ -1480,345 +1479,358 @@ class CallTest {
         postBodyRetransmittedOnFailureRecovery()
     }
 
-//    @Test todo cache
-//    fun cacheHit() {
-//        server.enqueue(
-//            MockResponse(
-//                headers =
-//                    headersOf(
-//                        "ETag",
-//                        "v1",
-//                        "Cache-Control",
-//                        "max-age=60",
-//                        "Vary",
-//                        "Accept-Charset",
-//                    ),
-//                body = "A",
-//            ),
-//        )
-//        client =
-//            client
-//                .newBuilder()
-//                .cache(cache)
-//                .build()
-//
-//        // Store a response in the cache.
-//        val url = server.url("/")
-//        val request1SentAt = System.currentTimeMillis()
-//        executeSynchronously("/", "Accept-Language", "fr-CA", "Accept-Charset", "UTF-8")
-//            .assertCode(200)
-//            .assertBody("A")
-//        val request1ReceivedAt = System.currentTimeMillis()
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
-//
-//        // Hit that stored response. It's different, but Vary says it doesn't matter.
-//        Thread.sleep(10) // Make sure the timestamps are unique.
-//        val cacheHit =
-//            executeSynchronously(
-//                "/",
-//                "Accept-Language",
-//                "en-US",
-//                "Accept-Charset",
-//                "UTF-8",
-//            )
-//
-//        // Check the merged response. The request is the application's original request.
-//        cacheHit
-//            .assertCode(200)
-//            .assertBody("A")
-//            .assertHeaders(
-//                Headers
-//                    .Builder()
-//                    .add("ETag", "v1")
-//                    .add("Cache-Control", "max-age=60")
-//                    .add("Vary", "Accept-Charset")
-//                    .add("Content-Length", "1")
-//                    .build(),
-//            ).assertRequestUrl(url)
-//            .assertRequestHeader("Accept-Language", "en-US")
-//            .assertRequestHeader("Accept-Charset", "UTF-8")
-//            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
-//            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
-//
-//        // Check the cached response. Its request contains only the saved Vary headers.
-//        cacheHit
-//            .cacheResponse()
-//            .assertCode(200)
-//            .assertHeaders(
-//                Headers
-//                    .Builder()
-//                    .add("ETag", "v1")
-//                    .add("Cache-Control", "max-age=60")
-//                    .add("Vary", "Accept-Charset")
-//                    .add("Content-Length", "1")
-//                    .build(),
-//            ).assertRequestMethod("GET")
-//            .assertRequestUrl(url)
-//            .assertRequestHeader("Accept-Language")
-//            .assertRequestHeader("Accept-Charset", "UTF-8")
-//            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
-//            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
-//        cacheHit.assertNoNetworkResponse()
-//    }
-//
-//    @Test
-//    fun conditionalCacheHit() {
-//        server.enqueue(
-//            MockResponse(
-//                headers =
-//                    headersOf(
-//                        "ETag",
-//                        "v1",
-//                        "Vary",
-//                        "Accept-Charset",
-//                        "Donut",
-//                        "a",
-//                    ),
-//                body = "A",
-//            ),
-//        )
-//        server.enqueue(
-//            MockResponse
-//                .Builder()
-//                .clearHeaders()
-//                .addHeader("Donut: b")
-//                .code(HttpURLConnection.HTTP_NOT_MODIFIED)
-//                .build(),
-//        )
-//        client =
-//            client
-//                .newBuilder()
-//                .cache(cache)
-//                .build()
-//
-//        // Store a response in the cache.
-//        val request1SentAt = System.currentTimeMillis()
-//        executeSynchronously("/", "Accept-Language", "fr-CA", "Accept-Charset", "UTF-8")
-//            .assertCode(200)
-//            .assertHeader("Donut", "a")
-//            .assertBody("A")
-//        val request1ReceivedAt = System.currentTimeMillis()
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
-//
-//        // Hit that stored response. It's different, but Vary says it doesn't matter.
-//        Thread.sleep(10) // Make sure the timestamps are unique.
-//        val request2SentAt = System.currentTimeMillis()
-//        val cacheHit =
-//            executeSynchronously(
-//                "/",
-//                "Accept-Language",
-//                "en-US",
-//                "Accept-Charset",
-//                "UTF-8",
-//            )
-//        val request2ReceivedAt = System.currentTimeMillis()
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
-//
-//        // Check the merged response. The request is the application's original request.
-//        cacheHit
-//            .assertCode(200)
-//            .assertBody("A")
-//            .assertHeader("Donut", "b")
-//            .assertRequestUrl(server.url("/"))
-//            .assertRequestHeader("Accept-Language", "en-US")
-//            .assertRequestHeader("Accept-Charset", "UTF-8")
-//            .assertRequestHeader("If-None-Match") // No If-None-Match on the user's request.
-//            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
-//            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
-//
-//        // Check the cached response. Its request contains only the saved Vary headers.
-//        cacheHit
-//            .cacheResponse()
-//            .assertCode(200)
-//            .assertHeader("Donut", "a")
-//            .assertHeader("ETag", "v1")
-//            .assertRequestUrl(server.url("/"))
-//            .assertRequestHeader("Accept-Language") // No Vary on Accept-Language.
-//            .assertRequestHeader("Accept-Charset", "UTF-8") // Because of Vary on Accept-Charset.
-//            .assertRequestHeader("If-None-Match") // This wasn't present in the original request.
-//            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
-//            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
-//
-//        // Check the network response. It has the caller's request, plus some caching headers.
-//        cacheHit
-//            .networkResponse()
-//            .assertCode(304)
-//            .assertHeader("Donut", "b")
-//            .assertRequestHeader("Accept-Language", "en-US")
-//            .assertRequestHeader("Accept-Charset", "UTF-8")
-//            .assertRequestHeader("If-None-Match", "v1") // If-None-Match in the validation request.
-//            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
-//            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
-//    }
-//
-//    @Test
-//    fun conditionalCacheHit_Async() {
-//        server.enqueue(
-//            MockResponse(
-//                headers = headersOf("ETag", "v1"),
-//                body = "A",
-//            ),
-//        )
-//        server.enqueue(
-//            MockResponse
-//                .Builder()
-//                .clearHeaders()
-//                .code(HttpURLConnection.HTTP_NOT_MODIFIED)
-//                .build(),
-//        )
-//        client =
-//            client
-//                .newBuilder()
-//                .cache(cache)
-//                .build()
-//        val request1 = ClientRequest.get(server.url("/").toJayo())
-//        client.newCall(request1).enqueue(callback)
-//        callback.await(request1.url).assertCode(200).assertBody("A")
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
-//        val request2 = ClientRequest.get(server.url("/").toJayo())
-//        client.newCall(request2).enqueue(callback)
-//        callback.await(request2.url).assertCode(200).assertBody("A")
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
-//    }
-//
-//    @Test
-//    fun conditionalCacheMiss() {
-//        server.enqueue(
-//            MockResponse(
-//                headers =
-//                    headersOf(
-//                        "ETag",
-//                        "v1",
-//                        "Vary",
-//                        "Accept-Charset",
-//                        "Donut",
-//                        "a",
-//                    ),
-//                body = "A",
-//            ),
-//        )
-//        server.enqueue(
-//            MockResponse(
-//                headers = headersOf("Donut", "b"),
-//                body = "B",
-//            ),
-//        )
-//        client =
-//            client
-//                .newBuilder()
-//                .cache(cache)
-//                .build()
-//        val request1SentAt = System.currentTimeMillis()
-//        executeSynchronously("/", "Accept-Language", "fr-CA", "Accept-Charset", "UTF-8")
-//            .assertCode(200)
-//            .assertBody("A")
-//        val request1ReceivedAt = System.currentTimeMillis()
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
-//
-//        // Different request, but Vary says it doesn't matter.
-//        Thread.sleep(10) // Make sure the timestamps are unique.
-//        val request2SentAt = System.currentTimeMillis()
-//        val cacheMiss =
-//            executeSynchronously(
-//                "/",
-//                "Accept-Language",
-//                "en-US",
-//                "Accept-Charset",
-//                "UTF-8",
-//            )
-//        val request2ReceivedAt = System.currentTimeMillis()
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
-//
-//        // Check the user response. It has the application's original request.
-//        cacheMiss
-//            .assertCode(200)
-//            .assertBody("B")
-//            .assertHeader("Donut", "b")
-//            .assertRequestUrl(server.url("/"))
-//            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
-//            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
-//
-//        // Check the cache response. Even though it's a miss, we used the cache.
-//        cacheMiss
-//            .cacheResponse()
-//            .assertCode(200)
-//            .assertHeader("Donut", "a")
-//            .assertHeader("ETag", "v1")
-//            .assertRequestUrl(server.url("/"))
-//            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
-//            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
-//
-//        // Check the network response. It has the network request, plus caching headers.
-//        cacheMiss
-//            .networkResponse()
-//            .assertCode(200)
-//            .assertHeader("Donut", "b")
-//            .assertRequestHeader("If-None-Match", "v1") // If-None-Match in the validation request.
-//            .assertRequestUrl(server.url("/"))
-//            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
-//            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
-//    }
-//
-//    @Test
-//    fun conditionalCacheMiss_Async() {
-//        server.enqueue(
-//            MockResponse(
-//                body = "A",
-//                headers = headersOf("ETag", "v1"),
-//            ),
-//        )
-//        server.enqueue(MockResponse(body = "B"))
-//        client =
-//            client
-//                .newBuilder()
-//                .cache(cache)
-//                .build()
-//        val request1 = ClientRequest.get(server.url("/").toJayo())
-//        client.newCall(request1).enqueue(callback)
-//        callback.await(request1.url).assertCode(200).assertBody("A")
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
-//        val request2 = ClientRequest.get(server.url("/").toJayo())
-//        client.newCall(request2).enqueue(callback)
-//        callback.await(request2.url).assertCode(200).assertBody("B")
-//        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
-//    }
-//
-////    @Test
-//    fun onlyIfCachedReturns504WhenNotCached() {
-//        executeSynchronously("/", "Cache-Control", "only-if-cached")
-//            .assertCode(504)
-//            .assertBody("")
-//            .assertNoNetworkResponse()
-//            .assertNoCacheResponse()
-//    }
-//
-//    @Test
-//    fun networkDropsOnConditionalGet() {
-//        client =
-//            client
-//                .newBuilder()
-//                .cache(cache)
-//                .build()
-//
-//        // Seed the cache.
-//        server.enqueue(
-//            MockResponse(
-//                headers = headersOf("ETag", "v1"),
-//                body = "A",
-//            ),
-//        )
-//        executeSynchronously("/")
-//            .assertCode(200)
-//            .assertBody("A")
-//
-//        // Attempt conditional cache validation and a DNS miss.
-//        client =
-//            client
-//                .newBuilder()
-//                .dns(FakeDns())
-//                .build()
-//        executeSynchronously("/").assertFailure(UnknownHostException::class.java)
-//    }
+    @Test
+    fun cacheHit() {
+        enableCache()
+
+        server.enqueue(
+            MockResponse(
+                headers =
+                    headersOf(
+                        "ETag",
+                        "v1",
+                        "Cache-Control",
+                        "max-age=60",
+                        "Vary",
+                        "Accept-Charset",
+                    ),
+                body = "A",
+            ),
+        )
+        client =
+            client
+                .newBuilder()
+                .cache(cache)
+                .build()
+
+        // Store a response in the cache.
+        val url = server.url("/").toJayo()
+        val request1SentAt = System.currentTimeMillis()
+        executeSynchronously("/", "Accept-Language", "fr-CA", "Accept-Charset", "UTF-8")
+            .assertCode(200)
+            .assertBody("A")
+        val request1ReceivedAt = System.currentTimeMillis()
+        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
+
+        // Hit that stored response. It's different, but Vary says it doesn't matter.
+        Thread.sleep(10) // Make sure the timestamps are unique.
+        val cacheHit =
+            executeSynchronously(
+                "/",
+                "Accept-Language",
+                "en-US",
+                "Accept-Charset",
+                "UTF-8",
+            )
+
+        // Check the merged response. The request is the application's original request.
+        cacheHit
+            .assertCode(200)
+            .assertBody("A")
+            .assertHeaders(
+                Headers.builder()
+                    .add("ETag", "v1")
+                    .add("Cache-Control", "max-age=60")
+                    .add("Vary", "Accept-Charset")
+                    .add("Content-Length", "1")
+                    .build(),
+            ).assertRequestUrl(url)
+            .assertRequestHeader("Accept-Language", "en-US")
+            .assertRequestHeader("Accept-Charset", "UTF-8")
+            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
+            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
+
+        // Check the cached response. Its request contains only the saved Vary headers.
+        cacheHit
+            .cacheResponse()
+            .assertCode(200)
+            .assertHeaders(
+                Headers.builder()
+                    .add("ETag", "v1")
+                    .add("Cache-Control", "max-age=60")
+                    .add("Vary", "Accept-Charset")
+                    .add("Content-Length", "1")
+                    .build(),
+            ).assertRequestMethod("GET")
+            .assertRequestUrl(url)
+            .assertRequestHeader("Accept-Language")
+            .assertRequestHeader("Accept-Charset", "UTF-8")
+            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
+            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
+        cacheHit.assertNoNetworkResponse()
+    }
+
+    @Test
+    fun conditionalCacheHit() {
+        enableCache()
+
+        server.enqueue(
+            MockResponse(
+                headers =
+                    headersOf(
+                        "ETag",
+                        "v1",
+                        "Vary",
+                        "Accept-Charset",
+                        "Donut",
+                        "a",
+                    ),
+                body = "A",
+            ),
+        )
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .clearHeaders()
+                .addHeader("Donut: b")
+                .code(HttpURLConnection.HTTP_NOT_MODIFIED)
+                .build(),
+        )
+        client =
+            client
+                .newBuilder()
+                .cache(cache)
+                .build()
+
+        // Store a response in the cache.
+        val request1SentAt = System.currentTimeMillis()
+        executeSynchronously("/", "Accept-Language", "fr-CA", "Accept-Charset", "UTF-8")
+            .assertCode(200)
+            .assertHeader("Donut", "a")
+            .assertBody("A")
+        val request1ReceivedAt = System.currentTimeMillis()
+        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
+
+        // Hit that stored response. It's different, but Vary says it doesn't matter.
+        Thread.sleep(10) // Make sure the timestamps are unique.
+        val request2SentAt = System.currentTimeMillis()
+        val cacheHit =
+            executeSynchronously(
+                "/",
+                "Accept-Language",
+                "en-US",
+                "Accept-Charset",
+                "UTF-8",
+            )
+        val request2ReceivedAt = System.currentTimeMillis()
+        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
+
+        // Check the merged response. The request is the application's original request.
+        cacheHit
+            .assertCode(200)
+            .assertBody("A")
+            .assertHeader("Donut", "b")
+            .assertRequestUrl(server.url("/").toJayo())
+            .assertRequestHeader("Accept-Language", "en-US")
+            .assertRequestHeader("Accept-Charset", "UTF-8")
+            .assertRequestHeader("If-None-Match") // No If-None-Match on the user's request.
+            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
+            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
+
+        // Check the cached response. Its request contains only the saved Vary headers.
+        cacheHit
+            .cacheResponse()
+            .assertCode(200)
+            .assertHeader("Donut", "a")
+            .assertHeader("ETag", "v1")
+            .assertRequestUrl(server.url("/").toJayo())
+            .assertRequestHeader("Accept-Language") // No Vary on Accept-Language.
+            .assertRequestHeader("Accept-Charset", "UTF-8") // Because of Vary on Accept-Charset.
+            .assertRequestHeader("If-None-Match") // This wasn't present in the original request.
+            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
+            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
+
+        // Check the network response. It has the caller's request, plus some caching headers.
+        cacheHit
+            .networkResponse()
+            .assertCode(304)
+            .assertHeader("Donut", "b")
+            .assertRequestHeader("Accept-Language", "en-US")
+            .assertRequestHeader("Accept-Charset", "UTF-8")
+            .assertRequestHeader("If-None-Match", "v1") // If-None-Match in the validation request.
+            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
+            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
+    }
+
+    @Test
+    fun conditionalCacheHit_Async() {
+        enableCache()
+
+        server.enqueue(
+            MockResponse(
+                headers = headersOf("ETag", "v1"),
+                body = "A",
+            ),
+        )
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .clearHeaders()
+                .code(HttpURLConnection.HTTP_NOT_MODIFIED)
+                .build(),
+        )
+        client =
+            client
+                .newBuilder()
+                .cache(cache)
+                .build()
+        val request1 = ClientRequest.get(server.url("/").toJayo())
+        client.newCall(request1).enqueue(callback)
+        callback.await(request1.url).assertCode(200).assertBody("A")
+        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
+        val request2 = ClientRequest.get(server.url("/").toJayo())
+        client.newCall(request2).enqueue(callback)
+        callback.await(request2.url).assertCode(200).assertBody("A")
+        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
+    }
+
+    @Test
+    fun conditionalCacheMiss() {
+        enableCache()
+
+        server.enqueue(
+            MockResponse(
+                headers =
+                    headersOf(
+                        "ETag",
+                        "v1",
+                        "Vary",
+                        "Accept-Charset",
+                        "Donut",
+                        "a",
+                    ),
+                body = "A",
+            ),
+        )
+        server.enqueue(
+            MockResponse(
+                headers = headersOf("Donut", "b"),
+                body = "B",
+            ),
+        )
+        client =
+            client
+                .newBuilder()
+                .cache(cache)
+                .build()
+        val request1SentAt = System.currentTimeMillis()
+        executeSynchronously("/", "Accept-Language", "fr-CA", "Accept-Charset", "UTF-8")
+            .assertCode(200)
+            .assertBody("A")
+        val request1ReceivedAt = System.currentTimeMillis()
+        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
+
+        // Different request, but Vary says it doesn't matter.
+        Thread.sleep(10) // Make sure the timestamps are unique.
+        val request2SentAt = System.currentTimeMillis()
+        val cacheMiss =
+            executeSynchronously(
+                "/",
+                "Accept-Language",
+                "en-US",
+                "Accept-Charset",
+                "UTF-8",
+            )
+        val request2ReceivedAt = System.currentTimeMillis()
+        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
+
+        // Check the user response. It has the application's original request.
+        cacheMiss
+            .assertCode(200)
+            .assertBody("B")
+            .assertHeader("Donut", "b")
+            .assertRequestUrl(server.url("/").toJayo())
+            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
+            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
+
+        // Check the cache response. Even though it's a miss, we used the cache.
+        cacheMiss
+            .cacheResponse()
+            .assertCode(200)
+            .assertHeader("Donut", "a")
+            .assertHeader("ETag", "v1")
+            .assertRequestUrl(server.url("/").toJayo())
+            .assertSentRequestAtMillis(request1SentAt, request1ReceivedAt)
+            .assertReceivedResponseAtMillis(request1SentAt, request1ReceivedAt)
+
+        // Check the network response. It has the network request, plus caching headers.
+        cacheMiss
+            .networkResponse()
+            .assertCode(200)
+            .assertHeader("Donut", "b")
+            .assertRequestHeader("If-None-Match", "v1") // If-None-Match in the validation request.
+            .assertRequestUrl(server.url("/").toJayo())
+            .assertSentRequestAtMillis(request2SentAt, request2ReceivedAt)
+            .assertReceivedResponseAtMillis(request2SentAt, request2ReceivedAt)
+    }
+
+    @Test
+    fun conditionalCacheMiss_Async() {
+        enableCache()
+
+        server.enqueue(
+            MockResponse(
+                body = "A",
+                headers = headersOf("ETag", "v1"),
+            ),
+        )
+        server.enqueue(MockResponse(body = "B"))
+        client =
+            client
+                .newBuilder()
+                .cache(cache)
+                .build()
+        val request1 = ClientRequest.get(server.url("/").toJayo())
+        client.newCall(request1).enqueue(callback)
+        callback.await(request1.url).assertCode(200).assertBody("A")
+        assertThat(server.takeRequest().headers["If-None-Match"]).isNull()
+        val request2 = ClientRequest.get(server.url("/").toJayo())
+        client.newCall(request2).enqueue(callback)
+        callback.await(request2.url).assertCode(200).assertBody("B")
+        assertThat(server.takeRequest().headers["If-None-Match"]).isEqualTo("v1")
+    }
+
+    @Test
+    fun onlyIfCachedReturns504WhenNotCached() {
+        enableCache()
+
+        executeSynchronously("/", "Cache-Control", "only-if-cached")
+            .assertCode(504)
+            .assertBody("")
+            .assertNoNetworkResponse()
+            .assertNoCacheResponse()
+    }
+
+    @Test
+    fun networkDropsOnConditionalGet() {
+        platform.assumeBouncyCastle() // whatever assertion on platform works, it is required for exchangeIndex check
+        enableCache()
+
+        client =
+            client
+                .newBuilder()
+                .cache(cache)
+                .build()
+
+        // Seed the cache.
+        server.enqueue(
+            MockResponse(
+                headers = headersOf("ETag", "v1"),
+                body = "A",
+            ),
+        )
+        executeSynchronously("/")
+            .assertCode(200)
+            .assertBody("A")
+
+        // Attempt conditional cache validation and a DNS miss.
+        client =
+            client
+                .newBuilder()
+                .dns(FakeDns())
+                .build()
+        executeSynchronously("/").assertFailure(JayoUnknownHostException::class.java)
+    }
 
     @Test
     fun redirect() {
@@ -4561,5 +4573,17 @@ class CallTest {
             }
         thread.start()
         return thread
+    }
+
+    private fun enableCache(): Cache? {
+        cache = makeCache()
+        client = client.newBuilder().cache(cache).build()
+        return cache
+    }
+
+    private fun makeCache(): Cache {
+        val cacheDir = Files.createTempDirectory("cache-")
+        cacheDir.deleteIfExists()
+        return Cache.create(cacheDir, (1024 * 1024).toLong())
     }
 }

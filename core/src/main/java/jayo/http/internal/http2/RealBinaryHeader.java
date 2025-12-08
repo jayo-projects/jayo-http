@@ -35,11 +35,11 @@ public final class RealBinaryHeader implements BinaryHeader {
 
     // TODO: search for toLowerCase and consider moving logic here.
     RealBinaryHeader(final @NonNull String name, final @NonNull String value) {
-        this(ByteString.encode(name, StandardCharsets.US_ASCII), ByteString.encode(value));
+        this(ByteString.encode(name, StandardCharsets.ISO_8859_1), ByteString.encode(value, StandardCharsets.ISO_8859_1));
     }
 
     RealBinaryHeader(final @NonNull ByteString name, final @NonNull String value) {
-        this(name, ByteString.encode(value));
+        this(name, ByteString.encode(value, StandardCharsets.ISO_8859_1));
     }
 
     RealBinaryHeader(final @NonNull ByteString name, final @NonNull ByteString value) {
@@ -53,7 +53,7 @@ public final class RealBinaryHeader implements BinaryHeader {
 
     @Override
     public String toString() {
-        return name.decodeToString() + ": " + value.decodeToString(StandardCharsets.ISO_8859_1);
+        return name.decodeToString(StandardCharsets.ISO_8859_1) + ": " + value.decodeToString(StandardCharsets.ISO_8859_1);
     }
 
     // Special header names defined in HTTP/2 spec.

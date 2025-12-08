@@ -22,9 +22,10 @@
 package jayo.http.internal.cache;
 
 import jayo.RawWriter;
+import org.jspecify.annotations.NonNull;
 
 sealed interface CacheRequest permits RealCache.RealCacheRequest {
-    RawWriter body();
+    @NonNull RawWriter body();
 
     void abort();
 }

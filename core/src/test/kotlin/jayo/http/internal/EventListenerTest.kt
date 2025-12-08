@@ -49,9 +49,11 @@ import java.io.InterruptedIOException
 import java.net.HttpURLConnection
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.nio.file.Files
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlin.io.path.deleteIfExists
 
 class EventListenerTestClient : EventListenerTest(ListenerInstalledOn.Client)
 class EventListenerTestCall : EventListenerTest(ListenerInstalledOn.Call)
@@ -76,7 +78,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
                 }
             }.build()
     private var socksProxyServer: Socks5ProxyServer? = null
-//    private var cache: Cache? = null
+    private var cache: Cache? = null
 
     @BeforeEach
     fun setUp() {
@@ -89,9 +91,9 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         if (socksProxyServer != null) {
             socksProxyServer!!.shutdown()
         }
-//        if (cache != null) {
-//            cache!!.delete()
-//        }
+        if (cache != null) {
+            cache!!.delete()
+        }
     }
 
     @Test
@@ -1960,7 +1962,6 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         eventRecorder.takeEvent(ResponseHeadersEnd::class.java, responseHeadersStartDelay)
     }
 
-    @Disabled // todo cache
     @Test
     fun cacheMiss() {
         enableCache()
@@ -2001,7 +2002,6 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         )
     }
 
-    @Disabled // todo cache
     @Test
     fun conditionalCache() {
         enableCache()
@@ -2050,7 +2050,6 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         )
     }
 
-    @Disabled // todo cache
     @Test
     fun conditionalCacheMiss() {
         enableCache()
@@ -2124,7 +2123,6 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         assertThat(eventRecorder.findEvent<FollowUpDecision>().nextRequest).isNull()
     }
 
-    @Disabled // todo cache
     @Test
     fun cacheHit() {
         enableCache()
@@ -2335,17 +2333,16 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
     }
 
     private fun enableCache(): Cache? {
-//        cache = makeCache()
-//        client = client.newBuilder().cache(cache).build()
-//        return cache
-        return null
+        cache = makeCache()
+        client = client.newBuilder().cache(cache).build()
+        return cache
     }
-//
-//    private fun makeCache(): Cache {
-//        val cacheDir = File.createTempFile("cache-", ".dir")
-//        cacheDir.delete()
-//        return Cache(cacheDir, (1024 * 1024).toLong())
-//    }
+
+    private fun makeCache(): Cache {
+        val cacheDir = Files.createTempDirectory("cache-")
+        cacheDir.deleteIfExists()
+        return Cache.create(cacheDir, (1024 * 1024).toLong())
+    }
 
     private fun JayoHttpClient.newCallWithListener(request: ClientRequest): Call =
         newCall(request)

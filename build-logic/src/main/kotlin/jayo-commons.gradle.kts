@@ -22,7 +22,7 @@ val isCI = providers.gradleProperty("isCI")
 val javaVersion = catalogVersion("java").toInt()
 
 val koverage = mapOf(
-    "jayo-http" to if (isCI.isPresent) 87 else 89,
+    "jayo-http" to if (isCI.isPresent) 89 else 90,
     "jayo-http-logging-interceptor" to 94,
 )
 

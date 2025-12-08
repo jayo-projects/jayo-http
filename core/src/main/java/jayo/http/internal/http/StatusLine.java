@@ -96,7 +96,7 @@ public final class StatusLine {
     public int code;
     public @NonNull String message;
 
-    private StatusLine(final @NonNull Protocol protocol,
+    public StatusLine(final @NonNull Protocol protocol,
                        final int code,
                        final @NonNull String message) {
         assert protocol != null;
