@@ -147,7 +147,8 @@ public final class Http2Stream implements RawSocket {
      * Note that the input stream may continue to yield data even after a stream reports itself as not open. This is
      * because input data is buffered.
      */
-    boolean isOpen() {
+    @Override
+    public boolean isOpen() {
         // no need to lock because this method is called from a lock-protected block or just after instantiation.
         if (errorCode != null) {
             return false;

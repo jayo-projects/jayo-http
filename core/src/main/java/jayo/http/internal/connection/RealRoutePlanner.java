@@ -23,7 +23,7 @@ package jayo.http.internal.connection;
 
 import jayo.Jayo;
 import jayo.JayoException;
-import jayo.Socket;
+import jayo.RawSocket;
 import jayo.http.*;
 import jayo.http.internal.UrlUtils;
 import jayo.network.JayoUnknownServiceException;
@@ -156,7 +156,7 @@ final class RealRoutePlanner implements RoutePlanner {
         // on the hook to close it.
         final var healthy = candidate.isHealthy(doExtensiveHealthChecks);
 //        var noNewExchangesEvent = false;
-        final Socket toClose;
+        final RawSocket toClose;
         candidate.lock.lock();
         try {
             if (!healthy) {

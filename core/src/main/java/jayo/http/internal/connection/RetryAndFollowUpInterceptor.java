@@ -22,6 +22,7 @@
 package jayo.http.internal.connection;
 
 import jayo.*;
+import jayo.files.JayoFileNotFoundException;
 import jayo.http.ClientRequest;
 import jayo.http.ClientResponse;
 import jayo.http.Interceptor;

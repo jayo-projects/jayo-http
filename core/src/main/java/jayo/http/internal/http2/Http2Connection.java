@@ -55,7 +55,7 @@ import static jayo.http.internal.http2.Settings.DEFAULT_INITIAL_WINDOW_SIZE;
  * by a certain caller can be caught and handled by that caller.
  */
 public final class Http2Connection implements AutoCloseable {
-    private static final System.Logger LOGGER = System.getLogger("jayo.http.http2.Http2Connection");
+    private static final System.Logger LOGGER = System.getLogger("jayo.http2.Http2Connection");
 
     // The internal state of this connection is guarded by 'lock'. No blocking operations may be performed while holding
     // this lock!

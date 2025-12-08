@@ -587,7 +587,7 @@ public final class RealCall implements Call {
     private <E extends JayoException> @Nullable E callDone(final @Nullable E e) {
         final var connection = this.connection;
         if (connection != null) {
-            final Socket toClose;
+            final RawSocket toClose;
             connection.lock.lock();
             try {
                 // Sets this.connection to null.
@@ -623,8 +623,7 @@ public final class RealCall implements Call {
     /**
      * Remove this call from the connection's list of allocations. Returns a socket that the caller should close.
      */
-    @Nullable
-    Socket releaseConnectionNoEvents() {
+    @Nullable RawSocket releaseConnectionNoEvents() {
         final var _connection = this.connection;
         assert _connection != null;
 

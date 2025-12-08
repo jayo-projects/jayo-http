@@ -511,11 +511,11 @@ class Http2ConnectionTest {
         val connection =
             Http2Connection
                 .Builder(true, JayoHttpClient.DEFAULT_TASK_RUNNER)
-                .socket(networkClient, "peer")
+                .socket(networkClient.second, "peer")
                 .pushObserver(IGNORE)
                 .build()
         connection.start(false)
-        (networkClient.underlying as java.net.Socket).shutdownOutput()
+        networkClient.first.shutdownOutput()
         assertFailsWith<JayoException> {
             connection.newStream(headerEntries("a", longString), false)
         }
@@ -1949,7 +1949,7 @@ class Http2ConnectionTest {
         val connection =
             Http2Connection
                 .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
-                .socket(peer.openSocket(), "peer")
+                .socket(peer.openSocket().second, "peer")
                 .build()
         connection.start(false)
         val stream = connection.newStream(headerEntries("b", "banana"), false)
@@ -1977,7 +1977,7 @@ class Http2ConnectionTest {
             val connection =
                 Http2Connection
                     .Builder(true, taskRunner)
-                    .socket(peer.openSocket(), "peer")
+                    .socket(peer.openSocket().second, "peer")
                     .pushObserver(IGNORE)
                     .build()
             connection.start(false)
@@ -2034,7 +2034,7 @@ class Http2ConnectionTest {
         val connection =
             Http2Connection
                 .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
-                .socket(peer.openSocket(), "peer")
+                .socket(peer.openSocket().second, "peer")
                 .pushObserver(pushObserver)
                 .listener(listener)
                 .build()

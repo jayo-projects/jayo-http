@@ -557,8 +557,6 @@ class RealWebSocketTest {
         }
 
         override fun isOpen(): Boolean = TODO("Not needed here")
-
-        override fun getUnderlying(): Any = delegate
     }
 
     companion object {

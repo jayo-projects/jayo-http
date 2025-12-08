@@ -102,7 +102,7 @@ final class WebSocketReader implements AutoCloseable {
      */
     void processNextFrame() {
         if (closed) {
-            throw new JayoClosedResourceException();
+            throw new IllegalStateException("closed");
         }
 
         readHeader();

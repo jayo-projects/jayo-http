@@ -21,7 +21,7 @@
 
 package jayo.http;
 
-import jayo.Socket;
+import jayo.RawSocket;
 import jayo.http.internal.connection.RealConnection;
 import jayo.tls.Handshake;
 import jayo.tls.Protocol;
@@ -78,7 +78,7 @@ public sealed interface Connection permits RealConnection {
      * this connection is HTTPS. If this is an HTTP/2 connection the socket may be shared by multiple concurrent calls.
      */
     @NonNull
-    Socket socket();
+    RawSocket socket();
 
     /**
      * @return the TLS handshake used to establish this connection, or null if the connection is not HTTPS.

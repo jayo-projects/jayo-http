@@ -50,7 +50,7 @@ object Http2TestUtils {
         val connection =
             Http2Connection
                 .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
-                .socket(peer.openSocket(), "peer")
+                .socket(peer.openSocket().second, "peer")
                 .pushObserver(Http2ConnectionTest.IGNORE)
                 .listener(realConnection)
                 .build()

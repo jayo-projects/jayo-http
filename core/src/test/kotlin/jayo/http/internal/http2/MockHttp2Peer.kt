@@ -158,22 +158,20 @@ class MockHttp2Peer : AutoCloseable {
         }
     }
 
-    fun openSocket(): Socket {
+    fun openSocket(): Pair<java.net.Socket, Socket> {
         val javaSocket = java.net.Socket("localhost", port)
-        return object : Socket {
-            override fun getReader() = javaSocket.inputStream.reader().buffered()
-            override fun getWriter() = javaSocket.outputStream.writer().buffered()
+        val socket = object : RawSocket {
+            override fun getReader() = javaSocket.inputStream.reader()
+            override fun getWriter() = javaSocket.outputStream.writer()
 
             override fun isOpen() = !javaSocket.isClosed &&
                     !javaSocket.isInputShutdown && !javaSocket.isOutputShutdown
 
-            override fun getUnderlying() = javaSocket
-
             override fun cancel() {
                 javaSocket.close()
             }
-
-        }
+        }.buffered()
+        return javaSocket to socket
     }
 
     @Synchronized

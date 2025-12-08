@@ -55,7 +55,7 @@ class ClientResponseTest {
         val response = newResponse(responseBody("abc"))
         assertThat(response.body.string()).isEqualTo("abc")
 
-        assertFailsWith<JayoClosedResourceException> {
+        assertFailsWith<IllegalStateException> {
             response.peekBody(3)
         }
     }

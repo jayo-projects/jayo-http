@@ -21,10 +21,7 @@
 
 package jayo.http.internal.connection;
 
-import jayo.Jayo;
-import jayo.JayoException;
-import jayo.JayoProtocolException;
-import jayo.Socket;
+import jayo.*;
 import jayo.http.CertificatePinner;
 import jayo.http.ClientRequest;
 import jayo.http.ConnectionSpec;
@@ -39,6 +36,7 @@ import jayo.http.internal.http1.Http1ExchangeCodec;
 import jayo.network.*;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.*;
+import jayo.tools.JayoUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -93,16 +91,17 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
      */
     private /* lateinit */ NetworkSocket.Unconnected rawSocket = null;
     /**
-     * The connected TCP socket.
+     * The low-level connected TCP socket.
      */
     private /* lateinit */ NetworkSocket networkSocket = null;
     /**
      * The application layer socket. Either a {@link TlsSocket} layered over {@link #networkSocket}, or
      * {@link #networkSocket} itself if this connection does not use SSL.
      */
-    private /* lateinit */ Socket socket = null;
+    private /* lateinit */ RawSocket applicationSocket = null;
     private @Nullable Handshake handshake = null;
-    private @Nullable Protocol protocol = null;
+    private /* lateinit */ Protocol protocol = null;
+    private /* lateinit */ Socket socket;
     private @Nullable RealConnection connection = null;
 
     ConnectPlan(final @NonNull TaskRunner taskRunner,
@@ -222,7 +221,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             throw connectException;
         }
         this.networkSocket = networkSocket;
-        this.socket = networkSocket;
+        this.socket = Jayo.buffer(networkSocket);
     }
 
     @Override
@@ -255,7 +254,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 // we will have buffered bytes that are needed by the SSLSocket!
                 // This check is imperfect: it doesn't tell us whether a handshake will succeed, just that it will
                 // almost certainly fail because the proxy has sent unexpected data.
-                if (networkSocket.getReader().bytesAvailable() > 0L) {
+                if (!JayoUtils.buffer(socket.getReader()).exhausted() ||
+                        !JayoUtils.buffer(socket.getWriter()).exhausted()) {
                     throw new JayoException("TLS tunnel buffered too many bytes!");
                 }
 
@@ -278,20 +278,20 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 connectTls(tlsParameterizer);
                 call.eventListener.secureConnectEnd(call, handshake);
             } else {
+                applicationSocket = networkSocket;
                 protocol = route.getAddress().getProtocols().contains(Protocol.H2_PRIOR_KNOWLEDGE)
                         ? Protocol.H2_PRIOR_KNOWLEDGE
                         : Protocol.HTTP_1_1;
             }
 
-            assert socket != null;
-            assert protocol != null;
             final var connection = new RealConnection(
                     taskRunner,
                     route,
                     networkSocket,
-                    socket,
+                    applicationSocket,
                     handshake,
                     protocol,
+                    socket,
                     pingInterval
             );
             this.connection = connection;
@@ -313,8 +313,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         } finally {
             call.plansToCancel.remove(this);
             if (!success) {
-                if (socket != null) {
-                    Jayo.closeQuietly(socket);
+                if (applicationSocket != null) {
+                    Jayo.closeQuietly(applicationSocket);
                 }
                 Jayo.closeQuietly(networkSocket);
             }
@@ -414,7 +414,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                             .toList());
 
             // Success! Save the handshake and the ALPN protocol.
-            socket = tlsSocket;
+            applicationSocket = tlsSocket;
+            socket = Jayo.buffer(tlsSocket);
             protocol = handshake.getProtocol();
             success = true;
         } finally {
@@ -582,8 +583,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     }
 
     void closeQuietly() {
-        if (socket != null) {
-            Jayo.closeQuietly(socket);
+        if (applicationSocket != null) {
+            Jayo.closeQuietly(applicationSocket);
         }
     }
 
