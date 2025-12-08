@@ -4,7 +4,7 @@
  *
  * Forked from OkHttp (https://github.com/square/okhttp), original copyright is below
  *
- * Copyright (C) 2013 Square, Inc.
+ * Copyright (C) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,14 @@
 package jayo.http;
 
 import jayo.http.internal.cache.RealCache;
+import jayo.http.internal.connection.RealJayoHttpClient;
+import org.jspecify.annotations.NonNull;
+
+import java.nio.file.Path;
+import java.util.Iterator;
+import java.util.Objects;
+
+import static jayo.http.internal.cache.RealCache.varyFields;
 
 /**
  * Caches HTTP and HTTPS responses to the filesystem so they may be reused, saving time and bandwidth.
@@ -90,11 +98,11 @@ import jayo.http.internal.cache.RealCache;
  * cached responses, use the {@code max-stale} directive with the maximum staleness in seconds:
  * <pre>
  * {@code
- * Request request = new Request.Builder()
- *     .cacheControl(new CacheControl.Builder()
- *         .maxStale(365, TimeUnit.DAYS)
+ * ClientRequest request = ClientRequest.builder()
+ *     .cacheControl(CacheControl.builder()
+ *         .maxStale(Duration.ofDays(365))
  *         .build())
- *     .url("http://publicobject.com/helloworld.txt")
+ *     .url("https://publicobject.com/helloworld.txt")
  *     .build();
  * }
  * </pre>
@@ -103,8 +111,112 @@ import jayo.http.internal.cache.RealCache;
  * the use cases above.
  */
 public sealed interface Cache extends AutoCloseable permits RealCache {
+    /**
+     * Create a cache of at most {@code maxSize} bytes in {@code directory}.
+     */
+    static @NonNull Cache create(final @NonNull Path directory, final long maxSize) {
+        Objects.requireNonNull(directory);
+        if (maxSize <= 0) {
+            throw new IllegalArgumentException("maxSize <= 0: " + maxSize);
+        }
+
+        return new RealCache(directory, maxSize, RealJayoHttpClient.DEFAULT_TASK_RUNNER);
+    }
+
+    /**
+     * Initialize the cache. This will include reading the journal files from the storage and building up the necessary
+     * in-memory cache information.
+     * <p>
+     * The initialization time may vary depending on the journal file size and the current actual cache size. The
+     * application needs to be aware of calling this function during the initialization phase and preferably in a
+     * background worker thread.
+     * <p>
+     * Note that if the application chooses to not call this method to initialize the cache. By default, Jayo HTTP will
+     * perform lazy initialization upon the first usage of the cache.
+     */
+    void initialize();
+
+    /**
+     * Closes the cache and deletes all of its stored values. This will delete all files in the cache directory,
+     * including files that weren't created by the cache.
+     */
+    void delete();
+
+    /**
+     * Deletes all values stored in the cache. In-flight writes to the cache will complete normally, but the
+     * corresponding responses will not be stored.
+     */
+    void evictAll();
+
+    /**
+     * @return an iterator over the URLs in this cache. This iterator doesn't throw
+     * {@code ConcurrentModificationException}, but if new responses are added while iterating, their URLs will not be
+     * returned. If existing responses are evicted during iteration, they will be absent (unless they were already
+     * returned).
+     * <p>
+     * The iterator supports {@link Iterator#remove()}. Removing a URL from the iterator evicts the corresponding
+     * response from the cache. Use this to evict selected responses.
+     */
+    @NonNull Iterator<@NonNull String> urls();
+
+    int writeAbortCount();
+
+    int writeSuccessCount();
+
+    int networkCount();
+
+    int hitCount();
+
+    int requestCount();
+
+    /**
+     * @return the number of bytes currently being used to store the values in this cache. This may be greater than the
+     * max size if a background deletion is pending.
+     */
+    long byteSize();
+
+    /**
+     * Max size of the cache (in bytes).
+     */
+    long maxByteSize();
+
+    boolean isClosed();
+
+    /**
+     * Closes this cache. Stored values will remain in the filesystem.
+     */
     @Override
     void close();
 
+    /**
+     * Force buffered operations to the filesystem.
+     */
     void flush();
+
+    /**
+     * @return the directory where this cache stores its data.
+     */
+    @NonNull Path getDirectory();
+
+    /**
+     * @return true if none of the Vary headers have changed between {@code cachedRequest} and {@code newRequest}.
+     */
+    static boolean varyMatches(final @NonNull ClientResponse cachedResponse,
+                               final @NonNull Headers cachedRequest,
+                               final @NonNull ClientRequest newRequest) {
+        Objects.requireNonNull(cachedResponse);
+        Objects.requireNonNull(cachedRequest);
+        Objects.requireNonNull(newRequest);
+
+        return varyFields(cachedResponse.getHeaders()).stream().allMatch(varyField ->
+                cachedRequest.values(varyField).equals(newRequest.headers(varyField)));
+    }
+
+    /**
+     * @return true if a Vary header contains an asterisk. Such responses cannot be cached.
+     */
+    static boolean hasVaryAll(final @NonNull ClientResponse response) {
+        Objects.requireNonNull(response);
+        return varyFields(response.getHeaders()).contains("*");
+    }
 }

@@ -228,7 +228,7 @@ public final class RealClientResponse implements ClientResponse {
     @Override
     public @NonNull CacheControl getCacheControl() {
         if (lazyCacheControl == null) {
-            lazyCacheControl = CacheControl.parse(getHeaders());
+            lazyCacheControl = CacheControl.parse(headers);
         }
         return lazyCacheControl;
     }

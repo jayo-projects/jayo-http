@@ -36,7 +36,6 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
-import java.util.Objects;
 
 import static java.net.HttpURLConnection.HTTP_GATEWAY_TIMEOUT;
 import static java.net.HttpURLConnection.HTTP_NOT_MODIFIED;
@@ -146,7 +145,7 @@ public final class CacheInterceptor implements Interceptor {
         }
 
         final var response = networkResponse.newBuilder()
-                .cacheResponse(cacheResponse != null ? stripBody(cacheResponse).build() : null)
+                .cacheResponse((cacheResponse != null) ? stripBody(cacheResponse).build() : null)
                 .networkResponse(stripBody(networkResponse).build())
                 .build();
 
@@ -276,9 +275,9 @@ public final class CacheInterceptor implements Interceptor {
 
         final var result = new RealHeaders.Builder();
 
-        for (int index = 0; index < cachedHeaders.size(); index++) {
-            String fieldName = cachedHeaders.name(index);
-            String value = cachedHeaders.value(index);
+        for (var index = 0; index < cachedHeaders.size(); index++) {
+            final var fieldName = cachedHeaders.name(index);
+            final var value = cachedHeaders.value(index);
             if ("Warning".equalsIgnoreCase(fieldName) && value.startsWith("1")) {
                 // Drop 100-level freshness warnings.
                 continue;
@@ -290,8 +289,8 @@ public final class CacheInterceptor implements Interceptor {
             }
         }
 
-        for (int index = 0; index < networkHeaders.size(); index++) {
-            String fieldName = networkHeaders.name(index);
+        for (var index = 0; index < networkHeaders.size(); index++) {
+            final var fieldName = networkHeaders.name(index);
             if (!isContentSpecificHeader(fieldName) && isEndToEnd(fieldName)) {
                 result.addLenient(fieldName, networkHeaders.value(index));
             }

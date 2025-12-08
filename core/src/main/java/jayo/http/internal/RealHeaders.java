@@ -245,7 +245,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         private final List<String> namesAndValues = new ArrayList<>(20);
 
         @Override
-        public Headers.@NonNull Builder add(final @NonNull String line) {
+        public @NonNull Builder add(final @NonNull String line) {
             Objects.requireNonNull(line);
             final var index = line.indexOf(':');
             if (index == -1) {
@@ -255,7 +255,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         }
 
         @Override
-        public Headers.@NonNull Builder add(final @NonNull String name, final @NonNull String value) {
+        public @NonNull Builder add(final @NonNull String name, final @NonNull String value) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(value);
             headersCheckName(name);
@@ -264,7 +264,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         }
 
         @Override
-        public Headers.@NonNull Builder add(final @NonNull String name, final @NonNull Instant value) {
+        public @NonNull Builder add(final @NonNull String name, final @NonNull Instant value) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(value);
             final var stringValue = toHttpInstantString(value);
@@ -272,7 +272,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         }
 
         @Override
-        public Headers.@NonNull Builder addUnsafeNonAscii(final @NonNull String name, final @NonNull String value) {
+        public @NonNull Builder addUnsafeNonAscii(final @NonNull String name, final @NonNull String value) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(value);
             headersCheckName(name);
@@ -280,7 +280,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         }
 
         @Override
-        public Headers.@NonNull Builder addAll(final @NonNull Headers headers) {
+        public @NonNull Builder addAll(final @NonNull Headers headers) {
             for (var i = 0; i < headers.size(); i++) {
                 addLenient(headers.name(i), headers.value(i));
             }
@@ -288,7 +288,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         }
 
         @Override
-        public Headers.@NonNull Builder set(final @NonNull String name, final @NonNull String value) {
+        public @NonNull Builder set(final @NonNull String name, final @NonNull String value) {
             headersCheckName(name);
             headersCheckValue(value, name);
             removeAll(name);
@@ -296,7 +296,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         }
 
         @Override
-        public Headers.@NonNull Builder set(final @NonNull String name, final @NonNull Instant value) {
+        public @NonNull Builder set(final @NonNull String name, final @NonNull Instant value) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(value);
             final var stringValue = toHttpInstantString(value);
@@ -304,7 +304,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         }
 
         @Override
-        public Headers.@NonNull Builder removeAll(@NonNull String name) {
+        public @NonNull Builder removeAll(@NonNull String name) {
             Objects.requireNonNull(name);
             var i = 0;
             while (i < namesAndValues.size()) {
@@ -337,7 +337,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
         /**
          * Add a header line without any validation. Only appropriate for headers from the remote peer or cache.
          */
-        public Headers.@NonNull Builder addLenient(final @NonNull String line) {
+        public @NonNull Builder addLenient(final @NonNull String line) {
             Objects.requireNonNull(line);
             final var index = line.indexOf(':', 1);
             if (index != -1) {
@@ -349,7 +349,7 @@ public final class RealHeaders extends AbstractCollection<Headers.@NonNull Heade
             return this;
         }
 
-        public Headers.@NonNull Builder addLenient(final @NonNull String name, final @NonNull String value) {
+        public @NonNull Builder addLenient(final @NonNull String name, final @NonNull String value) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(value);
             namesAndValues.add(name);

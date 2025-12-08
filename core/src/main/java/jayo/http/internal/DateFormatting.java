@@ -25,9 +25,12 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.text.ParsePosition;
+import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
+import java.time.temporal.TemporalAccessor;
 import java.util.Locale;
 
 import static java.time.ZoneOffset.UTC;
@@ -84,32 +87,55 @@ public final class DateFormatting {
         }
 
         final var position = new ParsePosition(0);
-        var result = STANDARD_DATE_FORMAT.parse(instantAsString, position);
+        var result = parseCatching(instantAsString, position, STANDARD_DATE_FORMAT);
         if (position.getIndex() == instantAsString.length()) {
             // STANDARD_DATE_FORMAT must match exactly; all text must be consumed, e.g. no ignored
             // non-standard trailing "+01:00". Those cases are covered below.
+            assert result != null;
             return Instant.from(result);
         }
         for (var i = 0; i < BROWSER_COMPATIBLE_DATE_FORMAT_STRINGS.length; i++) {
             var format = BROWSER_COMPATIBLE_DATE_FORMATS[i];
             if (format == null) {
-                format = DateTimeFormatter.ofPattern(BROWSER_COMPATIBLE_DATE_FORMAT_STRINGS[i], Locale.US)
+                format = DateTimeFormatter.ofPattern(BROWSER_COMPATIBLE_DATE_FORMAT_STRINGS[i])
                         // Set the timezone to use when interpreting formats that don't have a timezone. GMT is
                         // specified by RFC 7231.
+                        .withLocale(Locale.US)
                         .withZone(UTC);
                 BROWSER_COMPATIBLE_DATE_FORMATS[i] = format;
             }
             position.setIndex(0);
-            result = format.parse(instantAsString, position);
+            result = parseCatching(instantAsString, position, format);
             if (position.getIndex() != 0) {
                 // Something was parsed. It's possible the entire string was not consumed, but we ignore that. If
                 // any of the BROWSER_COMPATIBLE_DATE_FORMAT_STRINGS ended in "'GMT'" we'd have to also check that
                 // position.getIndex() == value.length() otherwise parsing might have terminated early, ignoring
                 // things like "+01:00". Leaving this as != 0 means that any trailing junk is ignored.
-                return Instant.from(result);
+                if (result != null) {
+                    return Instant.from(result);
+                }
+                // else recreate an Instant from the unresolved result
+                return LocalDateTime
+                        .parse(instantAsString, format)
+                        .atZone(UTC)
+                        .toInstant();
             }
         }
         return null;
+    }
+
+    private static TemporalAccessor parseCatching(final @NonNull CharSequence text,
+                                                  final @NonNull ParsePosition position,
+                                                  final @NonNull DateTimeFormatter formatter) {
+        assert text != null;
+        assert position != null;
+        assert formatter != null;
+
+        try {
+            return formatter.parse(text, position);
+        } catch (DateTimeException e) {
+            return null;
+        }
     }
 
     /**
