@@ -482,8 +482,10 @@ class WebSocketReaderTest {
         callback.assertTextMessage("Hello")
         data.write("c107f248cdc9c90700".decodeHex()) // Hello
         clientReaderWithCompression.close()
-        assertFailsWith<JayoClosedResourceException> {
+        assertFailsWith<IllegalStateException> {
             clientReaderWithCompression.processNextFrame()
+        }.also { expected ->
+            assertThat(expected.message!!).contains("closed")
         }
     }
 

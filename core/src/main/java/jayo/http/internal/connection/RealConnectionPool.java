@@ -22,7 +22,7 @@
 package jayo.http.internal.connection;
 
 import jayo.Jayo;
-import jayo.Socket;
+import jayo.RawSocket;
 import jayo.http.Address;
 import jayo.http.ConnectionPool;
 import jayo.http.JayoHttpClient;
@@ -138,7 +138,7 @@ public final class RealConnectionPool implements ConnectionPool {
             // In the second lock-protected block, release the unhealthy acquired connection. We're also on the hook to
             // close this connection if it's no longer in use.
 //            final boolean noNewExchangesEvent;
-            final Socket toClose;
+            final RawSocket toClose;
             connection.lock.lock();
             try {
 //                noNewExchangesEvent = !connection.noNewExchanges;
@@ -190,7 +190,7 @@ public final class RealConnectionPool implements ConnectionPool {
         final var i = connections.iterator();
         while (i.hasNext()) {
             final var connection = i.next();
-            final Socket toClose;
+            final RawSocket toClose;
             connection.lock.lock();
             try {
                 if (connection.calls.isEmpty()) {

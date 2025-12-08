@@ -175,25 +175,38 @@ public final class Exchange {
         ((RealConnection) codec.getCarrier()).useAsSocket();
 
         return new RawSocket() {
+            private boolean canceled = false;
+
+            private final @NonNull ResponseBodyRawReader reader =
+                    new ResponseBodyRawReader(
+                            codec.getSocket().getReader(),
+                            -1L,
+                            /*isSocket*/ true);
+            private final @NonNull RequestBodyRawWriter writer =
+                    new RequestBodyRawWriter(
+                            codec.getSocket().getWriter(),
+                            -1L,
+                            /*isSocket*/ true);
+
             @Override
             public @NonNull RawReader getReader() {
-                return new ResponseBodyRawReader(
-                        codec.getSocket().getReader(),
-                        -1L,
-                        /*isSocket*/ true);
+                return reader;
             }
 
             @Override
             public @NonNull RawWriter getWriter() {
-                return new RequestBodyRawWriter(
-                        codec.getSocket().getWriter(),
-                        -1L,
-                        /*isSocket*/ true);
+                return writer;
             }
 
             @Override
             public void cancel() {
+                canceled = true;
                 Exchange.this.cancel();
+            }
+
+            @Override
+            public boolean isOpen() {
+                return !canceled && reader.isOpen() && writer.isOpen();
             }
         };
     }
@@ -300,7 +313,7 @@ public final class Exchange {
             assert reader != null;
 
             if (closed) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
             if (contentLength != -1L && bytesReceived + byteCount > contentLength) {
                 throw new JayoProtocolException(
@@ -344,6 +357,10 @@ public final class Exchange {
             }
         }
 
+        private boolean isOpen() {
+            return !closed && !completed;
+        }
+
         private <E extends JayoException> E complete(final E e) {
             if (completed) {
                 return e;
@@ -385,7 +402,7 @@ public final class Exchange {
             assert writer != null;
 
             if (closed) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
             try {
                 final var read = delegate.readAtMostTo(writer, byteCount);
@@ -431,7 +448,11 @@ public final class Exchange {
             }
         }
 
-        public <E extends JayoException> E complete(final E e) {
+        private boolean isOpen() {
+            return !closed && !completed;
+        }
+
+        private <E extends JayoException> E complete(final E e) {
             if (completed) {
                 return e;
             }

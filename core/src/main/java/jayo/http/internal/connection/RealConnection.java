@@ -63,14 +63,15 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     /**
      * The low-level TCP socket.
      */
-    private final @NonNull NetworkSocket rawSocket;
+    private final @NonNull NetworkSocket networkSocket;
     /**
-     * The application layer socket. Either a {@linkplain jayo.tls.TlsSocket TlsSocket} layered over {@code rawSocket},
-     * or {@code rawSocket} itself if this connection does not use TLS.
+     * The application layer socket. Either a {@linkplain jayo.tls.TlsSocket TlsSocket} layered over
+     * {@link #networkSocket}, or {@link #networkSocket} itself if this connection does not use TLS.
      */
-    private final @NonNull Socket socket;
+    private final @NonNull RawSocket applicationSocket;
     private final @Nullable Handshake handshake;
     private final @NonNull Protocol protocol;
+    private final @NonNull Socket socket;
     private final @NonNull Duration pingInterval;
     // todo (maybe) : ConnectionListener
 
@@ -121,24 +122,27 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
     RealConnection(final @NonNull TaskRunner taskRunner,
                    final @NonNull Route route,
-                   final @NonNull NetworkSocket rawSocket,
-                   final @NonNull Socket socket,
+                   final @NonNull NetworkSocket networkSocket,
+                   final @NonNull RawSocket applicationSocket,
                    final @Nullable Handshake handshake,
                    final @NonNull Protocol protocol,
+                   final @NonNull Socket socket,
                    final @NonNull Duration pingInterval) {
         assert taskRunner != null;
         assert route != null;
-        assert rawSocket != null;
-        assert socket != null;
+        assert networkSocket != null;
+        assert applicationSocket != null;
         assert protocol != null;
         assert pingInterval != null;
+        assert socket != null;
 
         this.taskRunner = taskRunner;
         this.route = route;
-        this.rawSocket = rawSocket;
-        this.socket = socket;
+        this.networkSocket = networkSocket;
+        this.applicationSocket = applicationSocket;
         this.handshake = handshake;
         this.protocol = protocol;
+        this.socket = socket;
         this.pingInterval = pingInterval;
     }
 
@@ -191,8 +195,8 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
     private void startHttp2() {
         // HTTP/2 connection timeouts are set per-stream.
-        rawSocket.setReadTimeout(Duration.ZERO);
-        rawSocket.setWriteTimeout(Duration.ZERO);
+        networkSocket.setReadTimeout(Duration.ZERO);
+        networkSocket.setWriteTimeout(Duration.ZERO);
 
         // todo (maybe) : flowControlListener from ConnectionListener
         final var http2Connection = new Http2Connection.Builder(true, taskRunner)
@@ -312,13 +316,13 @@ public final class RealConnection extends Http2Connection.Listener implements Co
         }
 
         // use HTTP/1
-        rawSocket.setReadTimeout(client.getReadTimeout());
-        rawSocket.setWriteTimeout(client.getWriteTimeout());
+        networkSocket.setReadTimeout(client.getReadTimeout());
+        networkSocket.setWriteTimeout(client.getWriteTimeout());
         return new Http1ExchangeCodec(client, this, socket);
     }
 
     void useAsSocket() {
-        if (rawSocket.getUnderlying() instanceof java.net.Socket javaNetSocket) {
+        if (networkSocket.getUnderlying() instanceof java.net.Socket javaNetSocket) {
             try {
                 javaNetSocket.setSoTimeout(0);
             } catch (SocketException se) {
@@ -336,7 +340,7 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     public boolean isHealthy(final boolean doExtensiveChecks) {
         final var nowNs = System.nanoTime();
 
-        if (!rawSocket.isOpen()) {
+        if (!applicationSocket.isOpen() || !networkSocket.isOpen()) {
             return false;
         }
 
@@ -361,19 +365,19 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     }
 
     /**
-     * @return true if new reads and writes should be attempted on the underlying network socket of {@link #rawSocket}.
+     * @return true if new reads and writes should be attempted on the underlying network socket of {@link #networkSocket}.
      * @implNote Unfortunately, Java's networking APIs don't offer a good health check, so we go on our own by
      * attempting to read with a short timeout. If it fails immediately, we know the socket is unhealthy.
      */
     boolean isHealthy() {
         try {
             return Cancellable.call(Duration.ofMillis(1L), ignored -> {
-                final var readTimeout = rawSocket.getReadTimeout();
+                final var readTimeout = networkSocket.getReadTimeout();
                 try {
-                    rawSocket.setReadTimeout(Duration.ofMillis(1L));
+                    networkSocket.setReadTimeout(Duration.ofMillis(1L));
                     return !socket.getReader().exhausted();
                 } finally {
-                    rawSocket.setReadTimeout(readTimeout);
+                    networkSocket.setReadTimeout(readTimeout);
                 }
             });
         } catch (JayoTimeoutException e) {
@@ -470,8 +474,8 @@ public final class RealConnection extends Http2Connection.Listener implements Co
 
     @Override
     public void cancel() {
-        // Close the network socket so we don't end up doing synchronous I/O.
-        Jayo.closeQuietly(rawSocket);
+        // Close the application socket so we don't end up doing synchronous I/O.
+        Jayo.closeQuietly(applicationSocket);
     }
 
     @Override
@@ -490,8 +494,8 @@ public final class RealConnection extends Http2Connection.Listener implements Co
     }
 
     @Override
-    public @NonNull Socket socket() {
-        return socket;
+    public @NonNull RawSocket socket() {
+        return applicationSocket;
     }
 
     @Override
@@ -529,20 +533,16 @@ public final class RealConnection extends Http2Connection.Listener implements Co
             public boolean isOpen() {
                 return !canceled;
             }
-
-            @Override
-            public @NonNull Object getUnderlying() {
-                return networkSocket;
-            }
         };
 
         final var result = new RealConnection(
                 taskRunner,
                 route,
                 networkSocket,
-                socket,
+                networkSocket,
                 null,
                 Protocol.HTTP_2,
+                socket,
                 Duration.ZERO
         );
         result.idleAtNs = idleAtNs;

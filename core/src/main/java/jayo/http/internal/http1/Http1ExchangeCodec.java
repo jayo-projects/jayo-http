@@ -361,7 +361,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
         public void writeFrom(final @NonNull Buffer reader, long byteCount) {
             assert reader != null;
             if (closed) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
             if (byteCount < 0) {
                 return;
@@ -402,7 +402,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
         public void writeFrom(final @NonNull Buffer reader, long byteCount) {
             assert reader != null;
             if (closed) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
             checkOffsetAndCount(reader.bytesAvailable(), 0L, byteCount);
             socket.getWriter().writeFrom(reader, byteCount);
@@ -488,7 +488,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
             assert writer != null;
             assert byteCount >= 0L;
             if (closed) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
             if (bytesRemaining == 0L) {
                 return -1L;
@@ -539,7 +539,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
             assert writer != null;
             assert byteCount >= 0L;
             if (closed) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
             if (!hasMoreChunks) {
                 return -1L;
@@ -618,7 +618,7 @@ public final class Http1ExchangeCodec implements ExchangeCodec {
             assert writer != null;
             assert byteCount >= 0L;
             if (closed) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
             if (inputExhausted) {
                 return -1L;

@@ -123,15 +123,15 @@ public sealed interface ClientResponse extends AutoCloseable permits RealClientR
     ClientResponse getPriorResponse();
 
     /**
-     * @return the instant taken immediately before Jayo HTTP transmitted the initiating request over the network. If
-     * this response is being served from the cache then this is the instant of the original request.
+     * @return the timestamp taken immediately before Jayo HTTP transmitted the initiating request over the network. If
+     * this response is being served from the cache, then this is the timestamp of the original request.
      */
     @NonNull
     Instant getSentRequestAt();
 
     /**
-     * @return the instant taken immediately after Jayo HTTP received this response's headers from the network. If this
-     * response is being served from the cache then this is the instant of the original request.
+     * @return the timestamp taken immediately after Jayo HTTP received this response's headers from the network. If
+     * this response is being served from the cache, then this is the timestamp of the original request.
      */
     @NonNull
     Instant getReceivedResponseAt();

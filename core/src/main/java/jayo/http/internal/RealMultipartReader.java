@@ -120,7 +120,7 @@ public final class RealMultipartReader implements MultipartReader {
     @Override
     public @Nullable Part nextPart() {
         if (closed) {
-            throw new JayoClosedResourceException();
+            throw new IllegalStateException("closed");
         }
 
         if (noMoreParts) {
@@ -187,7 +187,7 @@ public final class RealMultipartReader implements MultipartReader {
                 throw new IllegalArgumentException("byteCount < 0: " + byteCount);
             }
             if (currentPart != this) {
-                throw new JayoClosedResourceException();
+                throw new IllegalStateException("closed");
             }
 
             final var limit = currentPartBytesRemaining(byteCount);

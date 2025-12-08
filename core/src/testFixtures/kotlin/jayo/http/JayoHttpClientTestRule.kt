@@ -86,7 +86,7 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
             val recorded =
                 when (eventObject.loggerName) {
                     "jayo.scheduler.TaskRunner" -> recordTaskRunner
-                    "jayo.http.http2.Http2Connection" -> recordFrames
+                    "jayo.http2.Http2Connection" -> recordFrames
                     "javax.net.ssl" -> recordTlsDebug && !tlsExcludeFilter.matches(eventObject.message)
                     else -> false
                 }
@@ -109,7 +109,7 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
     private fun applyLogger(fn: Logger.() -> Unit) {
         (LoggerFactory.getLogger(JayoHttpClient::class.java.`package`.name) as Logger).fn()
         (LoggerFactory.getLogger("jayo.http.JayoHttpClient") as Logger).fn()
-        (LoggerFactory.getLogger("jayo.http.http2.Http2Connection") as Logger).fn()
+        (LoggerFactory.getLogger("jayo.http2.Http2Connection") as Logger).fn()
         (LoggerFactory.getLogger("jayo.scheduler.TaskRunner") as Logger).fn()
         (LoggerFactory.getLogger("javax.net.ssl") as Logger).fn()
     }
@@ -123,7 +123,7 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
         EventListener.Factory { call -> ClientRuleEventListener(::addEvent) + eventListenerFactory.create(call) }
 
     /**
-     * Returns a JayoHttpClient for tests to use as a starting point.
+     * @return a JayoHttpClient for tests to use as a starting point.
      *
      * The returned client installs a default event listener that gathers debug information. This will be logged if the
      * test fails.

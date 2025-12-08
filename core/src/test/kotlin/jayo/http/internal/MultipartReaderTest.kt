@@ -268,7 +268,7 @@ class MultipartReaderTest {
         val partAbc = parts.nextPart()!!
         val partMno = parts.nextPart()!!
 
-        assertFailsWith<JayoClosedResourceException> {
+        assertFailsWith<IllegalStateException> {
             partAbc.body.request(20)
         }
 
@@ -296,7 +296,7 @@ class MultipartReaderTest {
         val part = parts.nextPart()!!
         parts.close()
 
-        assertFailsWith<JayoClosedResourceException> {
+        assertFailsWith<IllegalStateException> {
             part.body.request(10)
         }
     }
@@ -311,7 +311,7 @@ class MultipartReaderTest {
 
         parts.close()
 
-        assertFailsWith<JayoClosedResourceException> {
+        assertFailsWith<IllegalStateException> {
             parts.nextPart()
         }
     }
