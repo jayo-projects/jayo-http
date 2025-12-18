@@ -3,11 +3,12 @@
  * Use of this source code is governed by the Apache 2.0 license.
  */
 
-module jayo.http.logging {
+module jayo.http.brotli {
     requires transitive jayo.http;
     requires transitive jayo;
+    requires transitive dec;
 
     requires static org.jspecify;
 
-    exports jayo.http.logging;
+    exports jayo.http.brotli;
 }

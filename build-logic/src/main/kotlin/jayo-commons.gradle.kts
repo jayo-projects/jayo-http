@@ -23,6 +23,7 @@ val javaVersion = catalogVersion("java").toInt()
 
 val koverage = mapOf(
     "jayo-http" to if (isCI.isPresent) 89 else 90,
+    "jayo-http-brotli" to 83,
     "jayo-http-logging-interceptor" to 94,
 )
 
@@ -63,6 +64,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
     testImplementation("io.mockk:mockk:${catalogVersion("mockk")}")
+    testImplementation("com.squareup.okhttp3:mockwebserver3-junit5:${catalogVersion("okhttp")}")
 
     testRuntimeOnly("org.slf4j:slf4j-jdk-platform-logging:${catalogVersion("slf4j")}")
     testRuntimeOnly("ch.qos.logback:logback-classic:${catalogVersion("logback")}")

@@ -50,6 +50,12 @@ public sealed interface CompressionInterceptor extends Interceptor permits RealC
     @NonNull DecompressionAlgorithm @NonNull [] getAlgorithms();
 
     /**
+     * @return a decompressed copy of the response, typically via a streaming Reader.
+     * If no known decompression or the response is not compressed, the response is returned unmodified.
+     */
+    @NonNull ClientResponse decompress(final @NonNull ClientResponse response);
+
+    /**
      * A decompression algorithm such as GzipDecompressionAlgorithm. Must provide the Accept-Encoding value and
      * implement how to decompress a Reader.
      */
