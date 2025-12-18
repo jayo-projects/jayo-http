@@ -67,8 +67,8 @@ public final class RealCompressionInterceptor implements CompressionInterceptor 
         return algorithms;
     }
 
-    @NonNull
-    ClientResponse decompress(final @NonNull ClientResponse response) {
+    @Override
+    public @NonNull ClientResponse decompress(final @NonNull ClientResponse response) {
         assert response != null;
 
         if (!promisesBody(response)) {

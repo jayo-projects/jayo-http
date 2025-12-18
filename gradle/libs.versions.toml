@@ -22,6 +22,10 @@ jayo = "0.1.0-alpha74"
 # https://github.com/jspecify/jspecify/releases
 jspecify = "1.0.0"
 
+# third party
+# https://mvnrepository.com/artifact/org.brotli/dec
+brotli = "0.1.2"
+
 # tests
 # https://mvnrepository.com/artifact/org.assertj/assertj-core
 assertj = "3.27.6"
