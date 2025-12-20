@@ -625,7 +625,7 @@ final class DiskLruCache implements AutoCloseable {
                     if (File.exists(dirty)) {
                         final var dirtyFile = File.open(dirty);
                         final var clean = entry.cleanFiles.get(i);
-                        var newLength = dirtyFile.getSize();
+                        var newLength = dirtyFile.byteSize();
                         dirtyFile.atomicMove(clean);
                         // TODO check unknown size behaviour
                         newLength = (newLength != -1) ? newLength : 0;
@@ -864,10 +864,12 @@ final class DiskLruCache implements AutoCloseable {
         for (final var entry : entries) {
             try {
                 if (Files.isDirectory(entry)) {
-                    deleteContents(Directory.open(entry)); // recursive call
+                    final var dir = Directory.open(entry);
+                    deleteContents(dir); // recursive call
+                    dir.delete();
+                } else {
+                    File.open(entry).delete();
                 }
-
-                File.open(entry).delete();
             } catch (JayoException je) {
                 if (exception == null) {
                     exception = je;
@@ -1086,7 +1088,7 @@ final class DiskLruCache implements AutoCloseable {
          *
          * @return an unbuffered input stream to read the last committed value, or null if no value has been committed.
          */
-        @Nullable RawReader newSource(final int index) {
+        @Nullable RawReader newRawReader(final int index) {
             lock.lock();
             try {
                 if (done) {
@@ -1329,26 +1331,18 @@ final class DiskLruCache implements AutoCloseable {
         }
     }
 
-    private static final String JOURNAL_FILE = "journal";
-
+    static final String JOURNAL_FILE = "journal";
     private static final String JOURNAL_FILE_TEMP = "journal.tmp";
+    static final String JOURNAL_FILE_BACKUP = "journal.bkp";
 
-    private static final String JOURNAL_FILE_BACKUP = "journal.bkp";
-
-    private static final String MAGIC = "jayo.http.cache.DiskLruCache";
-
-    private static final String VERSION_1 = "1";
-
+    static final String MAGIC = "jayo.http.cache.DiskLruCache";
+    static final String VERSION_1 = "1";
     private static final long ANY_SEQUENCE_NUMBER = -1L;
-
     private static final Pattern LEGAL_KEY_PATTERN = Pattern.compile("[a-z0-9_-]{1,120}");
 
     private static final String CLEAN = "CLEAN";
-
     private static final String DIRTY = "DIRTY";
-
     private static final String REMOVE = "REMOVE";
-
     private static final String READ = "READ";
 
     private static final int REDUNDANT_OP_COMPACT_THRESHOLD = 2000;
