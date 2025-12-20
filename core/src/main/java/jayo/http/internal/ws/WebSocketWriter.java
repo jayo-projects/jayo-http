@@ -25,7 +25,7 @@ import jayo.Buffer;
 import jayo.JayoClosedResourceException;
 import jayo.Writer;
 import jayo.bytestring.ByteString;
-import jayo.http.internal.Utils;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.tools.JayoUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -233,8 +233,8 @@ final class WebSocketWriter implements AutoCloseable {
     @Override
     public void close() {
         if (messageDeflater != null) {
-            Utils.closeQuietly(messageDeflater);
+            JayoHttpUtils.closeQuietly(messageDeflater);
         }
-        Utils.closeQuietly(writer);
+        JayoHttpUtils.closeQuietly(writer);
     }
 }

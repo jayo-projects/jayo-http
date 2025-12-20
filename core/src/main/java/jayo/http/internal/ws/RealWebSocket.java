@@ -26,9 +26,9 @@ import jayo.bytestring.ByteString;
 import jayo.http.*;
 import jayo.http.EventListener;
 import jayo.http.internal.RealClientResponse;
-import jayo.http.internal.Utils;
 import jayo.http.internal.connection.RealCall;
 import jayo.http.internal.connection.RealJayoHttpClient;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.scheduler.ScheduledTaskQueue;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.Protocol;
@@ -270,10 +270,10 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
                     socket = checkUpgradeSuccess(realResponse);
                 } catch (JayoException je) {
                     failWebSocket(je, realResponse, false);
-                    Utils.closeQuietly(realResponse);
+                    JayoHttpUtils.closeQuietly(realResponse);
                     if (realResponse.getSocket() != null) {
-                        Utils.closeQuietly(realResponse.getSocket().getWriter());
-                        Utils.closeQuietly(realResponse.getSocket().getReader());
+                        JayoHttpUtils.closeQuietly(realResponse.getSocket().getWriter());
+                        JayoHttpUtils.closeQuietly(realResponse.getSocket().getReader());
                     }
                     return;
                 }
@@ -465,7 +465,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
                 if (writerToClose != null) {
                     this.writer = null;
                     taskQueue.execute(name + " writer close", false,
-                            () -> Utils.closeQuietly(writerToClose));
+                            () -> JayoHttpUtils.closeQuietly(writerToClose));
                 }
 
                 this.taskQueue.shutdown();
@@ -481,7 +481,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
         }
 
         if (readerToClose != null) {
-            Utils.closeQuietly(readerToClose);
+            JayoHttpUtils.closeQuietly(readerToClose);
         }
     }
 
@@ -770,7 +770,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
             return true;
         } finally {
             if (writerToClose != null) {
-                Utils.closeQuietly(writerToClose);
+                JayoHttpUtils.closeQuietly(writerToClose);
             }
         }
     }
@@ -831,7 +831,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
             if (!isWriter && writerToClose != null) {
                 // If the caller isn't the writer thread, get that thread to close the writer.
                 taskQueue.execute(name + " writer close", false, () ->
-                        Utils.closeQuietly(writerToClose));
+                        JayoHttpUtils.closeQuietly(writerToClose));
             }
 
             taskQueue.shutdown();
@@ -848,7 +848,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
 
             // If the caller is the writer thread, close it on this thread.
             if (isWriter && writerToClose != null) {
-                Utils.closeQuietly(writerToClose);
+                JayoHttpUtils.closeQuietly(writerToClose);
             }
         }
     }

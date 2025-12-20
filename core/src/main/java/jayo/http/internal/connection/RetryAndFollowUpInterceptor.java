@@ -21,15 +21,18 @@
 
 package jayo.http.internal.connection;
 
-import jayo.*;
+import jayo.JayoException;
+import jayo.JayoInterruptedIOException;
+import jayo.JayoProtocolException;
+import jayo.JayoTimeoutException;
 import jayo.files.JayoFileNotFoundException;
 import jayo.http.ClientRequest;
 import jayo.http.ClientResponse;
 import jayo.http.Interceptor;
-import jayo.http.internal.UrlUtils;
-import jayo.http.internal.Utils;
 import jayo.http.http2.JayoConnectionShutdownException;
+import jayo.http.internal.UrlUtils;
 import jayo.http.tools.HttpMethodUtils;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.network.Proxy;
 import jayo.tls.JayoTlsHandshakeException;
 import jayo.tls.JayoTlsPeerUnverifiedException;
@@ -129,7 +132,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
                     return response;
                 }
 
-                Utils.closeQuietly(response.getBody());
+                JayoHttpUtils.closeQuietly(response.getBody());
 
                 if (++followUpCount > MAX_FOLLOW_UPS) {
                     call.eventListener().followUpDecision(call, response, null);

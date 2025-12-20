@@ -22,6 +22,7 @@
 package jayo.http.tools;
 
 import jayo.JayoEOFException;
+import jayo.JayoException;
 import jayo.Reader;
 import jayo.http.ClientResponse;
 import jayo.http.MediaType;
@@ -100,6 +101,21 @@ public class JayoHttpUtils {
             return true;
         } catch (JayoEOFException e) {
             return false; // Truncated UTF-8 sequence.
+        }
+    }
+
+    /**
+     * Closes this {@code closeable}, ignoring any checked exceptions and any {@link JayoException}.
+     */
+    public static void closeQuietly(final @NonNull AutoCloseable closeable) {
+        assert closeable != null;
+
+        try {
+            closeable.close();
+        } catch (JayoException ignored) {
+        } catch (RuntimeException rethrown) {
+            throw rethrown;
+        } catch (Exception ignored) {
         }
     }
 }

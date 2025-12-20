@@ -25,7 +25,7 @@ import jayo.Buffer;
 import jayo.Reader;
 import jayo.bytestring.ByteString;
 import jayo.http.internal.StandardClientResponseBodies;
-import jayo.http.internal.Utils;
+import jayo.http.tools.JayoHttpUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -209,7 +209,7 @@ public abstract class ClientResponseBody implements AutoCloseable {
 
     @Override
     public void close() {
-        Utils.closeQuietly(reader());
+        JayoHttpUtils.closeQuietly(reader());
     }
 
     private static final class EmptyClientResponseBody extends ClientResponseBody {

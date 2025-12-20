@@ -29,7 +29,7 @@ import jayo.http.http2.FlowControlListener;
 import jayo.http.http2.JayoConnectionShutdownException;
 import jayo.http.http2.PushObserver;
 import jayo.http.internal.RealHeaders;
-import jayo.http.internal.Utils;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.scheduler.ScheduledTaskQueue;
 import jayo.scheduler.TaskQueue;
 import jayo.scheduler.TaskRunner;
@@ -777,7 +777,7 @@ public final class Http2Connection implements AutoCloseable {
                 streamErrorCode = ErrorCode.PROTOCOL_ERROR;
             } finally {
                 close(connectionErrorCode, streamErrorCode, errorException);
-                Utils.closeQuietly(reader);
+                JayoHttpUtils.closeQuietly(reader);
             }
         }
 

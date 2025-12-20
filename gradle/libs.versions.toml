@@ -25,6 +25,8 @@ jspecify = "1.0.0"
 # third party
 # https://mvnrepository.com/artifact/org.brotli/dec
 brotli = "0.1.2"
+# https://github.com/Kotlin/kotlinx.coroutines/releases
+coroutines = "1.10.2"
 
 # tests
 # https://mvnrepository.com/artifact/org.assertj/assertj-core
