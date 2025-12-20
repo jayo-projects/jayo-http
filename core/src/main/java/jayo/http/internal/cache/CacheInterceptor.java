@@ -30,6 +30,7 @@ import jayo.http.internal.RealHeaders;
 import jayo.http.internal.StandardClientResponseBodies;
 import jayo.http.internal.connection.RealCall;
 import jayo.http.tools.HttpMethodUtils;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.tls.Protocol;
 import jayo.tools.JayoUtils;
 import org.jspecify.annotations.NonNull;
@@ -75,7 +76,7 @@ public final class CacheInterceptor implements Interceptor {
 
         if (cacheCandidate != null && cacheResponse == null) {
             // The cache candidate wasn't applicable. Close it.
-            closeQuietly(cacheCandidate.getBody());
+            JayoHttpUtils.closeQuietly(cacheCandidate.getBody());
         }
 
         // If we're forbidden from using the network, and the cache is not enough, fail.
@@ -114,7 +115,7 @@ public final class CacheInterceptor implements Interceptor {
         } finally {
             // If we're crashing on I/O or otherwise, don't leak the cache body. Close it.
             if (networkResponse == null && cacheCandidate != null) {
-                closeQuietly(cacheCandidate.getBody());
+                JayoHttpUtils.closeQuietly(cacheCandidate.getBody());
             }
         }
 
@@ -140,7 +141,7 @@ public final class CacheInterceptor implements Interceptor {
                 call.eventListener().cacheHit(call, response);
                 return response;
             } else {
-                closeQuietly(cacheResponse.getBody());
+                JayoHttpUtils.closeQuietly(cacheResponse.getBody());
             }
         }
 

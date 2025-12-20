@@ -26,6 +26,7 @@ import jayo.files.Directory;
 import jayo.files.File;
 import jayo.files.JayoFileNotFoundException;
 import jayo.http.internal.Utils;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.scheduler.TaskQueue;
 import jayo.scheduler.TaskRunner;
 import org.jspecify.annotations.NonNull;
@@ -167,7 +168,7 @@ final class DiskLruCache implements AutoCloseable {
             } catch (JayoException ignore) {
                 mostRecentRebuildFailed = true;
                 if (journalWriter != null) {
-                    Utils.closeQuietly(journalWriter);
+                    JayoHttpUtils.closeQuietly(journalWriter);
                 }
                 journalWriter = Jayo.buffer(Jayo.discardingWriter());
             }
@@ -343,7 +344,7 @@ final class DiskLruCache implements AutoCloseable {
                 rebuildJournal();
             } else {
                 if (journalWriter != null) {
-                    Utils.closeQuietly(journalWriter);
+                    JayoHttpUtils.closeQuietly(journalWriter);
                 }
                 journalWriter = newJournalWriter();
             }
@@ -463,7 +464,7 @@ final class DiskLruCache implements AutoCloseable {
             }
 
             if (journalWriter != null) {
-                Utils.closeQuietly(journalWriter);
+                JayoHttpUtils.closeQuietly(journalWriter);
             }
             journalWriter = newJournalWriter();
             hasJournalErrors = false;
@@ -810,7 +811,7 @@ final class DiskLruCache implements AutoCloseable {
 
         trimToSize();
         if (journalWriter != null) {
-            Utils.closeQuietly(journalWriter);
+            JayoHttpUtils.closeQuietly(journalWriter);
         }
         journalWriter = null;
         closed = true;
@@ -1044,7 +1045,7 @@ final class DiskLruCache implements AutoCloseable {
         @Override
         public void close() {
             for (final var source : sources) {
-                Utils.closeQuietly(source);
+                JayoHttpUtils.closeQuietly(source);
             }
         }
     }
@@ -1282,7 +1283,7 @@ final class DiskLruCache implements AutoCloseable {
             } catch (JayoFileNotFoundException ignored) {
                 // A file must have been deleted manually!
                 for (final var source : sources) {
-                    Utils.closeQuietly(source);
+                    JayoHttpUtils.closeQuietly(source);
                 }
                 // Since the entry is no longer valid, remove it so the metadata is accurate (i.e. the cache size.)
                 try {

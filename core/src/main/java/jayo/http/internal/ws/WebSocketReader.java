@@ -23,7 +23,7 @@ package jayo.http.internal.ws;
 
 import jayo.*;
 import jayo.bytestring.ByteString;
-import jayo.http.internal.Utils;
+import jayo.http.tools.JayoHttpUtils;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -310,8 +310,8 @@ final class WebSocketReader implements AutoCloseable {
         }
         closed = true;
         if (messageInflater != null) {
-            Utils.closeQuietly(messageInflater);
+            JayoHttpUtils.closeQuietly(messageInflater);
         }
-        Utils.closeQuietly(reader);
+        JayoHttpUtils.closeQuietly(reader);
     }
 }

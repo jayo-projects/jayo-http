@@ -264,21 +264,6 @@ public final class Utils {
         return string.regionMatches(true, 0, prefix, 0, prefix.length());
     }
 
-    /**
-     * Closes this {@code closeable}, ignoring any checked exceptions and any {@link JayoException}.
-     */
-    public static void closeQuietly(final @NonNull AutoCloseable closeable) {
-        assert closeable != null;
-
-        try {
-            closeable.close();
-        } catch (JayoException ignored) {
-        } catch (RuntimeException rethrown) {
-            throw rethrown;
-        } catch (Exception ignored) {
-        }
-    }
-
     public static int skipAll(final @NonNull Buffer buffer, final byte b) {
         assert buffer != null;
 

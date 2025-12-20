@@ -23,9 +23,9 @@ package jayo.http.internal.connection;
 
 import jayo.*;
 import jayo.http.*;
-import jayo.http.internal.Utils;
 import jayo.http.internal.cache.CacheInterceptor;
 import jayo.http.internal.http.BridgeInterceptor;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.tools.AsyncTimeout;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -306,7 +306,7 @@ public final class RealCall implements Call {
         try {
             final var response = chain.proceed(originalRequest);
             if (isCanceled()) {
-                Utils.closeQuietly(response);
+                JayoHttpUtils.closeQuietly(response);
                 throw new JayoException("Canceled");
             }
             return response;

@@ -28,6 +28,7 @@ import jayo.http.Cookie
 import jayo.http.Headers
 import jayo.http.HttpUrl
 import jayo.http.Proxies
+import jayo.http.tools.JayoHttpUtils
 import jayo.tls.Protocol
 import jayo.tls.ServerHandshakeCertificates
 import jayo.tools.JayoTlsUtils
@@ -149,7 +150,7 @@ internal abstract class ForwardingRawReader(
     override fun close() = delegate.close()
 }
 
-internal fun AutoCloseable.closeQuietly() = Utils.closeQuietly(this)
+internal fun AutoCloseable.closeQuietly() = JayoHttpUtils.closeQuietly(this)
 
 internal fun parseCookie(
     currentTimeMillis: Long,

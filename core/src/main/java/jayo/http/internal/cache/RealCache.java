@@ -26,9 +26,9 @@ import jayo.bytestring.ByteString;
 import jayo.crypto.JdkDigest;
 import jayo.http.*;
 import jayo.http.internal.RealHeaders;
-import jayo.http.internal.Utils;
 import jayo.http.internal.http.StatusLine;
 import jayo.http.tools.HttpMethodUtils;
+import jayo.http.tools.JayoHttpUtils;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.CipherSuite;
 import jayo.tls.Handshake;
@@ -110,13 +110,13 @@ public final class RealCache implements Cache {
         try {
             entry = new Entry(snapshot.getRawReader(ENTRY_METADATA));
         } catch (JayoException ignored) {
-            Utils.closeQuietly(snapshot);
+            JayoHttpUtils.closeQuietly(snapshot);
             return null;
         }
 
         final var response = entry.response(snapshot);
         if (!entry.matches(request, response)) {
-            Utils.closeQuietly(response.getBody());
+            JayoHttpUtils.closeQuietly(response.getBody());
             return null;
         }
 
@@ -425,7 +425,7 @@ public final class RealCache implements Cache {
             } finally {
                 lock.unlock();
             }
-            Utils.closeQuietly(cacheOut);
+            JayoHttpUtils.closeQuietly(cacheOut);
             try {
                 editor.abort();
             } catch (JayoException ignored) {
