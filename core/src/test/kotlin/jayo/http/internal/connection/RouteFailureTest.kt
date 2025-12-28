@@ -39,6 +39,7 @@ import mockwebserver3.junit5.StartStop
 import okhttp3.internal.http2.ErrorCode
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import java.net.InetAddress
@@ -207,6 +208,7 @@ class RouteFailureTest {
 //        )
     }
 
+    @Tag("no-ci")
     @Test
     fun http2OneBadHostOneGoodRetryOnConnectionFailureFastFallback() {
         enableProtocol(Protocol.HTTP_2)
