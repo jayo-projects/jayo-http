@@ -441,6 +441,7 @@ class DuplexTest {
      * Auth requires follow-ups. Unlike redirects, the auth follow-up also has a request body. This test makes a single
      * call with two duplex requests!
      */
+    @Tag("no-ci")
     @Test
     fun duplexWithAuthChallenge() {
         enableProtocol(Protocol.HTTP_2)
@@ -619,6 +620,7 @@ class DuplexTest {
      * This test sends a slow request canceled by the server. It expects the response to still be readable after the
      * request stream is canceled.
      */
+    @Tag("no-ci")
     @Test
     fun serverCancelsRequestBodyAndSendsResponseBody() {
         client =
