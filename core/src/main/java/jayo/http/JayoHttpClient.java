@@ -118,6 +118,9 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
         return new RealJayoHttpClient.Builder();
     }
 
+    /**
+     * @return a new {@link JayoHttpClient} with good defaults.
+     */
     static @NonNull JayoHttpClient create() {
         return builder().build();
     }
