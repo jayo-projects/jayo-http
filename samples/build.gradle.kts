@@ -11,6 +11,7 @@ fun catalogVersion(lib: String) =
 
 dependencies {
     api(project(":jayo-http"))
+    implementation("org.jsoup:jsoup:${catalogVersion("jsoup")}")
 
     testImplementation(testFixtures(project(":jayo-http")))
     testImplementation("org.apache.httpcomponents.client5:httpclient5:${catalogVersion("httpClient5")}") {
