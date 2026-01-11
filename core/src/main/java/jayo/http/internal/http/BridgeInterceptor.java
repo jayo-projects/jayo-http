@@ -114,18 +114,16 @@ public final class BridgeInterceptor implements Interceptor {
                 "gzip".equalsIgnoreCase(networkResponse.header("Content-Encoding")) &&
                 promisesBody(networkResponse)) {
             final var responseBody = networkResponse.getBody();
-            if (responseBody != null) {
-                final var gzipSource = Jayo.gzip(responseBody.reader());
-                final var strippedHeaders = networkResponse.getHeaders().newBuilder()
-                        .removeAll("Content-Encoding")
-                        .removeAll("Content-Length")
-                        .build();
-                responseBuilder.headers(strippedHeaders);
+            final var gzipSource = Jayo.gzip(responseBody.reader());
+            final var strippedHeaders = networkResponse.getHeaders().newBuilder()
+                    .removeAll("Content-Encoding")
+                    .removeAll("Content-Length")
+                    .build();
+            responseBuilder.headers(strippedHeaders);
 
-                final var contentType = networkResponse.header("Content-Type");
-                responseBuilder.body(
-                        StandardClientResponseBodies.create(Jayo.buffer(gzipSource), contentType, -1L));
-            }
+            final var contentType = networkResponse.header("Content-Type");
+            responseBuilder.body(
+                    StandardClientResponseBodies.create(Jayo.buffer(gzipSource), contentType, -1L));
         }
 
         return responseBuilder.build();
