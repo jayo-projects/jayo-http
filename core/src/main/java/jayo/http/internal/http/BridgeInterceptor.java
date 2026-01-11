@@ -25,7 +25,6 @@ package jayo.http.internal.http;
 import jayo.Jayo;
 import jayo.http.ClientResponse;
 import jayo.http.Cookie;
-import jayo.http.CookieJar;
 import jayo.http.Interceptor;
 import jayo.http.internal.StandardClientResponseBodies;
 import org.jspecify.annotations.NonNull;
@@ -45,13 +44,8 @@ import static jayo.http.tools.JayoHttpUtils.promisesBody;
  * <li>Finally, it builds a user response from the network response.
  * </ul>
  */
-public final class BridgeInterceptor implements Interceptor {
-    private final @NonNull CookieJar cookieJar;
-
-    public BridgeInterceptor(final @NonNull CookieJar cookieJar) {
-        assert cookieJar != null;
-        this.cookieJar = cookieJar;
-    }
+public enum BridgeInterceptor implements Interceptor {
+    INSTANCE;
 
     @Override
     public @NonNull ClientResponse intercept(final @NonNull Chain chain) {
@@ -93,6 +87,7 @@ public final class BridgeInterceptor implements Interceptor {
             requestBuilder.header("Accept-Encoding", "gzip");
         }
 
+        final var cookieJar = chain.client().getCookieJar();
         final var cookies = cookieJar.loadForRequest(userRequest.getUrl());
         if (!cookies.isEmpty()) {
             requestBuilder.header("Cookie", cookieHeader(cookies));

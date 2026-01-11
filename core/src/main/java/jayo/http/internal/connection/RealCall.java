@@ -286,9 +286,9 @@ public final class RealCall implements Call {
     private @NonNull ClientResponse getResponseWithInterceptorChain() {
         // Build a full stack of interceptors.
         final var interceptors = new ArrayList<>(client.getInterceptors());
-        interceptors.add(new RetryAndFollowUpInterceptor(client));
-        interceptors.add(new BridgeInterceptor(client.getCookieJar()));
-        interceptors.add(new CacheInterceptor(this, client.getCache()));
+        interceptors.add(RetryAndFollowUpInterceptor.INSTANCE);
+        interceptors.add(BridgeInterceptor.INSTANCE);
+        interceptors.add(CacheInterceptor.INSTANCE);
         interceptors.add(ConnectInterceptor.INSTANCE);
         if (!forWebSocket) {
             interceptors.addAll(client.getNetworkInterceptors());
