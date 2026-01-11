@@ -29,6 +29,7 @@ import jayo.files.JayoFileNotFoundException;
 import jayo.http.ClientRequest;
 import jayo.http.ClientResponse;
 import jayo.http.Interceptor;
+import jayo.http.JayoHttpClient;
 import jayo.http.http2.JayoConnectionShutdownException;
 import jayo.http.internal.UrlUtils;
 import jayo.http.tools.HttpMethodUtils;
@@ -51,7 +52,9 @@ import static jayo.http.internal.http.HttpStatusCodes.*;
  * This interceptor recovers from failures and follows redirects as necessary. It may throw a {@link JayoException} if
  * the call was canceled.
  */
-final class RetryAndFollowUpInterceptor implements Interceptor {
+enum RetryAndFollowUpInterceptor implements Interceptor {
+    INSTANCE;
+
     /**
      * How many redirects and auth challenges should we attempt?
      * <ul>
@@ -63,20 +66,12 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
      */
     private static final int MAX_FOLLOW_UPS = 20;
 
-    private final @NonNull RealJayoHttpClient client;
-
-    RetryAndFollowUpInterceptor(final @NonNull RealJayoHttpClient client) {
-        assert client != null;
-        this.client = client;
-    }
-
     @Override
     public @NonNull ClientResponse intercept(final @NonNull Chain chain) {
         assert chain != null;
-        final var realChain = (RealInterceptorChain) chain;
 
         var request = chain.request();
-        final var call = realChain.call();
+        final var call = (RealCall) chain.call();
         var followUpCount = 0;
         ClientResponse priorResponse = null;
         var newRoutePlanner = true;
@@ -93,7 +88,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
                 }
 
                 try {
-                    response = realChain.proceed(request);
+                    response = chain.proceed(request);
                     newRoutePlanner = true;
                 } catch (JayoException je) {
                     // An attempt to communicate with a server failed. The request may have been sent.
@@ -114,7 +109,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
                         .build();
 
                 final var exchange = call.interceptorScopedExchange();
-                final var followUp = followUpRequest(response, exchange);
+                final var followUp = followUpRequest(response, exchange, chain.client());
 
                 if (followUp == null) {
                     if (exchange != null && exchange.isDuplex) {
@@ -154,7 +149,8 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
      * unnecessary or not applicable, this returns null.
      */
     private @Nullable ClientRequest followUpRequest(final @NonNull ClientResponse userResponse,
-                                                    final @Nullable Exchange exchange) {
+                                                    final @Nullable Exchange exchange,
+                                                    final @NonNull JayoHttpClient client) {
         assert userResponse != null;
 
         final var route = (exchange != null) ? exchange.connection().route() : null;
@@ -173,7 +169,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
             case HTTP_UNAUTHORIZED -> client.getAuthenticator().authenticate(route, userResponse);
 
             case HTTP_PERM_REDIRECT, HTTP_TEMP_REDIRECT, HTTP_MULT_CHOICE, HTTP_MOVED_PERM, HTTP_MOVED_TEMP,
-                 HTTP_SEE_OTHER -> buildRedirectRequest(userResponse, method);
+                 HTTP_SEE_OTHER -> buildRedirectRequest(userResponse, method, client);
 
             case HTTP_CLIENT_TIMEOUT -> {
                 // 408's are rare in practice, but some servers like HAProxy use this response code. The spec says that
@@ -238,7 +234,8 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
     }
 
     private @Nullable ClientRequest buildRedirectRequest(final @NonNull ClientResponse userResponse,
-                                                         final @NonNull String method) {
+                                                         final @NonNull String method,
+                                                         final @NonNull JayoHttpClient client) {
         assert userResponse != null;
         assert method != null;
 
@@ -310,7 +307,7 @@ final class RetryAndFollowUpInterceptor implements Interceptor {
         final var requestSendStarted = !(je instanceof JayoConnectionShutdownException);
 
         // The application layer has forbidden retries.
-        if (!client.retryOnConnectionFailure()) {
+        if (!call.client.retryOnConnectionFailure()) {
             return false;
         }
 

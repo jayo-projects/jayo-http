@@ -77,14 +77,20 @@ public interface Interceptor {
 
         /**
          * @return the connection the request will be executed on. This is only available in the chains of network
-         * interceptors; for application interceptors this is always null.
+         * interceptors. For application interceptors this is always null.
          */
         @Nullable
         Connection connection();
 
+        /**
+         * @return the call to which this chain belongs.
+         */
         @NonNull
         Call call();
 
+        /**
+         * @return the Jayo HTTP this chain was started from.
+         */
         @NonNull
         JayoHttpClient client();
     }

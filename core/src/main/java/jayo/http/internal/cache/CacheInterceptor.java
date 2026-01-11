@@ -40,28 +40,23 @@ import java.time.Instant;
 
 import static java.net.HttpURLConnection.HTTP_GATEWAY_TIMEOUT;
 import static java.net.HttpURLConnection.HTTP_NOT_MODIFIED;
-import static jayo.http.internal.Utils.*;
+import static jayo.http.internal.Utils.discard;
+import static jayo.http.internal.Utils.stripBody;
 import static jayo.http.internal.http.ExchangeCodec.DISCARD_STREAM_TIMEOUT;
 import static jayo.http.tools.JayoHttpUtils.promisesBody;
 
 /**
  * Serves requests from the cache and writes responses to the cache.
  */
-public final class CacheInterceptor implements Interceptor {
-    private final @NonNull RealCall call;
-    private final @Nullable RealCache cache;
-
-    public CacheInterceptor(final @NonNull RealCall call, final @Nullable Cache cache) {
-        assert call != null;
-
-        this.call = call;
-        this.cache = (RealCache) cache;
-    }
+public enum CacheInterceptor implements Interceptor {
+    INSTANCE;
 
     @Override
     public @NonNull ClientResponse intercept(final @NonNull Chain chain) {
         assert chain != null;
 
+        final var call = (RealCall) chain.call();
+        final var cache = (RealCache) chain.client().getCache();
         final var cacheCandidate = cache != null ? cache.get(requestForCache(chain.request())) : null;
 
         final var now = Instant.now();
