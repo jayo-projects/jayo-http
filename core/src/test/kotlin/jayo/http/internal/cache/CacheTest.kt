@@ -1491,9 +1491,8 @@ class CacheTest {
     }
 
     /**
-     * When the server returns a full response body we will store it and return it regardless of what
-     * its Last-Modified date is. This behavior was different prior to OkHttp 3.5 when we would prefer
-     * the response with the later Last-Modified date.
+     * When the server returns a full response body we will store it and return it regardless of what its Last-Modified
+     * date is.
      *
      * https://github.com/square/okhttp/issues/2886
      */
@@ -2938,9 +2937,10 @@ class CacheTest {
         assertThat(response.body.string()).isEqualTo("A")
     }
 
-    /** The TLS version is present in OkHttp 3.0 and beyond.  */
     @Test
-    fun testGoldenCacheHttpsResponseOkHttp30() {
+    fun testGoldenCacheHttpsResponse() {
+        addFinalFailingResponse()
+
         val url = server.url("/").toJayo()
         val urlKey = key(url)
         val prefix = RealCache.PREFIX
@@ -2993,7 +2993,9 @@ class CacheTest {
     }
 
     @Test
-    fun testGoldenCacheHttpResponseOkHttp30() {
+    fun testGoldenCacheHttpResponse() {
+        addFinalFailingResponse()
+
         val url = server.url("/").toJayo()
         val urlKey = key(url)
         val prefix = RealCache.PREFIX
@@ -3036,6 +3038,11 @@ class CacheTest {
         val response = get(url)
         assertThat(response.body.string()).isEqualTo(entryBody)
         assertThat(response.header("Content-Length")).isEqualTo("3")
+    }
+
+    private fun addFinalFailingResponse() {
+        // Should not get to this response, so fail if so. Avoids timeout on error
+        server.enqueue(MockResponse(code = 420, body = "Enhance Your Calm"))
     }
 
     @Test
@@ -3111,7 +3118,7 @@ class CacheTest {
         client =
             client
                 .newBuilder()
-                .addNetworkInterceptor { chain: Interceptor.Chain? -> throw AssertionError() }
+                .addNetworkInterceptor { _: Interceptor.Chain? -> throw AssertionError() }
                 .build()
         assertThat(get(url).body.string()).isEqualTo("A")
     }
@@ -3747,6 +3754,6 @@ class CacheTest {
     }
 
     companion object {
-        private val NULL_HOSTNAME_VERIFIER = HostnameVerifier { hostname, session -> true }
+        private val NULL_HOSTNAME_VERIFIER = HostnameVerifier { _, _ -> true }
     }
 }
