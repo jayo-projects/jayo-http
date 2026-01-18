@@ -84,10 +84,8 @@ class WebSocketHttpTest {
     private var client =
         clientTestRule
             .newClientBuilder()
-            .networkConfig {
-                it.writeTimeout(Duration.ofMillis(500))
-                it.readTimeout(Duration.ofMillis(500))
-            }
+            .writeTimeout(Duration.ofMillis(500))
+            .readTimeout(Duration.ofMillis(500))
             .addInterceptor { chain: Interceptor.Chain ->
                 val response = chain.proceed(chain.request())
                 // Ensure application interceptors never see a null body.
@@ -944,10 +942,8 @@ class WebSocketHttpTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ZERO)
-                    it.writeTimeout(Duration.ZERO)
-                }
+                .readTimeout(Duration.ZERO)
+                .writeTimeout(Duration.ZERO)
                 .callTimeout(Duration.ofMillis(100))
                 .build()
         newWebSocket()

@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
-import java.util.function.Consumer;
 
 public final class RealJayoHttpClient implements JayoHttpClient {
     static final System.Logger LOGGER = System.getLogger("jayo.http.JayoHttpClient");
@@ -360,7 +359,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private final @NonNull List<@NonNull Interceptor> interceptors = new ArrayList<>();
         private long minWebSocketMessageToCompress = RealWebSocket.DEFAULT_MINIMUM_DEFLATE_SIZE;
         private final @NonNull List<@NonNull Interceptor> networkInterceptors = new ArrayList<>();
-        private final NetworkSocket.@NonNull Builder networkSocketBuilder;
+        final NetworkSocket.@NonNull Builder networkSocketBuilder;
         private @NonNull Duration pingInterval;
         private @NonNull List<@NonNull Protocol> protocols;
         private @NonNull Proxies proxies;
@@ -474,6 +473,13 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
+        public @NonNull Builder connectTimeout(@NonNull Duration connectTimeout) {
+            Objects.requireNonNull(connectTimeout);
+            networkSocketBuilder.connectTimeout(connectTimeout);
+            return this;
+        }
+
+        @Override
         public @NonNull Builder cookieJar(final @NonNull CookieJar cookieJar) {
             this.cookieJar = Objects.requireNonNull(cookieJar);
             return this;
@@ -578,14 +584,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
-        public @NonNull Builder networkConfig(
-                final @NonNull Consumer<NetworkSocket.@NonNull Builder> networkConfigurer) {
-            Objects.requireNonNull(networkConfigurer);
-            networkConfigurer.accept(networkSocketBuilder);
-            return this;
-        }
-
-        @Override
         public @NonNull Builder protocols(final @NonNull List<@NonNull Protocol> protocols) {
             Objects.requireNonNull(protocols);
 
@@ -642,6 +640,13 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
+        public @NonNull Builder readTimeout(final @NonNull Duration readTimeout) {
+            Objects.requireNonNull(readTimeout);
+            networkSocketBuilder.readTimeout(readTimeout);
+            return this;
+        }
+
+        @Override
         public @NonNull Builder retryOnConnectionFailure(final boolean retryOnConnectionFailure) {
             this.retryOnConnectionFailure = retryOnConnectionFailure;
             return this;
@@ -662,6 +667,12 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
+        public @NonNull Builder useNio(boolean useNio) {
+            networkSocketBuilder.useNio(useNio);
+            return this;
+        }
+
+        @Override
         public @NonNull Builder pingInterval(@NonNull Duration interval) {
             this.pingInterval = checkDuration("pingInterval", interval);
             return this;
@@ -670,6 +681,13 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         @Override
         public @NonNull Builder webSocketCloseTimeout(final @NonNull Duration webSocketCloseTimeout) {
             this.webSocketCloseTimeout = checkDuration("webSocketCloseTimeout", webSocketCloseTimeout);
+            return this;
+        }
+
+        @Override
+        public @NonNull Builder writeTimeout(@NonNull Duration writeTimeout) {
+            Objects.requireNonNull(writeTimeout);
+            networkSocketBuilder.writeTimeout(writeTimeout);
             return this;
         }
 

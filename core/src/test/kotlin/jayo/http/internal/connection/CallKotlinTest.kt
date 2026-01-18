@@ -247,9 +247,7 @@ class CallKotlinTest {
             client
                 .newBuilder()
                 .proxies(Proxies.of(proxy))
-                .networkConfig {
-                    it.connectTimeout(Duration.ofMillis(1))
-                }
+                .connectTimeout(Duration.ofMillis(1))
                 .build()
 
         val request = ClientRequest.get(server.url("/").toJayo())

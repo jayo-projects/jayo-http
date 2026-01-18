@@ -242,9 +242,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(250))
-                }
+                .readTimeout(Duration.ofMillis(250))
                 .build()
         val call =
             client.newCallWithListener(
@@ -286,10 +284,8 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         client =
             client
                 .newBuilder()
-                .protocols(listOf<Protocol>(Protocol.HTTP_1_1))
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(250))
-                }
+                .protocols(listOf(Protocol.HTTP_1_1))
+                .readTimeout(Duration.ofMillis(250))
                 .build()
         val call =
             client.newCallWithListener(

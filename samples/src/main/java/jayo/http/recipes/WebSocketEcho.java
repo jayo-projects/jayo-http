@@ -29,9 +29,8 @@ import java.time.Duration;
 public final class WebSocketEcho extends WebSocketListener {
     private void run() {
         JayoHttpClient client = JayoHttpClient.builder()
-                .networkConfig(netConfig ->
-                        netConfig.readTimeout(Duration.ZERO)
-                ).build();
+                .readTimeout(Duration.ZERO)
+                .build();
 
         ClientRequest request = ClientRequest.builder()
                 .url("ws://echo.websocket.org")

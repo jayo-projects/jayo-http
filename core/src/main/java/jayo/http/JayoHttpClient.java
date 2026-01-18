@@ -22,7 +22,6 @@
 package jayo.http;
 
 import jayo.http.internal.connection.RealJayoHttpClient;
-import jayo.network.NetworkSocket;
 import jayo.scheduler.TaskRunner;
 import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
@@ -32,7 +31,6 @@ import org.jspecify.annotations.Nullable;
 import javax.net.ssl.HostnameVerifier;
 import java.time.Duration;
 import java.util.List;
-import java.util.function.Consumer;
 
 import static jayo.tools.JayoUtils.executorService;
 
@@ -302,6 +300,13 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
         Builder connectionSpecs(final @NonNull List<@NonNull ConnectionSpec> connectionSpecs);
 
         /**
+         * Sets the connect timeout for network connections. Default is 10 seconds. A timeout of zero is interpreted as
+         * an infinite timeout.
+         */
+        @NonNull
+        Builder connectTimeout(final @NonNull Duration connectTimeout);
+
+        /**
          * Sets the handler that can accept cookies from incoming HTTP responses and provides cookies to outgoing HTTP
          * requests.
          * <p>
@@ -393,20 +398,23 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
         Builder addNetworkInterceptor(final @NonNull Interceptor interceptor);
 
         /**
-         * Allow modifying the default network configuration. A timeout of zero is interpreted as an infinite timeout.
+         * Sets the interval between HTTP/2 and web socket pings initiated by this client. Use this to automatically
+         * send ping frames until either the connection fails or it is closed. This keeps the connection alive and may
+         * detect connectivity failures.
+         * <p>
+         * Default is zero. A value of zero disables client-initiated pings.
+         * <p>
+         * If the server does not respond to each ping with a pong within {@code interval}, this client will assume that
+         * connectivity has been lost.
          * <ul>
-         * <li>Use {@link NetworkSocket.Builder#connectTimeout(Duration)} to set the connect timeout for new
-         * connections. Default is 10 seconds.
-         * <li>Use {@link NetworkSocket.Builder#readTimeout(Duration)} to set the read timeout for new connections.
-         * Default is 10 seconds.
-         * <li>Use {@link NetworkSocket.Builder#writeTimeout(Duration)} to set the write timeout for new connections.
-         * Default is 10 seconds.
-         * <li>Use {@link NetworkSocket.Builder#useNio(boolean)} to use Java NIO sockets, false for Java IO ones.
-         * Default is true.
+         * <li>When this happens on a web socket, the connection is canceled and its listener is
+         * {@link WebSocketListener#onFailure(WebSocket, Throwable, ClientResponse) notified}.
+         * <li>When it happens on an HTTP/2 connection, the connection is closed, and any calls it is carrying will fail
+         * with a {@link jayo.JayoException}.
          * </ul>
          */
         @NonNull
-        Builder networkConfig(final @NonNull Consumer<NetworkSocket.@NonNull Builder> networkConfigurer);
+        Builder pingInterval(final @NonNull Duration interval);
 
         /**
          * Configure the protocols used by this client to communicate with remote servers. By default, this client will
@@ -455,8 +463,15 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
         Builder proxyAuthenticator(final @NonNull Authenticator proxyAuthenticator);
 
         /**
-         * Configure this client to retry or not when a connectivity problem is encountered. By default, this client
-         * silently recovers from the following problems:
+         * Sets the read timeout for network connections. Default is 10 seconds. A timeout of zero is interpreted as
+         * an infinite timeout.
+         */
+        @NonNull
+        Builder readTimeout(final @NonNull Duration readTimeout);
+
+        /**
+         * Configure this client to retry or not when a connectivity problem is encountered. Default is {@code true}, so
+         * this client silently recovers from the following problems:
          * <ul>
          * <li><b>Unreachable IP addresses.</b> If the URL's host has multiple IP addresses, failure to reach any
          * individual IP address doesn't fail the overall request. This can increase the availability of multi-homed
@@ -499,23 +514,10 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
         Builder tlsConfig(final ClientTlsSocket.@NonNull Builder clientTlsConfig);
 
         /**
-         * Sets the interval between HTTP/2 and web socket pings initiated by this client. Use this to automatically
-         * send ping frames until either the connection fails or it is closed. This keeps the connection alive and may
-         * detect connectivity failures.
-         * <p>
-         * Default is zero. A value of zero disables client-initiated pings.
-         * <p>
-         * If the server does not respond to each ping with a pong within {@code interval}, this client will assume that
-         * connectivity has been lost.
-         * <ul>
-         * <li>When this happens on a web socket, the connection is canceled and its listener is
-         * {@link WebSocketListener#onFailure(WebSocket, Throwable, ClientResponse) notified}.
-         * <li>When it happens on an HTTP/2 connection, the connection is closed, and any calls it is carrying will fail
-         * with a {@link jayo.JayoException}.
-         * </ul>
+         * Set to {@code true} to use Java NIO sockets, {@code false} for Java IO ones. Default is true.
          */
         @NonNull
-        Builder pingInterval(final @NonNull Duration interval);
+        Builder useNio(final boolean useNio);
 
         /**
          * Sets the minimum outbound web socket message size (in bytes) that will be compressed. Default is 1024. Set to
@@ -534,6 +536,13 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
          */
         @NonNull
         Builder webSocketCloseTimeout(final @NonNull Duration webSocketCloseTimeout);
+
+        /**
+         * Sets the write timeout for network connections. Default is 10 seconds. A timeout of zero is interpreted as
+         * an infinite timeout.
+         */
+        @NonNull
+        Builder writeTimeout(final @NonNull Duration writeTimeout);
 
         @NonNull
         JayoHttpClient build();

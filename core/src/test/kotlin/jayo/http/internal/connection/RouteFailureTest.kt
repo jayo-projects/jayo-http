@@ -79,20 +79,18 @@ class RouteFailureTest {
         socketFactory = SpecificHostSocketAddressFactory(InetSocketAddress(server1.hostName, server1.port))
 
         client =
-            clientTestRule
+            (clientTestRule
                 .newClientBuilder()
-                .networkConfig {
-                    it.connectTimeout(Duration.ofMillis(250))
-                    it.readTimeout(Duration.ofMillis(250))
-                    it.writeTimeout(Duration.ofMillis(250))
-                }
-                .dns(dns)
-                .networkConfig {
-                    it.onConnect { requested ->
+                .connectTimeout(Duration.ofMillis(250))
+                .readTimeout(Duration.ofMillis(250))
+                .writeTimeout(Duration.ofMillis(250))
+                .eventListenerFactory(clientTestRule.wrap(eventRecorder))
+                .dns(dns) as RealJayoHttpClient.Builder)
+                .apply {
+                    networkSocketBuilder.onConnect { requested ->
                         socketFactory.computeAddress(requested)
                     }
                 }
-                .eventListenerFactory(clientTestRule.wrap(eventRecorder))
                 .build() as RealJayoHttpClient
     }
 
