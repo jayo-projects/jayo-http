@@ -702,9 +702,7 @@ class DuplexTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(500))
-                }
+                .readTimeout(Duration.ofMillis(500))
                 .build()
         val call = client.newCall(request)
         assertThatThrownBy {
@@ -735,9 +733,7 @@ class DuplexTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(500))
-                }
+                .readTimeout(Duration.ofMillis(500))
                 .build()
         val call = client.newCall(request)
         val response = call.execute()
@@ -771,9 +767,7 @@ class DuplexTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(500))
-                }
+                .readTimeout(Duration.ofMillis(500))
                 .build()
         val call = client.newCall(request)
         val response = call.execute()
@@ -806,9 +800,7 @@ class DuplexTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(500))
-                }
+                .readTimeout(Duration.ofMillis(500))
                 .build()
         val call = client.newCall(request)
         val response = call.execute()

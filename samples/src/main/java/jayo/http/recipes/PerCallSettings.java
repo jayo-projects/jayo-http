@@ -38,9 +38,8 @@ public final class PerCallSettings {
 
         // Copy to customize Jayo HTTP for this request.
         JayoHttpClient client1 = client.newBuilder()
-                .networkConfig(netConfig ->
-                        netConfig.readTimeout(Duration.ofMillis(500))
-                ).build();
+                .readTimeout(Duration.ofMillis(500))
+                .build();
         try (ClientResponse response = client1.newCall(request).execute()) {
             System.out.println("Response 1 succeeded: " + response);
         } catch (JayoException je) {
@@ -49,9 +48,8 @@ public final class PerCallSettings {
 
         // Copy to customize Jayo HTTP for this request.
         JayoHttpClient client2 = client.newBuilder()
-                .networkConfig(netConfig ->
-                        netConfig.readTimeout(Duration.ofMillis(3000))
-                ).build();
+                .readTimeout(Duration.ofMillis(3000))
+                .build();
         try (ClientResponse response = client2.newCall(request).execute()) {
             System.out.println("Response 2 succeeded: " + response);
         } catch (JayoException je) {

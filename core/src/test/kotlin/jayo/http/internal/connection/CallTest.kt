@@ -897,9 +897,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(250))
-                }
+                .readTimeout(Duration.ofMillis(250))
                 .build()
         val request = ClientRequest.builder()
             .url(server.url("/b").toJayo())
@@ -933,9 +931,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(100))
-                }
+                .readTimeout(Duration.ofMillis(100))
                 .build()
         val request = ClientRequest.builder().url(server.url("/").toJayo()).get()
         assertFailsWith<JayoInterruptedIOException> {
@@ -2967,9 +2963,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofMillis(500))
-                }
+                .readTimeout(Duration.ofMillis(500))
                 .build()
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
@@ -3126,9 +3120,7 @@ class CallTest {
         client =
             client
                 .newBuilder()
-                .networkConfig {
-                    it.readTimeout(Duration.ofSeconds(1))
-                }
+                .readTimeout(Duration.ofSeconds(1))
                 .build()
         server.enqueue(MockResponse(code = 100))
         val request = ClientRequest.builder()

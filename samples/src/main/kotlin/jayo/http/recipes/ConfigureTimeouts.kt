@@ -27,11 +27,9 @@ import java.time.Duration
 
 class ConfigureTimeouts {
     private val client: JayoHttpClient = JayoHttpClient.builder()
-        .networkConfig { netConfig ->
-            netConfig.connectTimeout(Duration.ofSeconds(5))
-                .writeTimeout(Duration.ofSeconds(5))
-                .readTimeout(Duration.ofSeconds(5))
-        }
+        .connectTimeout(Duration.ofSeconds(5))
+        .writeTimeout(Duration.ofSeconds(5))
+        .readTimeout(Duration.ofSeconds(5))
         .callTimeout(Duration.ofSeconds(10))
         .build()
 

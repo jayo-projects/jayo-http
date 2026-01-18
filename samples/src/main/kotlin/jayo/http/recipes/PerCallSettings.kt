@@ -35,13 +35,9 @@ class PerCallSettings {
             .get()
 
         // Copy to customize Jayo HTTP for this request.
-        val client1 =
-            client
-                .newBuilder()
-                .networkConfig { netConfig ->
-                    netConfig.readTimeout(Duration.ofMillis(500))
-                }
-                .build()
+        val client1 = client.newBuilder()
+            .readTimeout(Duration.ofMillis(500))
+            .build()
         try {
             client1.newCall(request).execute().use { response ->
                 println("Response 1 succeeded: $response")
@@ -51,13 +47,9 @@ class PerCallSettings {
         }
 
         // Copy to customize Jayo HTTP for this request.
-        val client2 =
-            client
-                .newBuilder()
-                .networkConfig { netConfig ->
-                    netConfig.readTimeout(Duration.ofMillis(3000))
-                }
-                .build()
+        val client2 = client.newBuilder()
+            .readTimeout(Duration.ofMillis(3000))
+            .build()
         try {
             client2.newCall(request).execute().use { response ->
                 println("Response 2 succeeded: $response")
