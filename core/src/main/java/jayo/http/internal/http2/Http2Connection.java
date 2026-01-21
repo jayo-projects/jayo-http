@@ -565,6 +565,10 @@ public final class Http2Connection implements AutoCloseable {
         try {
             shutdown(connectionCode);
         } catch (JayoException ignored) {
+        } catch (IllegalStateException ise) {
+            if (!"closed".equals(ise.getMessage())) {
+                throw ise;
+            }
         }
 
         Http2Stream[] streamsToClose = null;
@@ -592,6 +596,10 @@ public final class Http2Connection implements AutoCloseable {
             // Cancel the socket to break out the reader thread, which will clean up after itself.
             socket.cancel();
         } catch (JayoException ignored) {
+        } catch (IllegalStateException ise) {
+            if (!"closed".equals(ise.getMessage())) {
+                throw ise;
+            }
         }
 
         // Release the threads.
@@ -775,6 +783,12 @@ public final class Http2Connection implements AutoCloseable {
                 errorException = e;
                 connectionErrorCode = ErrorCode.PROTOCOL_ERROR;
                 streamErrorCode = ErrorCode.PROTOCOL_ERROR;
+            } catch (IllegalStateException ise) {
+                if (!"closed".equals(ise.getMessage())) {
+                    throw ise;
+                }
+                connectionErrorCode = ErrorCode.STREAM_CLOSED;
+                streamErrorCode = ErrorCode.STREAM_CLOSED;
             } finally {
                 close(connectionErrorCode, streamErrorCode, errorException);
                 JayoHttpUtils.closeQuietly(reader);

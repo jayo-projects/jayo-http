@@ -25,6 +25,7 @@ package jayo.http.internal.connection;
 import jayo.*;
 import jayo.http.*;
 import jayo.http.http2.ErrorCode;
+import jayo.http.http2.FlowControlListener;
 import jayo.http.http2.JayoConnectionShutdownException;
 import jayo.http.http2.JayoStreamResetException;
 import jayo.http.internal.JayoHostnameVerifier;
@@ -199,10 +200,12 @@ public final class RealConnection extends Http2Connection.Listener implements Co
         networkSocket.setWriteTimeout(Duration.ZERO);
 
         // todo (maybe) : flowControlListener from ConnectionListener
+        final var flowControlListener = FlowControlListener.NONE;
         final var http2Connection = new Http2Connection.Builder(true, taskRunner)
                 .socket(socket, route.getAddress().getUrl().getHost())
                 .listener(this)
                 .pingInterval(pingInterval)
+                .flowControlListener(flowControlListener)
                 .build();
         this.http2Connection = http2Connection;
         this.allocationLimit = Http2Connection.DEFAULT_SETTINGS.maxConcurrentStreams();
