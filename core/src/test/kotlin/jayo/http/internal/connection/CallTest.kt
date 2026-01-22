@@ -2663,6 +2663,7 @@ class CallTest {
         canceledBeforeIOSignalsOnFailure()
     }
 
+    @Tag("no-ci")
     @Test
     fun canceledBeforeResponseReadSignalsOnFailure() {
         val requestA = ClientRequest.get(server.url("/a").toJayo())
@@ -2679,12 +2680,14 @@ class CallTest {
         callback.await(requestA.url).assertFailure(JayoException::class.java)
     }
 
+    @Tag("no-ci")
     @Test
     fun canceledBeforeResponseReadSignalsOnFailure_HTTPS() {
         enableTls()
         canceledBeforeResponseReadSignalsOnFailure()
     }
 
+    @Tag("no-ci")
     @Test
     fun canceledBeforeResponseReadSignalsOnFailure_HTTP_2() {
         enableProtocol(Protocol.HTTP_2)

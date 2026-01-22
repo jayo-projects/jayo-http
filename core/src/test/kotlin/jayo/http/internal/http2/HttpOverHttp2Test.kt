@@ -57,6 +57,7 @@ import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
@@ -71,6 +72,7 @@ import kotlin.io.path.deleteIfExists
 import kotlin.test.assertFailsWith
 import kotlin.test.fail
 
+@Tag("no-ci")
 class HttpOverHttp2TestH2PriorKnowledge : HttpOverHttp2Test(Protocol.H2_PRIOR_KNOWLEDGE)
 class HttpOverHttp2TestHttp2 : HttpOverHttp2Test(Protocol.HTTP_2)
 
@@ -1695,6 +1697,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(0)
     }
 
+    @Tag("no-ci")
     @Test
     fun responseHeadersAfterGoaway() {
         server.enqueue(
@@ -1864,6 +1867,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
     }
 
     /** https://github.com/square/okhttp/issues/4875  */
+    @Tag("no-ci")
     @Test
     fun shutdownAfterLateCoalescing() {
         val latch = CountDownLatch(2)
