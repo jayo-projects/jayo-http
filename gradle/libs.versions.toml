@@ -4,21 +4,21 @@ java = "17"
 
 # plugins
 # https://github.com/JetBrains/kotlin/releases
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 # https://github.com/Kotlin/dokka/releases
 dokka = "2.1.0"
 # https://github.com/Kotlin/kotlinx-kover/releases
-kover = "0.9.3"
+kover = "0.9.4"
 # https://github.com/melix/jmh-gradle-plugin/tags (for benchmarks)
 jmhPlugin = "0.7.3"
 # https://github.com/GradleUp/shadow/releases (for benchmarks)
-shadow = "9.3.0"
+shadow = "9.3.1"
 # https://github.com/researchgate/gradle-release/releases
 release = "3.1.0"
 
 # main
 # https://github.com/jayo-projects/jayo/tags
-jayo = "0.1.0-alpha75"
+jayo = "0.1.0-beta1"
 # https://github.com/jspecify/jspecify/releases
 jspecify = "1.0.0"
 
@@ -28,21 +28,21 @@ brotli = "0.1.2"
 # https://github.com/Kotlin/kotlinx.coroutines/releases
 coroutines = "1.10.2"
 
-# tests
+# tests and samples
 # https://mvnrepository.com/artifact/org.assertj/assertj-core
 assertj = "3.27.6"
 # https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
-junit = "6.0.1"
+junit = "6.0.2"
 # https://mvnrepository.com/artifact/org.junit-pioneer/junit-pioneer
 junitPioneer = "2.3.0"
 # https://mvnrepository.com/artifact/io.mockk/mockk
-mockk = "1.14.6"
+mockk = "1.14.7"
 # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
 okhttp = "5.3.2"
 # https://mvnrepository.com/artifact/org.slf4j/slf4j-jdk-platform-logging
 slf4j = "2.0.17"
 # https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
-logback = "1.5.21"
+logback = "1.5.25"
 # https://mvnrepository.com/artifact/org.hamcrest/hamcrest
 hamcrest = "3.0"
 # https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5
@@ -50,9 +50,9 @@ httpClient5 = "5.6"
 # https://mvnrepository.com/artifact/org.eclipse.jetty/jetty-client
 jetty = "12.1.5"
 # https://mvnrepository.com/artifact/org.asynchttpclient/async-http-client
-asyncHttpClient = "3.0.5"
+asyncHttpClient = "3.0.6"
 # https://mvnrepository.com/artifact/org.jsoup/jsoup
-jsoup = "1.21.2"
+jsoup = "1.22.1"
 
 # benchmarks
 # https://mvnrepository.com/artifact/org.openjdk.jmh/jmh-core
