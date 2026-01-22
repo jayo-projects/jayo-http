@@ -25,7 +25,7 @@ subprojects {
             create<MavenPublication>("mavenJava") {
                 pom {
                     name.set(project.name)
-                    description.set("Jayo HTTP is a HTTP library based on Jayo for the JVM")
+                    description.set("Jayo HTTP is a fast synchronous HTTP library based on Jayo for the JVM")
                     url.set("https://github.com/jayo-projects/jayo-http")
 
                     licenses {
@@ -61,6 +61,6 @@ subprojects {
 // when the Gradle version changes:
 // -> execute ./gradlew wrapper, then remove .gradle directory, then execute ./gradlew wrapper again
 tasks.wrapper {
-    gradleVersion = "9.2.1"
+    gradleVersion = "9.3.0"
     distributionType = Wrapper.DistributionType.ALL
 }
