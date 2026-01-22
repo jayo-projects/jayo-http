@@ -34,7 +34,7 @@ class PostMultipart {
             .addFormDataPart("title", "Jayo HTTP banner")
             .addFormDataPart(
                 "text", "jayo-http.txt",
-                File("samples/src/main/resources/jayo-http.txt").asRequestBody(MEDIA_TYPE_TXT),
+                ClientRequestBody.create(File("samples/src/main/resources/jayo-http.txt"), MEDIA_TYPE_TXT),
             ).build()
 
         val request = ClientRequest.builder()
@@ -51,7 +51,7 @@ class PostMultipart {
     }
 
     companion object {
-        private val MEDIA_TYPE_TXT = "text/plain; charset=utf-8".toMediaType()
+        private val MEDIA_TYPE_TXT = MediaType.get("text/plain; charset=utf-8")
     }
 }
 

@@ -30,8 +30,6 @@ import jayo.bytestring.decodeHex
 import jayo.bytestring.encodeToByteString
 import jayo.http.ClientResponseBody
 import jayo.http.MediaType
-import jayo.http.toMediaType
-import jayo.http.toResponseBody
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.io.InputStreamReader
@@ -42,8 +40,8 @@ import kotlin.test.assertFailsWith
 class ClientResponseBodyTest {
     @Test
     fun sourceEmpty() {
-        val mediaType = "any/thing; charset=${null}".toMediaType()
-        val body = "".decodeHex().toResponseBody(mediaType)
+        val mediaType = MediaType.get("any/thing; charset=${null}")
+        val body = ClientResponseBody.create("".decodeHex(), mediaType)
         val reader = body.reader()
         assertThat(reader.exhausted()).isTrue()
         assertThat(reader.readString()).isEqualTo("")
@@ -107,16 +105,16 @@ class ClientResponseBodyTest {
         val text = "eile oli oliiviõli"
         val body = ClientResponseBody.create(text)
         assertThat(body.string()).isEqualTo(text)
-        val body2 = text.toResponseBody()
+        val body2 = ClientResponseBody.create(text)
         assertThat(body2.string()).isEqualTo(text)
     }
 
     @Test
     fun unicodeTextWithCharset() {
         val text = "eile oli oliiviõli"
-        val body = ClientResponseBody.create(text, "text/plain; charset=UTF-8".toMediaType())
+        val body = ClientResponseBody.create(text, MediaType.get("text/plain; charset=UTF-8"))
         assertThat(body.string()).isEqualTo(text)
-        val body2 = text.toResponseBody("text/plain; charset=UTF-8".toMediaType())
+        val body2 = ClientResponseBody.create(text, MediaType.get("text/plain; charset=UTF-8"))
         assertThat(body2.string()).isEqualTo(text)
     }
 
@@ -125,16 +123,16 @@ class ClientResponseBodyTest {
         val text = "eile oli oliiviõli".encodeToByteString(Charsets.UTF_8)
         val body = ClientResponseBody.create(text)
         assertThat(body.byteString()).isEqualTo(text)
-        val body2 = text.toResponseBody()
+        val body2 = ClientResponseBody.create(text)
         assertThat(body2.byteString()).isEqualTo(text)
     }
 
     @Test
     fun unicodeByteStringWithCharset() {
         val text = "eile oli oliiviõli".encodeToByteString(Charsets.UTF_8)
-        val body = ClientResponseBody.create(text, "text/plain; charset=EBCDIC".toMediaType())
+        val body = ClientResponseBody.create(text, MediaType.get("text/plain; charset=EBCDIC"))
         assertThat(body.byteString()).isEqualTo(text)
-        val body2 = text.toResponseBody("text/plain; charset=EBCDIC".toMediaType())
+        val body2 = ClientResponseBody.create(text, MediaType.get("text/plain; charset=EBCDIC"))
         assertThat(body2.byteString()).isEqualTo(text)
     }
 
@@ -143,16 +141,16 @@ class ClientResponseBodyTest {
         val text = "eile oli oliiviõli".encodeToByteArray()
         val body = ClientResponseBody.create(text)
         assertThat(body.bytes()).isEqualTo(text)
-        val body2 = text.toResponseBody()
+        val body2 = ClientResponseBody.create(text)
         assertThat(body2.bytes()).isEqualTo(text)
     }
 
     @Test
     fun unicodeBytesWithCharset() {
         val text = "eile oli oliiviõli".encodeToByteArray()
-        val body = ClientResponseBody.create(text, "text/plain; charset=EBCDIC".toMediaType())
+        val body = ClientResponseBody.create(text, MediaType.get("text/plain; charset=EBCDIC"))
         assertThat(body.bytes()).isEqualTo(text)
-        val body2 = text.toResponseBody("text/plain; charset=EBCDIC".toMediaType())
+        val body2 = ClientResponseBody.create(text, MediaType.get("text/plain; charset=EBCDIC"))
         assertThat(body2.bytes()).isEqualTo(text)
     }
 
@@ -355,7 +353,7 @@ class ClientResponseBodyTest {
 
     @Test
     fun sourceSeesBom() {
-        val body = "efbbbf68656c6c6f".decodeHex().toResponseBody()
+        val body = ClientResponseBody.create("efbbbf68656c6c6f".decodeHex())
         val source = body.reader()
         assertThat(source.readByte() and 0xff).isEqualTo(0xef)
         assertThat(source.readByte() and 0xff).isEqualTo(0xbb)
@@ -594,7 +592,7 @@ class ClientResponseBodyTest {
     @Test
     fun unicodeTextWithUnsupportedEncoding() {
         val text = "eile oli oliiviõli"
-        val body = text.toResponseBody("text/plain; charset=unknown".toMediaType())
+        val body = ClientResponseBody.create(text, MediaType.get("text/plain; charset=unknown"))
         assertThat(body.string()).isEqualTo(text)
     }
 
@@ -603,10 +601,12 @@ class ClientResponseBodyTest {
         fun body(
             hex: String,
             charset: String? = null,
-        ): ClientResponseBody {
-            val mediaType = if (charset == null) null else "any/thing; charset=$charset".toMediaType()
-            return hex.decodeHex().toResponseBody(mediaType)
-        }
+        ): ClientResponseBody =
+            if (charset == null) {
+                ClientResponseBody.create(hex.decodeHex())
+            } else {
+                ClientResponseBody.create(hex.decodeHex(), MediaType.get("any/thing; charset=$charset"))
+            }
 
         fun exhaust(reader: java.io.Reader): String {
             val builder = StringBuilder()

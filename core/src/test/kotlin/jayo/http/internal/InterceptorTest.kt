@@ -23,7 +23,6 @@ package jayo.http.internal
 
 import jayo.*
 import jayo.http.*
-import jayo.http.internal.TestUtils.assertSuppressed
 import jayo.tls.Protocol
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -62,7 +61,7 @@ class InterceptorTest {
                 .protocol(Protocol.HTTP_1_1)
                 .statusCode(200)
                 .statusMessage("Intercepted!")
-                .body("abc".toResponseBody("text/plain; charset=utf-8".toMediaType()))
+                .body(ClientResponseBody.create("abc", MediaType.get("text/plain; charset=utf-8")))
                 .build()
         client =
             client
@@ -88,7 +87,7 @@ class InterceptorTest {
                     .protocol(Protocol.HTTP_1_1)
                     .statusCode(200)
                     .statusMessage("Intercepted!")
-                    .body("abc".toResponseBody("text/plain; charset=utf-8".toMediaType()))
+                    .body(ClientResponseBody.create("abc", MediaType.get("text/plain; charset=utf-8")))
                     .build()
             }
         client =
@@ -247,8 +246,8 @@ class InterceptorTest {
         val interceptor =
             Interceptor { chain: Interceptor.Chain ->
                 val originalRequest = chain.request()
-                val mediaType = "text/plain".toMediaType()
-                val body = "abc".toRequestBody(mediaType)
+                val mediaType = MediaType.get("text/plain")
+                val body = ClientRequestBody.create("abc", mediaType)
                 chain.proceed(
                     originalRequest
                         .newBuilder()
@@ -297,7 +296,7 @@ class InterceptorTest {
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
                 .addHeader("Original-Header", "foo")
-                .method("PUT", "abc".toRequestBody("text/plain".toMediaType()))
+                .method("PUT", ClientRequestBody.create("abc", MediaType.get("text/plain")))
         client.newCall(request).execute()
         val recordedRequest = server.takeRequest()
         assertThat(recordedRequest.body?.utf8()).isEqualTo("ABC")

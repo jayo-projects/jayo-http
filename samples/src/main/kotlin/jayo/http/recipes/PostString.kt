@@ -23,9 +23,9 @@ package jayo.http.recipes.kt
 
 import jayo.JayoException
 import jayo.http.ClientRequest
+import jayo.http.ClientRequestBody
 import jayo.http.JayoHttpClient
-import jayo.http.toMediaType
-import jayo.http.toRequestBody
+import jayo.http.MediaType
 
 class PostString {
     private val client = JayoHttpClient()
@@ -44,7 +44,7 @@ class PostString {
 
         val request = ClientRequest.builder()
             .url("https://api.github.com/markdown/raw")
-            .post(postBody.toRequestBody(MEDIA_TYPE_MARKDOWN))
+            .post(ClientRequestBody.create(postBody, MEDIA_TYPE_MARKDOWN))
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
@@ -56,7 +56,7 @@ class PostString {
     }
 
     companion object {
-        val MEDIA_TYPE_MARKDOWN = "text/x-markdown; charset=utf-8".toMediaType()
+        val MEDIA_TYPE_MARKDOWN = MediaType.get("text/x-markdown; charset=utf-8")
     }
 }
 

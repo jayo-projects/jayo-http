@@ -17,9 +17,8 @@ package jayo.http.internal
 
 import jayo.Buffer
 import jayo.buffered
-import jayo.http.asRequestBody
-import jayo.http.toMediaType
-import jayo.http.toRequestBody
+import jayo.http.ClientRequestBody
+import jayo.http.MediaType
 import jayo.writer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -40,7 +39,7 @@ class ClientRequestBodyTest {
     @Test
     fun correctContentType() {
         val body = "Body"
-        val requestBody = body.toRequestBody(RealMediaType("text/plain", "text", "plain", arrayOf()))
+        val requestBody = ClientRequestBody.create(body, RealMediaType("text/plain", "text", "plain", arrayOf()))
 
         val contentType = requestBody.contentType()!! as RealMediaType
 
@@ -51,7 +50,7 @@ class ClientRequestBodyTest {
     @Test
     fun testPath() {
         assertOnPath { path ->
-            val requestBody = path.asRequestBody()
+            val requestBody = ClientRequestBody.create(path)
 
             assertThat(requestBody.contentByteSize()).isEqualTo(0L)
         }
@@ -60,7 +59,7 @@ class ClientRequestBodyTest {
     @Test
     fun testPathRead() {
         assertOnPath(content = "Hello") { path ->
-            val requestBody = path.asRequestBody()
+            val requestBody = ClientRequestBody.create(path)
 
             assertThat(requestBody.contentByteSize()).isEqualTo(5L)
 
@@ -73,7 +72,7 @@ class ClientRequestBodyTest {
     @Test
     fun testPathDefaultMediaType() {
         assertOnPath { path ->
-            val requestBody = path.asRequestBody()
+            val requestBody = ClientRequestBody.create(path)
 
             assertThat(requestBody.contentType()).isNull()
         }
@@ -82,9 +81,9 @@ class ClientRequestBodyTest {
     @Test
     fun testPathMediaType() {
         assertOnPath { path ->
-            val contentType = "text/plain".toMediaType()
+            val contentType = MediaType.get("text/plain")
 
-            val requestBody = path.asRequestBody(contentType)
+            val requestBody = ClientRequestBody.create(path, contentType)
 
             assertThat(requestBody.contentType()).isEqualTo(contentType)
         }

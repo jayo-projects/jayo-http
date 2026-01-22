@@ -247,18 +247,6 @@ final class WebSocketExtensions {
         );
     }
 
-    /**
-     * Removes from a string both the given [prefix] and [suffix] if and only if
-     * it starts with the [prefix] and ends with the [suffix].
-     * Otherwise, returns this string unchanged.
-     *//*
-    public fun String.removeSurrounding(prefix: CharSequence, suffix: CharSequence): String {
-        if ((length >= prefix.length + suffix.length) && startsWith(prefix) && endsWith(suffix)) {
-            return substring(prefix.length, length - suffix.length)
-        }
-        return this
-    }*/
-
     private static final @NonNull String DOUBLE_QUOTE = "\"";
 
     /**

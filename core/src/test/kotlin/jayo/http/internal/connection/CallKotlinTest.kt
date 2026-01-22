@@ -115,7 +115,7 @@ class CallKotlinTest {
     @Flaky
     fun testHeadAfterPut() {
         class ErringRequestBody : ClientRequestBody {
-            override fun contentType(): MediaType = "application/xml".toMediaType()
+            override fun contentType(): MediaType = MediaType.get("application/xml")
 
             override fun contentByteSize(): Long = -1L
 
@@ -127,7 +127,7 @@ class CallKotlinTest {
         }
 
         class ValidRequestBody : ClientRequestBody {
-            override fun contentType(): MediaType = "application/xml".toMediaType()
+            override fun contentType(): MediaType = MediaType.get("application/xml")
 
             override fun contentByteSize(): Long = -1L
 
@@ -231,7 +231,7 @@ class CallKotlinTest {
         val requestB =
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
-                .post("b".toRequestBody("text/plain".toMediaType()))
+                .post(ClientRequestBody.create("b", MediaType.get("text/plain")))
         val responseB = client.newCall(requestB).execute()
         assertThat(responseB.body.string()).isEqualTo("b")
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(0)

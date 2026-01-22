@@ -124,7 +124,7 @@ class BrotliInterceptorTest {
         fn: ClientResponse.Builder.() -> Unit = {},
     ): ClientResponse =
         ClientResponse.builder()
-            .body(bodyHex.toResponseBody("text/plain".toMediaType()))
+            .body(ClientResponseBody.create(bodyHex, MediaType.get("text/plain")))
             .statusCode(200)
             .statusMessage("OK")
             .request(ClientRequest.builder().url(url).get())

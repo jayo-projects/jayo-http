@@ -103,7 +103,9 @@ class LoggingEventListenerTest {
     @Test
     fun post() {
         server.enqueue(MockResponse())
-        client.newCall(request().post("Hello!".toRequestBody(PLAIN))).execute()
+        client.newCall(request()
+            .post(ClientRequestBody.create("Hello!", PLAIN)))
+            .execute()
         logRecorder
             .assertLogMatch(Regex("""callStart: ClientRequest\{method=POST, url=$url\}"""))
             .assertLogMatch(Regex("""proxySelected: $url proxy=null"""))
@@ -233,6 +235,6 @@ class LoggingEventListenerTest {
     private fun request(): ClientRequest.Builder = ClientRequest.builder().url(url)
 
     companion object {
-        private val PLAIN = "text/plain".toMediaType()
+        private val PLAIN = MediaType.get("text/plain")
     }
 }

@@ -110,7 +110,7 @@ class HttpUpgradesTest {
         executeAndCheckUpgrade(
             upgradeRequest()
                 .newBuilder()
-                .method("POST", "Hello".toRequestBody())
+                .method("POST", ClientRequestBody.create("Hello"))
         )
     }
 

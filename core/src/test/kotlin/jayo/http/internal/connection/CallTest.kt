@@ -216,7 +216,7 @@ class CallTest {
             client.newBuilder()
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
-                .method("GET", "abc".toRequestBody("text/plain".toMediaType()))
+                .method("GET", ClientRequestBody.create("abc", MediaType.get("text/plain")))
         }
     }
 
@@ -313,7 +313,7 @@ class CallTest {
         server.enqueue(MockResponse(body = "abc"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("def".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("def", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertBody("abc")
@@ -341,7 +341,7 @@ class CallTest {
         server.enqueue(MockResponse(body = "abc"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post(ByteArray(0).toRequestBody(null))
+            .post(ClientRequestBody.create(ByteArray(0)))
         executeSynchronously(request)
             .assertCode(200)
             .assertBody("abc")
@@ -410,7 +410,7 @@ class CallTest {
         server.enqueue(MockResponse())
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post(body.toRequestBody(null))
+            .post(ClientRequestBody.create(body))
         val credential = basic("pull-vert", "secret")
         client = client.newBuilder()
             .authenticator(RecordingJayoAuthenticator(credential, null))
@@ -521,7 +521,7 @@ class CallTest {
         server.enqueue(MockResponse(body = "abc"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .delete("def".toRequestBody("text/plain".toMediaType()))
+            .delete(ClientRequestBody.create("def", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertBody("abc")
@@ -535,7 +535,7 @@ class CallTest {
         server.enqueue(MockResponse(body = "abc"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .put("def".toRequestBody("text/plain".toMediaType()))
+            .put(ClientRequestBody.create("def", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertBody("abc")
@@ -565,7 +565,7 @@ class CallTest {
         server.enqueue(MockResponse(body = "abc"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .patch("def".toRequestBody("text/plain".toMediaType()))
+            .patch(ClientRequestBody.create("def", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertBody("abc")
@@ -593,7 +593,7 @@ class CallTest {
         server.enqueue(MockResponse(body = "abc"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .method("CUSTOM", "def".toRequestBody("text/plain".toMediaType()))
+            .method("CUSTOM", ClientRequestBody.create("def", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertBody("abc")
@@ -610,7 +610,7 @@ class CallTest {
         server.enqueue(MockResponse())
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("abc".toRequestBody(null))
+            .post(ClientRequestBody.create("abc"))
         executeSynchronously(request).assertCode(200)
         val recordedRequest = server.takeRequest()
         assertThat(recordedRequest.headers["Content-Type"]).isNull()
@@ -1343,7 +1343,7 @@ class CallTest {
         val request =
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
-                .post("def".toRequestBody("text/plain".toMediaType()))
+                .post(ClientRequestBody.create("def", MediaType.get("text/plain")))
         client.newCall(request).enqueue(callback)
         callback
             .await(request.url)
@@ -1387,7 +1387,7 @@ class CallTest {
 
         val request2 = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("body!".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("body!", MediaType.get("text/plain")))
         assertFailsWith<JayoException> {
             client.newCall(request2).execute()
         }.also { expected ->
@@ -1456,7 +1456,7 @@ class CallTest {
         assertThat(response1.body.string()).isEqualTo("abc")
         val request2 = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("body!".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("body!", MediaType.get("text/plain")))
         val response2 = client.newCall(request2).execute()
         assertThat(response2.body.string()).isEqualTo("def")
         val get = server.takeRequest()
@@ -1892,7 +1892,7 @@ class CallTest {
                 .newCall(
                     ClientRequest.builder()
                         .url(server.url("/page1").toJayo())
-                        .post("Request Body".toRequestBody("text/plain".toMediaType()))
+                        .post(ClientRequestBody.create("Request Body", MediaType.get("text/plain")))
                 ).execute()
         assertThat(response.body.string()).isEqualTo("Page 2")
         val page1 = server.takeRequest()
@@ -1950,7 +1950,7 @@ class CallTest {
         server.enqueue(MockResponse(body = "Body"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("Hello".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("Hello", MediaType.get("text/plain")))
         val response = client.newCall(request).execute()
         assertThat(response.body.string()).isEqualTo("Body")
         val request1 = server.takeRequest()
@@ -2154,7 +2154,7 @@ class CallTest {
                         .url(server.url("/page1").toJayo())
                         .method(
                             "PROPFIND",
-                            "Request Body".toRequestBody("text/plain".toMediaType())
+                            ClientRequestBody.create("Request Body", MediaType.get("text/plain"))
                         )
                 ).execute()
 
@@ -2931,7 +2931,7 @@ class CallTest {
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
             .header("Expect", "100-continue")
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertSuccessful()
@@ -2944,7 +2944,7 @@ class CallTest {
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
             .header("Expect", "100-continue")
-            .post("".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertSuccessful()
@@ -2968,7 +2968,7 @@ class CallTest {
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
             .header("Expect", "100-continue")
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         val call = client.newCall(request)
         assertFailsWith<JayoTimeoutException> {
             call.execute()
@@ -2994,7 +2994,7 @@ class CallTest {
         )
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertSuccessful()
@@ -3022,7 +3022,7 @@ class CallTest {
         )
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertSuccessful()
@@ -3050,7 +3050,7 @@ class CallTest {
 
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         executeSynchronously(request).assertCode(200).assertSuccessful()
         val recordedRequest = server.takeRequest()
         assertThat(recordedRequest.body?.utf8()).isEqualTo("abc")
@@ -3075,7 +3075,7 @@ class CallTest {
         )
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertSuccessful()
@@ -3106,7 +3106,7 @@ class CallTest {
         )
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         executeSynchronously(request)
             .assertCode(200)
             .assertSuccessful()
@@ -3125,7 +3125,7 @@ class CallTest {
         server.enqueue(MockResponse(code = 100))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("abc".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         val call = client.newCall(request)
         assertFailsWith<JayoTimeoutException> {
             call.execute()
@@ -3157,7 +3157,7 @@ class CallTest {
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
                 .header("Expect", "100-continue")
-                .post("abc".toRequestBody("text/plain".toMediaType()))
+                .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         )
         executeSynchronously(ClientRequest.get(server.url("/").toJayo()))
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(0)
@@ -3181,7 +3181,7 @@ class CallTest {
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
                 .header("Expect", "100-continue")
-                .post("abc".toRequestBody("text/plain".toMediaType()))
+                .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         )
         executeSynchronously(ClientRequest.get(server.url("/").toJayo()))
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(0)
@@ -3197,7 +3197,7 @@ class CallTest {
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
                 .header("Expect", "100-continue")
-                .post("abc".toRequestBody("text/plain".toMediaType()))
+                .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         )
         executeSynchronously(ClientRequest.get(server.url("/").toJayo()))
         assertThat(server.takeRequest().exchangeIndex).isEqualTo(0)
@@ -4085,7 +4085,7 @@ class CallTest {
         val buffer = ByteArray(writeSize)
         Arrays.fill(buffer, 'x'.code.toByte())
         return object : ClientRequestBody {
-            override fun contentType() = "text/plain; charset=utf-8".toMediaType()
+            override fun contentType() = MediaType.get("text/plain; charset=utf-8")
 
             override fun contentByteSize(): Long = if (chunked) -1L else size
 
@@ -4249,7 +4249,7 @@ class CallTest {
         val called = AtomicInteger(0)
         val body: ClientRequestBody =
             object : ClientRequestBody {
-                override fun contentType(): MediaType = "application/octet-stream".toMediaType()
+                override fun contentType(): MediaType = MediaType.get("application/octet-stream")
 
                 override fun contentByteSize(): Long = -1L
 
@@ -4422,7 +4422,7 @@ class CallTest {
                         }
                     response
                         .newBuilder()
-                        .body(Jayo.buffer(closeTrackingSource).asResponseBody())
+                        .body(ClientResponseBody.create(Jayo.buffer(closeTrackingSource)))
                         .build()
                 }.build()
         executeSynchronously("/").assertFailure("Canceled")
@@ -4454,7 +4454,7 @@ class CallTest {
         val response = call.execute()
         assertThat(response.body.string()).isEqualTo("this is the redirect target")
         assertThat(response.priorResponse?.body?.contentType())
-            .isEqualTo("text/plain; charset=UTF-8".toMediaType())
+            .isEqualTo(MediaType.get("text/plain; charset=UTF-8"))
         assertFailsWith<IllegalStateException> {
             response.priorResponse?.body?.string()
         }.also { expected ->

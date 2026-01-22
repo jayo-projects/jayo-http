@@ -22,7 +22,6 @@
 package jayo.http.internal
 
 import jayo.Buffer
-import jayo.JayoClosedResourceException
 import jayo.RawReader
 import jayo.buffered
 import jayo.bytestring.ByteString.EMPTY
@@ -35,7 +34,7 @@ import kotlin.test.assertFailsWith
 class ClientResponseTest {
     @Test
     fun testEmptyByDefaultIfTrailersNotSet() {
-        val response = newResponse("".toResponseBody())
+        val response = newResponse(ClientResponseBody.create(""))
 
         assertThat(response.trailers()).isEmpty()
     }
@@ -43,7 +42,7 @@ class ClientResponseTest {
     @Test
     fun worksIfTrailersSet() {
         val response =
-            newResponse("".toResponseBody()) {
+            newResponse(ClientResponseBody.create("")) {
                 trailers { Headers.of("a", "b") }
             }
 
@@ -139,7 +138,7 @@ class ClientResponseTest {
                     return data.readAtMostTo(sink, byteCount)
                 }
             }
-        return reader.buffered().asResponseBody(null, -1)
+        return ClientResponseBody.create(reader.buffered(), -1)
     }
 
     private fun newResponse(

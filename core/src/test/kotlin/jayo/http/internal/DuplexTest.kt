@@ -695,7 +695,7 @@ class DuplexTest {
                 .url(server.url("/").toJayo())
                 .post(
                     DelayedRequestBody(
-                        "hello".toRequestBody(null),
+                        ClientRequestBody.create("hello"),
                         Duration.ofMillis(750)
                     )
                 )
@@ -726,7 +726,7 @@ class DuplexTest {
                 .url(server.url("/").toJayo())
                 .post(
                     DelayedRequestBody(
-                        "hello".toRequestBody(null),
+                        ClientRequestBody.create("hello"),
                         Duration.ofMillis(750)
                     )
                 )
@@ -760,7 +760,7 @@ class DuplexTest {
                 .url(server.url("/").toJayo())
                 .post(
                     DelayedRequestBody(
-                        "hello".toRequestBody(null),
+                        ClientRequestBody.create("hello"),
                         Duration.ofMillis(750)
                     )
                 )
@@ -793,7 +793,7 @@ class DuplexTest {
                 .url(server.url("/").toJayo())
                 .post(
                     DelayedRequestBody(
-                        "hello".toRequestBody(null),
+                        ClientRequestBody.create("hello"),
                         Duration.ofMillis(750)
                     )
                 )

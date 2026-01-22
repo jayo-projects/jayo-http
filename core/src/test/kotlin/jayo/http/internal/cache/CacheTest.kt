@@ -495,7 +495,7 @@ class CacheTest {
         val request1 = ClientRequest.builder()
             .url(url.toJayo())
             .cacheUrlOverride(url.newBuilder().addQueryParameter("body", "foo").build().toJayo())
-            .query("foo".toRequestBody())
+            .query(ClientRequestBody.create("foo"))
         val response1 = client.newCall(request1).execute()
         assertThat(response1.body.string()).isEqualTo("ABC")
 
@@ -503,14 +503,14 @@ class CacheTest {
         val request2 = ClientRequest.builder()
             .url(url.toJayo())
             .cacheUrlOverride(url.newBuilder().addQueryParameter("body", "bar").build().toJayo())
-            .query("bar".toRequestBody())
+            .query(ClientRequestBody.create("bar"))
         val response2 = client.newCall(request2).execute()
         assertThat(response2.body.string()).isEqualTo("DEF")
 
         // Third QUERY request with body "bar" but not cached
         val request3 = ClientRequest.builder()
             .url(url.toJayo())
-            .query("bar".toRequestBody())
+            .query(ClientRequestBody.create("bar"))
         val response3 = client.newCall(request3).execute()
         assertThat(response3.body.string()).isEqualTo("DEFa")
 
@@ -551,7 +551,7 @@ class CacheTest {
         val response1 = client.newCall(request1).execute()
         assertThat(response1.body.string()).isEqualTo("ABC1")
 
-        // QUERY request with body "foo" again, should not be cached
+        // QUERY request with body "foo" again should not be cached
         val request2 = ClientRequest.builder()
             .url(url.toJayo())
             .query(body.toOneShotRequestBody())
@@ -567,7 +567,7 @@ class CacheTest {
         object : ClientRequestBody {
             override fun isOneShot(): Boolean = true
 
-            override fun contentType(): MediaType? = "application/text-plain".toMediaTypeOrNull()
+            override fun contentType(): MediaType = MediaType.get("application/text-plain")
 
             override fun contentByteSize(): Long = -1L
 
@@ -1223,7 +1223,7 @@ class CacheTest {
             requestMethod == "PUT" ||
             requestMethod == "QUERY"
         ) {
-            "foo".toRequestBody("text/plain".toMediaType())
+            ClientRequestBody.create("foo", MediaType.get("text/plain"))
         } else {
             null
         }
@@ -1340,7 +1340,7 @@ class CacheTest {
         assertThat(get(url).body.string()).isEqualTo("A")
         val request = ClientRequest.builder()
             .url(url)
-            .put("foo".toRequestBody("text/plain".toMediaType()))
+            .put(ClientRequestBody.create("foo", MediaType.get("text/plain")))
         val invalidate = client.newCall(request).execute()
         assertThat(invalidate.body.string()).isEqualTo("")
         assertThat(get(url).body.string()).isEqualTo("C")
@@ -3462,7 +3462,7 @@ class CacheTest {
         val request = ClientRequest.builder()
             .url(url)
             .cacheUrlOverride(cacheUrlOverride)
-            .method("POST", "XYZ".toRequestBody())
+            .method("POST", ClientRequestBody.create("XYZ"))
 
         val response = testBasicCachingRules(request)
 

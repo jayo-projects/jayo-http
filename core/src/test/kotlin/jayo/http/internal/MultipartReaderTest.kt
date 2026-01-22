@@ -23,12 +23,10 @@ package jayo.http.internal
 
 import jayo.*
 import jayo.http.ClientRequestBody
+import jayo.http.ClientResponseBody
 import jayo.http.Headers
+import jayo.http.MediaType
 import jayo.http.MultipartBody
-import jayo.http.toMediaType
-import jayo.http.toMediaTypeOrNull
-import jayo.http.toRequestBody
-import jayo.http.toResponseBody
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
@@ -99,9 +97,7 @@ class MultipartReaderTest {
                 .replace("\n", "\r\n")
 
         val responseBody =
-            multipart.toResponseBody(
-                "application/multipart; boundary=\"simple boundary\"".toMediaType(),
-            )
+            ClientResponseBody.create(multipart, MediaType.get("application/multipart; boundary=\"simple boundary\""))
 
         val parts = RealMultipartReader(responseBody)
         assertThat(parts.boundary).isEqualTo("simple boundary")
@@ -565,9 +561,9 @@ class MultipartReaderTest {
             MultipartBody.builder()
                 .boundary("boundary")
                 .type(MultipartBody.PARALLEL)
-                .addPart("Quick".toRequestBody("text/plain".toMediaType()))
+                .addPart(ClientRequestBody.create("Quick", MediaType.get("text/plain")))
                 .addFormDataPart("color", "Brown")
-                .addFormDataPart("animal", "fox.txt", "Fox".toRequestBody())
+                .addFormDataPart("animal", "fox.txt", ClientRequestBody.create("Fox"))
                 .build()
 
         val bodyContent = Buffer()
@@ -617,7 +613,7 @@ class MultipartReaderTest {
                 .addPart(
                     Headers.of("header-name", "header-value"),
                     object : ClientRequestBody {
-                        override fun contentType() = "application/octet-stream".toMediaTypeOrNull()
+                        override fun contentType() = MediaType.get("application/octet-stream")
 
                         override fun contentByteSize() = 1024L * 1024L * 100L
 
