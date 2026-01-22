@@ -22,12 +22,15 @@
 package jayo.http.recipes.kt
 
 import jayo.*
-import jayo.http.*
+import jayo.http.ClientRequest
+import jayo.http.ClientRequestBody
+import jayo.http.JayoHttpClient
+import jayo.http.MediaType
 import java.io.File
 
 class UploadProgress {
     companion object {
-        private val MEDIA_TYPE_TXT = "text/plain; charset=utf-8".toMediaType()
+        private val MEDIA_TYPE_TXT = MediaType.get("text/plain; charset=utf-8")
     }
 
     private val client = JayoHttpClient()
@@ -62,7 +65,7 @@ class UploadProgress {
             }
 
         val file = File("samples/src/main/resources/jayo-http.txt")
-        val requestBody: ClientRequestBody = file.asRequestBody(MEDIA_TYPE_TXT)
+        val requestBody = ClientRequestBody.create(file, MEDIA_TYPE_TXT)
 
         val request = ClientRequest.builder()
             .url("https://httpbin.org/anything")

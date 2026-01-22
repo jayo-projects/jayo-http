@@ -118,7 +118,11 @@ class HttpLoggingInterceptorTest {
     fun basicPost() {
         setLevel(Level.BASIC)
         server.enqueue(MockResponse())
-        client.newCall(request().post("Hi?".toRequestBody(PLAIN))).execute()
+        client.newCall(
+            request()
+                .post(ClientRequestBody.create("Hi?", PLAIN))
+        )
+            .execute()
         applicationLogs
             .assertLogEqual("--> POST $url (3-byte body)")
             .assertLogMatch(Regex("""<-- 200 OK $url \(\d+ms, 0-byte body\)"""))
@@ -203,7 +207,7 @@ class HttpLoggingInterceptorTest {
     fun headersPost() {
         setLevel(Level.HEADERS)
         server.enqueue(MockResponse())
-        val request = request().post("Hi?".toRequestBody(PLAIN))
+        val request = request().post(ClientRequestBody.create("Hi?", PLAIN))
         val response = client.newCall(request).execute()
         response.body.close()
         applicationLogs
@@ -234,7 +238,7 @@ class HttpLoggingInterceptorTest {
     fun headersPostNoContentType() {
         setLevel(Level.HEADERS)
         server.enqueue(MockResponse())
-        val request = request().post("Hi?".toRequestBody(null))
+        val request = request().post(ClientRequestBody.create("Hi?"))
         val response = client.newCall(request).execute()
         response.body.close()
         applicationLogs
@@ -313,7 +317,7 @@ class HttpLoggingInterceptorTest {
                 )
             }
         server.enqueue(MockResponse())
-        client.newCall(request().post("Hi?".toRequestBody(PLAIN)))
+        client.newCall(request().post(ClientRequestBody.create("Hi?", PLAIN)))
             .execute()
         applicationLogs
             .assertLogEqual("--> POST $url")
@@ -444,7 +448,7 @@ class HttpLoggingInterceptorTest {
     fun bodyPost() {
         setLevel(Level.BODY)
         server.enqueue(MockResponse())
-        val request = request().post("Hi?".toRequestBody(PLAIN))
+        val request = request().post(ClientRequestBody.create("Hi?", PLAIN))
         val response = client.newCall(request).execute()
         response.body.close()
         applicationLogs
@@ -566,7 +570,7 @@ class HttpLoggingInterceptorTest {
                 .newCall(
                     request()
                         .gzip(true)
-                        .post("Uncompressed".toRequestBody()),
+                        .post(ClientRequestBody.create("Uncompressed")),
                 ).execute()
         val responseBody = response.body
         assertThat(responseBody.string()).isEqualTo("Uncompressed")
@@ -1196,6 +1200,6 @@ class HttpLoggingInterceptorTest {
     }
 
     companion object {
-        private val PLAIN = "text/plain; charset=utf-8".toMediaType()
+        private val PLAIN = MediaType.get("text/plain; charset=utf-8")
     }
 }

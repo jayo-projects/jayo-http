@@ -26,7 +26,7 @@ import jayo.Writer
 import jayo.http.ClientRequest
 import jayo.http.ClientRequestBody
 import jayo.http.JayoHttpClient
-import jayo.http.toMediaType
+import jayo.http.MediaType
 
 class PostStreaming {
     private val client = JayoHttpClient()
@@ -70,7 +70,7 @@ class PostStreaming {
     }
 
     companion object {
-        val MEDIA_TYPE_MARKDOWN = "text/x-markdown; charset=utf-8".toMediaType()
+        val MEDIA_TYPE_MARKDOWN = MediaType.get("text/x-markdown; charset=utf-8")
     }
 }
 

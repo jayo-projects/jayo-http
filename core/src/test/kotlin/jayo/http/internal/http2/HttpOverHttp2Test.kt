@@ -218,7 +218,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
                     .url(server.url("/foo").toJayo())
                     .post(
                         object : ClientRequestBody {
-                            override fun contentType(): MediaType = "text/plain; charset=utf-8".toMediaType()
+                            override fun contentType(): MediaType = MediaType.get("text/plain; charset=utf-8")
                             override fun contentByteSize(): Long = -1L
 
                             override fun writeTo(writer: Writer) {
@@ -245,7 +245,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
                     .url(server.url("/foo").toJayo())
                     .post(
                         object : ClientRequestBody {
-                            override fun contentType(): MediaType = "text/plain; charset=utf-8".toMediaType()
+                            override fun contentType(): MediaType = MediaType.get("text/plain; charset=utf-8")
 
                             override fun contentByteSize(): Long = postBytes.size.toLong()
 
@@ -273,7 +273,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
                     .url(server.url("/foo").toJayo())
                     .post(
                         object : ClientRequestBody {
-                            override fun contentType(): MediaType = "text/plain; charset=utf-8".toMediaType()
+                            override fun contentType(): MediaType = MediaType.get("text/plain; charset=utf-8")
 
                             override fun contentByteSize(): Long = postBytes.size.toLong()
 
@@ -1924,7 +1924,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
                 ClientRequest.builder()
                     .url(server.url("/").toJayo())
                     .post(object : ClientRequestBody {
-                        override fun contentType() = "text/plain; charset=utf-8".toMediaType()
+                        override fun contentType() = MediaType.get("text/plain; charset=utf-8")
 
                         override fun contentByteSize() = -1L
 

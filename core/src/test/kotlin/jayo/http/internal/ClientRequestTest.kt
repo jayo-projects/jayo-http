@@ -39,7 +39,7 @@ class ClientRequestTest {
     @Test
     fun kotlinBuilderPut() {
         val httpUrl = "https://example.com/".toHttpUrl()
-        val body = "hello".toRequestBody()
+        val body = ClientRequestBody.create("hello")
         val httpHeaders = Headers.of("User-Agent", "RequestTest")
         val request = ClientRequest.builder().build {
             url = httpUrl
@@ -69,7 +69,7 @@ class ClientRequestTest {
     @Test
     fun kotlinBuilderPost() {
         val httpUrl = "https://example.com/".toHttpUrl()
-        val body = "hello".toRequestBody()
+        val body = ClientRequestBody.create("hello")
         val httpHeaders = Headers.of("User-Agent", "RequestTest")
         val request = ClientRequest.builder().build {
             url = httpUrl
@@ -99,7 +99,7 @@ class ClientRequestTest {
     @Test
     fun kotlinBuilderDeleteWithBody() {
         val httpUrl = "https://example.com/".toHttpUrl()
-        val body = "hello".toRequestBody()
+        val body = ClientRequestBody.create("hello")
         val httpHeaders = Headers.of("User-Agent", "RequestTest")
         val request = ClientRequest.builder().build {
             url = httpUrl
@@ -114,8 +114,8 @@ class ClientRequestTest {
 
     @Test
     fun string() {
-        val contentType = "text/plain; charset=utf-8".toMediaType()
-        val body = "abc".toByteArray().toRequestBody(contentType)
+        val contentType = MediaType.get("text/plain; charset=utf-8")
+        val body = ClientRequestBody.create("abc".toByteArray(), contentType)
         assertThat(body.contentType()).isEqualTo(contentType)
         assertThat(body.contentByteSize()).isEqualTo(3)
         assertThat(bodyToHex(body)).isEqualTo("616263")
@@ -126,17 +126,17 @@ class ClientRequestTest {
 
     @Test
     fun stringWithDefaultCharsetAdded() {
-        val contentType = "text/plain".toMediaType()
-        val body = "\u0800".toRequestBody(contentType)
-        assertThat(body.contentType()).isEqualTo("text/plain; charset=utf-8".toMediaType())
+        val contentType = MediaType.get("text/plain")
+        val body = ClientRequestBody.create("\u0800", contentType)
+        assertThat(body.contentType()).isEqualTo(MediaType.get("text/plain; charset=utf-8"))
         assertThat(body.contentByteSize()).isEqualTo(3)
         assertThat(bodyToHex(body)).isEqualTo("e0a080")
     }
 
     @Test
     fun stringWithNonDefaultCharsetSpecified() {
-        val contentType = "text/plain; charset=utf-16be".toMediaType()
-        val body = "\u0800".toRequestBody(contentType)
+        val contentType = MediaType.get("text/plain; charset=utf-16be")
+        val body = ClientRequestBody.create("\u0800", contentType)
         assertThat(body.contentType()).isEqualTo(contentType)
         assertThat(body.contentByteSize()).isEqualTo(2)
         assertThat(bodyToHex(body)).isEqualTo("0800")
@@ -144,8 +144,8 @@ class ClientRequestTest {
 
     @Test
     fun byteArray() {
-        val contentType = "text/plain".toMediaType()
-        val body = "abc".toByteArray().toRequestBody(contentType)
+        val contentType = MediaType.get("text/plain")
+        val body = ClientRequestBody.create("abc".toByteArray(), contentType)
         assertThat(body.contentType()).isEqualTo(contentType)
         assertThat(body.contentByteSize()).isEqualTo(3)
         assertThat(bodyToHex(body)).isEqualTo("616263")
@@ -155,8 +155,8 @@ class ClientRequestTest {
 
     @Test
     fun byteArrayRange() {
-        val contentType = "text/plain".toMediaType()
-        val body = ".abcd".toByteArray().toRequestBody(contentType, 1, 3)
+        val contentType = MediaType.get("text/plain")
+        val body = ClientRequestBody.create(".abcd".toByteArray(), contentType, 1, 3)
         assertThat(body.contentType()).isEqualTo(contentType)
         assertThat(body.contentByteSize()).isEqualTo(3)
         assertThat(bodyToHex(body)).isEqualTo("616263")
@@ -166,8 +166,8 @@ class ClientRequestTest {
 
     @Test
     fun byteString() {
-        val contentType = "text/plain".toMediaType()
-        val body = "Hello".encodeToByteString().toRequestBody(contentType)
+        val contentType = MediaType.get("text/plain")
+        val body = ClientRequestBody.create("Hello".encodeToByteString(), contentType)
         assertThat(body.contentType()).isEqualTo(contentType)
         assertThat(body.contentByteSize()).isEqualTo(5)
         assertThat(bodyToHex(body)).isEqualTo("48656c6c6f")
@@ -181,8 +181,8 @@ class ClientRequestTest {
         val writer = FileWriter(file)
         writer.write("abc")
         writer.close()
-        val contentType = "text/plain".toMediaType()
-        val body = file.asRequestBody(contentType)
+        val contentType = MediaType.get("text/plain")
+        val body = ClientRequestBody.create(file, contentType)
         assertThat(body.contentType()).isEqualTo(contentType)
         assertThat(body.contentByteSize()).isEqualTo(3)
         assertThat(bodyToHex(body)).isEqualTo("616263")
@@ -193,8 +193,8 @@ class ClientRequestTest {
     /** Common verbs used for apis such as GitHub, AWS, and Google Cloud.  */
     @Test
     fun crudVerbs() {
-        val contentType = "application/json".toMediaType()
-        val body = "{}".toRequestBody(contentType)
+        val contentType = MediaType.get("application/json")
+        val body = ClientRequestBody.create("{}", contentType)
 
         val get = ClientRequest.builder().url("http://localhost/api").get()
         assertThat(get.method).isEqualTo("GET")
@@ -355,8 +355,8 @@ class ClientRequestTest {
 
     @Test
     fun gzip() {
-        val mediaType = "text/plain; charset=utf-8".toMediaType()
-        val originalBody = "This is the original message".toRequestBody(mediaType)
+        val mediaType = MediaType.get("text/plain; charset=utf-8")
+        val originalBody = ClientRequestBody.create("This is the original message", mediaType)
         assertThat(originalBody.contentByteSize()).isEqualTo(28L)
         assertThat(originalBody.contentType()).isEqualTo(mediaType)
 
@@ -394,7 +394,7 @@ class ClientRequestTest {
                 .url("https://example.com/")
                 .addHeader("Content-Encoding", "deflate")
                 .gzip(true)
-                .post("This is the original message".toRequestBody())
+                .post(ClientRequestBody.create("This is the original message"))
         }.also {
             assertThat(it).hasMessage("Content-Encoding already set: deflate")
         }
@@ -406,7 +406,7 @@ class ClientRequestTest {
             .url("https://example.com/")
             .gzip(true)
             .gzip(true)
-            .post("This is the original message".toRequestBody())
+            .post(ClientRequestBody.create("This is the original message"))
     }
 
     @Test
@@ -429,7 +429,7 @@ class ClientRequestTest {
 
     @Test
     fun curlPostWithBody() {
-        val body = "{\"key\":\"value\"}".toRequestBody("application/json".toMediaType())
+        val body = ClientRequestBody.create("{\"key\":\"value\"}", MediaType.get("application/json"))
 
         val request =
             ClientRequest.builder()
@@ -450,7 +450,7 @@ class ClientRequestTest {
 
     @Test
     fun bodyContentTypeTakesPrecedence() {
-        val body = "{\"key\":\"value\"}".toRequestBody("application/json".toMediaType())
+        val body = ClientRequestBody.create("{\"key\":\"value\"}", MediaType.get("application/json"))
 
         val request =
             ClientRequest.builder()
@@ -470,7 +470,7 @@ class ClientRequestTest {
 
     @Test
     fun requestContentTypeIsFallback() {
-        val body = "{\"key\":\"value\"}".toRequestBody(contentType = null)
+        val body = ClientRequestBody.create("{\"key\":\"value\"}")
 
         val request =
             ClientRequest.builder()
@@ -491,7 +491,7 @@ class ClientRequestTest {
     /** Put is not the default method so `-X 'PUT'` is included. */
     @Test
     fun curlPutWithBody() {
-        val body = "{\"key\":\"value\"}".toRequestBody("application/json".toMediaType())
+        val body = ClientRequestBody.create("{\"key\":\"value\"}", MediaType.get("application/json"))
 
         val request =
             ClientRequest.builder()
@@ -527,7 +527,7 @@ class ClientRequestTest {
       |
       """.trimMargin()
 
-        val body = jsonBody.toRequestBody("application/json".toMediaType())
+        val body = ClientRequestBody.create(jsonBody, MediaType.get("application/json"))
 
         val request =
             ClientRequest.builder()
@@ -558,7 +558,7 @@ class ClientRequestTest {
     @Test
     fun curlPostWithBinaryBody() {
         val binaryData = "00010203".decodeHex()
-        val body = binaryData.toRequestBody("application/octet-stream".toMediaType())
+        val body = ClientRequestBody.create(binaryData, MediaType.get("application/octet-stream"))
 
         val request =
             ClientRequest.builder()
@@ -580,7 +580,7 @@ class ClientRequestTest {
     @Test
     fun curlPostWithBinaryBodyOmitted() {
         val binaryData = "1020".decodeHex()
-        val body = binaryData.toRequestBody("application/octet-stream".toMediaType())
+        val body = ClientRequestBody.create(binaryData, MediaType.get("application/octet-stream"))
 
         val request =
             ClientRequest.builder()

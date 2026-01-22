@@ -1403,7 +1403,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         private val chunk: ByteArray = ByteArray(1024 * 1024)
         var je: JayoException? = null
 
-        override fun contentType(): MediaType = "text/plain".toMediaType()
+        override fun contentType(): MediaType = MediaType.get("text/plain")
 
         override fun contentByteSize(): Long = chunk.size * 8L
 
@@ -1428,7 +1428,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
     fun requestBodyMultipleFailuresReportedOnlyOnce() {
         val requestBody: ClientRequestBody =
             object : ClientRequestBody {
-                override fun contentType() = "text/plain".toMediaType()
+                override fun contentType() = MediaType.get("text/plain")
 
                 override fun contentByteSize(): Long = 1024 * 1024 * 256
 
@@ -1484,7 +1484,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         enableTlsWithTunnel()
         server.protocols = listOf(okhttp3.Protocol.HTTP_1_1)
         requestBodySuccess(
-            "Hello".toRequestBody("text/plain".toMediaType()),
+            ClientRequestBody.create("Hello", MediaType.get("text/plain")),
             CoreMatchers.equalTo(5L),
             CoreMatchers.equalTo(19L),
         )
@@ -1495,7 +1495,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         enableTlsWithTunnel()
         server.protocols = listOf(okhttp3.Protocol.HTTP_2, okhttp3.Protocol.HTTP_1_1)
         requestBodySuccess(
-            "Hello".toRequestBody("text/plain".toMediaType()),
+            ClientRequestBody.create("Hello", MediaType.get("text/plain")),
             CoreMatchers.equalTo(5L),
             CoreMatchers.equalTo(19L),
         )
@@ -1504,7 +1504,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
     @Test
     fun requestBodySuccessHttp() {
         requestBodySuccess(
-            "Hello".toRequestBody("text/plain".toMediaType()),
+            ClientRequestBody.create("Hello", MediaType.get("text/plain")),
             CoreMatchers.equalTo(5L),
             CoreMatchers.equalTo(19L),
         )
@@ -1514,7 +1514,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
     fun requestBodySuccessStreaming() {
         val requestBody: ClientRequestBody =
             object : ClientRequestBody {
-                override fun contentType() = "text/plain".toMediaType()
+                override fun contentType() = MediaType.get("text/plain")
 
                 override fun contentByteSize(): Long = -1L
 
@@ -1529,7 +1529,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
     @Test
     fun requestBodySuccessEmpty() {
         requestBodySuccess(
-            "".toRequestBody("text/plain".toMediaType()),
+            ClientRequestBody.create("", MediaType.get("text/plain")),
             CoreMatchers.equalTo(0L),
             CoreMatchers.equalTo(19L),
         )
@@ -1885,7 +1885,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
                         .protocol(Protocol.HTTP_1_1)
                         .statusCode(200)
                         .statusMessage("OK")
-                        .body("a".toResponseBody(null))
+                        .body(ClientResponseBody.create("a"))
                         .build()
                 }.build()
         val call = client.newCallWithListener(ClientRequest.builder().url(server.url("/").toJayo()).get())
@@ -1908,7 +1908,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
                 .header("Expect", "100-continue")
-                .post("abc".toRequestBody("text/plain".toMediaType()))
+                .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         val call = client.newCallWithListener(request)
         call.execute()
         assertThat(eventRecorder.recordedEventTypes()).containsExactly(
@@ -1947,7 +1947,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
             ClientRequest.builder()
                 .url(server.url("/").toJayo())
                 .header("Expect", "100-continue")
-                .post("abc".toRequestBody("text/plain".toMediaType()))
+                .post(ClientRequestBody.create("abc", MediaType.get("text/plain")))
         val call = client.newCallWithListener(request)
         call
             .execute()

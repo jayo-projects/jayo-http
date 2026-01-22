@@ -37,11 +37,6 @@ import kotlin.contracts.contract
 public fun String.toHttpUrl(): HttpUrl = HttpUrl.get(this)
 
 /**
- * @return a new [HttpUrl] representing `url` if it is a well-formed HTTP or HTTPS URL, or null if it isn't.
- */
-public fun String.toHttpUrlOrNull(): HttpUrl? = HttpUrl.parse(this)
-
-/**
  * @return an [HttpUrl] for this if its protocol is `http` or `https`, or null if it has any other protocol.
  */
 public fun URL.toHttpUrlOrNull(): HttpUrl? = HttpUrl.parse(this)

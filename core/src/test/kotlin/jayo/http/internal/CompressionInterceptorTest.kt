@@ -27,12 +27,11 @@ import jayo.RawWriter
 import jayo.buffered
 import jayo.http.ClientRequest
 import jayo.http.ClientResponse
+import jayo.http.ClientResponseBody
 import jayo.http.CompressionInterceptor
 import jayo.http.GzipDecompressionAlgorithm.Gzip
 import jayo.http.JayoHttpClientTestRule
-import jayo.http.asResponseBody
 import jayo.http.toHttpUrl
-import jayo.http.toResponseBody
 import jayo.tls.Protocol
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -57,7 +56,7 @@ class CompressionInterceptorTest {
                         .protocol(Protocol.HTTP_1_1)
                         .statusCode(200)
                         .statusMessage("OK")
-                        .body("Hello".toResponseBody())
+                        .body(ClientResponseBody.create("Hello"))
                         .header("Content-Encoding", "piedpiper")
                         .build()
                 }.build()
@@ -83,7 +82,7 @@ class CompressionInterceptorTest {
                         .protocol(Protocol.HTTP_1_1)
                         .statusCode(200)
                         .statusMessage("OK")
-                        .body(gzip("Hello").asResponseBody())
+                        .body(ClientResponseBody.create(gzip("Hello")))
                         .header("Content-Encoding", "gzip")
                         .build()
                 }.build()

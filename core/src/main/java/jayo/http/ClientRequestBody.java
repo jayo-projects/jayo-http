@@ -42,6 +42,7 @@ public interface ClientRequestBody {
      * @return a new request body that transmits {@code content} using UTF-8 charset.
      */
     static @NonNull ClientRequestBody create(final @NonNull String content) {
+        Objects.requireNonNull(content);
         return StandardClientRequestBodies.create(content, null);
     }
 
@@ -49,10 +50,9 @@ public interface ClientRequestBody {
      * @return a new request body that transmits {@code content}. If {@code contentType} lacks a charset, it will use
      * UTF-8.
      */
-    static @NonNull ClientRequestBody create(final @NonNull String content,
-                                             final @NonNull MediaType contentType) {
-        Objects.requireNonNull(contentType);
+    static @NonNull ClientRequestBody create(final @NonNull String content, final @NonNull MediaType contentType) {
         Objects.requireNonNull(content);
+        Objects.requireNonNull(contentType);
         return StandardClientRequestBodies.create(content, contentType);
     }
 
@@ -60,6 +60,7 @@ public interface ClientRequestBody {
      * @return a new request body that transmits {@code content} using UTF-8 charset.
      */
     static @NonNull ClientRequestBody create(final @NonNull ByteString content) {
+        Objects.requireNonNull(content);
         return StandardClientRequestBodies.create(content, null);
     }
 
@@ -67,10 +68,9 @@ public interface ClientRequestBody {
      * @return a new request body that transmits {@code content}. If {@code contentType} lacks a charset, it will use
      * UTF-8.
      */
-    static @NonNull ClientRequestBody create(final @NonNull ByteString content,
-                                             final @NonNull MediaType contentType) {
-        Objects.requireNonNull(contentType);
+    static @NonNull ClientRequestBody create(final @NonNull ByteString content, final @NonNull MediaType contentType) {
         Objects.requireNonNull(content);
+        Objects.requireNonNull(contentType);
         return StandardClientRequestBodies.create(content, contentType);
     }
 
@@ -86,8 +86,7 @@ public interface ClientRequestBody {
      * @return a new request body that transmits all bytes from {@code content}. If {@code contentType} lacks a charset,
      * it will use UTF-8.
      */
-    static @NonNull ClientRequestBody create(final byte @NonNull [] content,
-                                             final @NonNull MediaType contentType) {
+    static @NonNull ClientRequestBody create(final byte @NonNull [] content, final @NonNull MediaType contentType) {
         Objects.requireNonNull(content);
         Objects.requireNonNull(contentType);
         return create(content, contentType, 0, content.length);

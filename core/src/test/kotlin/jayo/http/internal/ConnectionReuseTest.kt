@@ -74,7 +74,7 @@ class ConnectionReuseTest {
         server.enqueue(MockResponse(body = "b"))
         val request = ClientRequest.builder()
             .url(server.url("/").toJayo())
-            .post("request body".toRequestBody("text/plain".toMediaType()))
+            .post(ClientRequestBody.create("request body", MediaType.get("text/plain")))
         assertConnectionReused(request, request)
     }
 
@@ -322,7 +322,7 @@ class ConnectionReuseTest {
                     responsesNotClosed.add(response)
                     response
                         .newBuilder()
-                        .body("unrelated response body!".toResponseBody(null))
+                        .body(ClientResponseBody.create("unrelated response body!"))
                         .build()
                 }.build()
         server.enqueue(

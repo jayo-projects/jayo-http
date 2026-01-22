@@ -23,7 +23,10 @@ package jayo.http.internal
 
 import jayo.Buffer
 import jayo.Writer
-import jayo.http.*
+import jayo.http.ClientRequestBody
+import jayo.http.Headers
+import jayo.http.MediaType
+import jayo.http.MultipartBody
 import jayo.utf8ByteSize
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -51,7 +54,7 @@ class MultipartBodyTest {
         val body =
             MultipartBody.builder()
                 .boundary("123")
-                .addPart("Hello, World!".toRequestBody())
+                .addPart(ClientRequestBody.create("Hello, World!"))
                 .build()
         assertThat(body.boundary).isEqualTo("123")
         assertThat(body.type).isEqualTo(MultipartBody.MIXED)
@@ -84,9 +87,9 @@ class MultipartBodyTest {
         val body =
             MultipartBody.builder()
                 .boundary("123")
-                .addPart("Quick".toRequestBody(null))
-                .addPart("Brown".toRequestBody(null))
-                .addPart("Fox".toRequestBody(null))
+                .addPart(ClientRequestBody.create("Quick"))
+                .addPart(ClientRequestBody.create("Brown"))
+                .addPart(ClientRequestBody.create("Fox"))
                 .build()
         assertThat(body.boundary).isEqualTo("123")
         assertThat(body.type).isEqualTo(MultipartBody.MIXED)
@@ -140,7 +143,10 @@ class MultipartBodyTest {
                         .builder().boundary("BbC04y")
                         .addPart(
                             Headers.of("Content-Disposition", "file; filename=\"file1.txt\""),
-                            "... contents of file1.txt ...".toRequestBody("text/plain".toMediaType()),
+                            ClientRequestBody.create(
+                                "... contents of file1.txt ...",
+                                MediaType.get("text/plain")
+                            ),
                         ).addPart(
                             Headers.of(
                                 "Content-Disposition",
@@ -148,9 +154,11 @@ class MultipartBodyTest {
                                 "Content-Transfer-Encoding",
                                 "binary",
                             ),
-                            "... contents of file2.gif ..."
-                                .toByteArray(Charsets.UTF_8)
-                                .toRequestBody("image/gif".toMediaType()),
+                            ClientRequestBody.create(
+                                "... contents of file2.gif ..."
+                                    .toByteArray(Charsets.UTF_8),
+                                MediaType.get("image/gif")
+                            ),
                         ).build(),
                 ).build()
         assertThat(body.boundary).isEqualTo("AaB03x")
@@ -197,7 +205,7 @@ class MultipartBodyTest {
                 .addFormDataPart(
                     "field with spaces",
                     "filename with spaces.txt",
-                    "okay".toRequestBody("text/plain; charset=utf-8".toMediaType()),
+                    ClientRequestBody.create("okay", MediaType.get("text/plain; charset=utf-8")),
                 ).addFormDataPart("field with \"", "\"")
                 .addFormDataPart("field with %22", "%22")
                 .addFormDataPart("field with \u007e", "Alpha")
@@ -238,9 +246,9 @@ class MultipartBodyTest {
         val body =
             MultipartBody
                 .builder().boundary("123")
-                .addPart("Quick".toRequestBody(null))
+                .addPart(ClientRequestBody.create("Quick"))
                 .addPart(StreamingBody("Brown"))
-                .addPart("Fox".toRequestBody(null))
+                .addPart(ClientRequestBody.create("Fox"))
                 .build()
         assertThat(body.boundary).isEqualTo("123")
         assertThat(body.type).isEqualTo(MultipartBody.MIXED)
@@ -259,7 +267,7 @@ class MultipartBodyTest {
         assertFailsWith<IllegalArgumentException> {
             multipart.addPart(
                 Headers.of("Content-Type", "text/plain"),
-                "Hello, World!".toRequestBody(null),
+                ClientRequestBody.create("Hello, World!"),
             )
         }
     }
@@ -270,7 +278,7 @@ class MultipartBodyTest {
         assertFailsWith<IllegalArgumentException> {
             multipart.addPart(
                 Headers.of("Content-Length", "13"),
-                "Hello, World!".toRequestBody(null),
+                ClientRequestBody.create("Hello, World!"),
             )
         }
     }
@@ -279,7 +287,7 @@ class MultipartBodyTest {
     fun partAccessors() {
         val body =
             MultipartBody.builder()
-                .addPart(Headers.of("Foo", "Bar"), "Baz".toRequestBody(null))
+                .addPart(Headers.of("Foo", "Bar"), ClientRequestBody.create("Baz"))
                 .build()
         assertThat(body.size).isEqualTo(1)
         val part1Buffer = Buffer()
@@ -308,7 +316,7 @@ class MultipartBodyTest {
                 .addFormDataPart(
                     "attachment",
                     "resumé.pdf",
-                    "Jesse’s Resumé".toRequestBody("application/pdf".toMediaTypeOrNull()),
+                    ClientRequestBody.create("Jesse’s Resumé", MediaType.get("application/pdf")),
                 ).build()
         val buffer = Buffer()
         body.writeTo(buffer)
@@ -328,7 +336,7 @@ class MultipartBodyTest {
         val body =
             MultipartBody
                 .builder().boundary("123")
-                .addPart("Hello, World!".toRequestBody(null))
+                .addPart(ClientRequestBody.create("Hello, World!"))
                 .build()
 
         assertThat(body.isOneShot()).isEqualTo(false)

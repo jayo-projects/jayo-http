@@ -23,7 +23,6 @@
 package jayo.http.internal
 
 import jayo.http.MediaType
-import jayo.http.toMediaType
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,7 +37,7 @@ import kotlin.test.assertNull
 class MediaTypeTest {
     private fun MediaType.charsetName(): String? = this.charset()?.name()
 
-    private fun parse(string: String): MediaType = string.toMediaType()
+    private fun parse(string: String): MediaType = MediaType.get(string)
 
     private fun assertInvalid(
         string: String,
@@ -237,7 +236,7 @@ class MediaTypeTest {
 
     @Test
     fun testCharsetNameIsDoubleQuotedAndSingleQuotedAndroid() {
-        val mediaType = "text/plain;charset=\"'utf-8'\"".toMediaType()
+        val mediaType = MediaType.get("text/plain;charset=\"'utf-8'\"")
         assertNull(mediaType.charset())
     }
 
