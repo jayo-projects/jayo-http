@@ -29,7 +29,7 @@ class AsynchronousGet {
 
     fun run() {
         val request = ClientRequest.builder()
-            .url("https://raw.githubusercontent.com/jayo-projects/jayo-http/initial/samples/src/main/resources/jayo-http.txt")
+            .url("https://raw.githubusercontent.com/jayo-projects/jayo-http/main/samples/src/main/resources/jayo-http.txt")
             .get()
 
         client.newCall(request).enqueue(
@@ -51,7 +51,7 @@ class AsynchronousGet {
                         }
 
                         for (header in response.getHeaders()) {
-                            println(header.name + ": " + header.value);
+                            println(header.name + ": " + header.value)
                         }
 
                         println(response.body.string())
