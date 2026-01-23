@@ -29,7 +29,7 @@ public final class AsynchronousGet {
 
     public void run() {
         ClientRequest request = ClientRequest.builder()
-                .url("https://raw.githubusercontent.com/jayo-projects/jayo-http/initial/samples/src/main/resources/jayo-http.txt")
+                .url("https://raw.githubusercontent.com/jayo-projects/jayo-http/main/samples/src/main/resources/jayo-http.txt")
                 .get();
 
         client.newCall(request).enqueue(new Callback() {
