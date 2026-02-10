@@ -130,12 +130,12 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
     /**
      * Outgoing pongs in the order they should be written.
      */
-    private final Queue<ByteString> pongQueue = new ArrayDeque<>();
+    private final @NonNull Queue<@NonNull ByteString> pongQueue = new ArrayDeque<>();
 
     /**
      * Outgoing messages and close frames in the order they should be written.
      */
-    private final Queue<Object> messageAndCloseQueue = new ArrayDeque<>();
+    private final @NonNull Queue<@NonNull Object> messageAndCloseQueue = new ArrayDeque<>();
 
     /**
      * The total size in bytes of enqueued but not yet transmitted messages.
@@ -155,7 +155,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
     /**
      * The close reason from the peer, or null if this web socket has not yet read a close frame.
      */
-    private String receivedCloseReason = null;
+    private @Nullable String receivedCloseReason = null;
 
     /**
      * True if this web socket failed and the listener has been notified.
@@ -478,6 +478,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
         }
 
         if (sendOnClosed) {
+            assert reason != null;
             listener.onClosed(this, code, reason);
         }
 
@@ -762,6 +763,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
 
                 // We closed the writer: now both reader and writer are closed.
                 if (sendOnClosed) {
+                    assert receivedCloseReason != null;
                     listener.onClosed(this, receivedCloseCode, receivedCloseReason);
                 }
             } else {

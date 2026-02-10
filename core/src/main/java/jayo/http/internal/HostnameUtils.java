@@ -22,10 +22,16 @@
 package jayo.http.internal;
 
 import jayo.Buffer;
+import jayo.JayoException;
 import jayo.http.internal.idn.Punycode;
+import jayo.network.NetworkProtocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.text.Normalizer;
 import java.util.Arrays;
 
@@ -439,5 +445,31 @@ public final class HostnameUtils {
         return urlHost.endsWith(domain) &&
                 urlHost.charAt(urlHost.length() - domain.length() - 1) == '.' &&
                 !canParseAsIpAddress(urlHost);
+    }
+
+    static @NonNull InetAddress localHostAddress(final @Nullable NetworkProtocol networkProtocol) {
+        try {
+            if (networkProtocol != null) {
+                return localHostAddressByProtocol(networkProtocol);
+            } else {
+                return InetAddress.getLocalHost();
+            }
+        } catch (UnknownHostException uhe) {
+            throw JayoException.buildJayoException(uhe);
+        }
+    }
+
+    private static @NonNull InetAddress localHostAddressByProtocol(final @NonNull NetworkProtocol networkProtocol)
+            throws UnknownHostException {
+        assert networkProtocol != null;
+
+        final var inetAddresses = InetAddress.getAllByName("localhost");
+        final var expectedClass = (networkProtocol == NetworkProtocol.IPv6) ? Inet6Address.class : Inet4Address.class;
+        for (final var address : inetAddresses) {
+            if (expectedClass.isInstance(address)) {
+                return address;
+            }
+        }
+        throw new UnknownHostException(networkProtocol.name() + " localhost");
     }
 }
