@@ -34,6 +34,7 @@ import jayo.tls.TlsVersion.TLS_1_2
 import jayo.tls.TlsVersion.TLS_1_3
 import java.io.File
 import java.lang.ProcessBuilder.Redirect
+import java.time.Duration
 import java.util.logging.Handler
 import java.util.logging.Level
 import java.util.logging.LogRecord
@@ -136,7 +137,7 @@ class WireSharkListenerFactory(
     class WireSharkKeyLoggerListener(
         private val logFile: File,
         private val verbose: Boolean = false,
-    ) : EventListener() {
+    ) : EventListener {
         var random: String? = null
         lateinit var currentThread: Thread
 
@@ -326,7 +327,7 @@ class WiresharkExample(
             }
         } finally {
             client.connectionPool.evictAll()
-            client.dispatcher.executorService.shutdownNow()
+            client.dispatcher.shutdown(Duration.ZERO)
 
             if (launch == CommandLine) {
                 process?.destroyForcibly()

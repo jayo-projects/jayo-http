@@ -67,7 +67,7 @@ class CallTagsTest {
                 chain.proceed(chain.request())
             }.build()
 
-        val webSocket = client.newWebSocket(request, object : WebSocketListener() {}, Tag(UUID::class.java, uuidTag))
+        val webSocket = client.newWebSocket(request, object : WebSocketListener {}, Tag(UUID::class.java, uuidTag))
         assertThat(blockingQueue.take()).isSameAs(uuidTag)
         webSocket.close(1000, null)
     }

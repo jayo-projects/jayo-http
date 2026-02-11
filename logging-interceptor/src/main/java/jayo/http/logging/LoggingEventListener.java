@@ -34,7 +34,7 @@ import org.jspecify.annotations.NonNull;
  * The format of the logs created by this class should not be considered stable and may change slightly between
  * releases. If you need a stable logging format, use your own event listener.
  */
-public sealed abstract class LoggingEventListener extends EventListener permits RealLoggingEventListener {
+public sealed abstract class LoggingEventListener implements EventListener permits RealLoggingEventListener {
     public static final class Factory implements EventListener.Factory {
         private final HttpLoggingInterceptor.Logger logger;
 

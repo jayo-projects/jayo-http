@@ -25,40 +25,46 @@ import jayo.bytestring.ByteString;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-public abstract class WebSocketListener {
+public interface WebSocketListener {
+    /**
+     * Invoked when a web socket is enqueued to the dispatcher.
+     */
+    default void onEnqueued(final @NonNull Call call, @NonNull Dispatcher dispatcher) {
+    }
+
     /**
      * Invoked when a web socket has been accepted by the remote peer and may begin transmitting messages.
      */
-    public void onOpen(final @NonNull WebSocket webSocket, final @NonNull ClientResponse response) {
+    default void onOpen(final @NonNull WebSocket webSocket, final @NonNull ClientResponse response) {
     }
 
     /**
      * Invoked when a text (type {@code 0x1}) message has been received.
      */
-    public void onMessage(final @NonNull WebSocket webSocket, final @NonNull String text) {
+    default void onMessage(final @NonNull WebSocket webSocket, final @NonNull String text) {
     }
 
     /**
      * Invoked when a binary (type {@code 0x2}) message has been received.
      */
-    public void onMessage(final @NonNull WebSocket webSocket, final @NonNull ByteString bytes) {
+    default void onMessage(final @NonNull WebSocket webSocket, final @NonNull ByteString bytes) {
     }
 
     /**
      * Invoked when the remote peer has indicated that no more incoming messages will be transmitted.
      */
-    public void onClosing(final @NonNull WebSocket webSocket,
-                          final int code,
-                          final @NonNull String reason) {
+    default void onClosing(final @NonNull WebSocket webSocket,
+                           final int code,
+                           final @NonNull String reason) {
     }
 
     /**
      * Invoked when both peers have indicated that no more messages will be transmitted and the connection has been
      * successfully released. No further calls to this listener will be made.
      */
-    public void onClosed(final @NonNull WebSocket webSocket,
-                         final int code,
-                         final @NonNull String reason
+    default void onClosed(final @NonNull WebSocket webSocket,
+                          final int code,
+                          final @NonNull String reason
     ) {
     }
 
@@ -66,8 +72,8 @@ public abstract class WebSocketListener {
      * Invoked when a web socket has been closed due to an error reading from or writing to the network. Both outgoing
      * and incoming messages may have been lost. No further calls to this listener will be made.
      */
-    public void onFailure(final @NonNull WebSocket webSocket,
-                          final @NonNull Throwable t,
-                          final @Nullable ClientResponse response) {
+    default void onFailure(final @NonNull WebSocket webSocket,
+                           final @NonNull Throwable t,
+                           final @Nullable ClientResponse response) {
     }
 }

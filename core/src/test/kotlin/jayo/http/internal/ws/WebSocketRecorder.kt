@@ -31,7 +31,7 @@ import java.lang.System.Logger.Level.INFO
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
-class WebSocketRecorder(private val name: String) : WebSocketListener() {
+class WebSocketRecorder(private val name: String) : WebSocketListener {
     private val events = LinkedBlockingQueue<Any>()
     private var delegate: WebSocketListener? = null
 

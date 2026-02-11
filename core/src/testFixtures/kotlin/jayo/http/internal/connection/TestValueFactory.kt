@@ -1,12 +1,6 @@
 package jayo.http.internal.connection
 
-import jayo.http.Address
-import jayo.http.Authenticator
-import jayo.http.ClientRequest
-import jayo.http.ConnectionSpec
-import jayo.http.Dns
-import jayo.http.JayoHttpClient
-import jayo.http.Route
+import jayo.http.*
 import jayo.http.internal.RecordingJayoAuthenticator
 import jayo.network.NetworkServer
 import jayo.network.NetworkSocket
@@ -139,7 +133,6 @@ class TestValueFactory : AutoCloseable {
             false,
         )
         return RealRoutePlanner(
-            client.taskRunner,
             client.connectionPool as RealConnectionPool,
             client.networkSocketBuilder,
             client.pingInterval,

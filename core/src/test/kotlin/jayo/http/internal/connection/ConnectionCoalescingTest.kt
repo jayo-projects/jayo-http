@@ -174,7 +174,7 @@ class ConnectionCoalescingTest {
         val latch3 = CountDownLatch(1)
         val latch4 = CountDownLatch(1)
         val listener1: EventListener =
-            object : EventListener() {
+            object : EventListener {
                 override fun connectStart(
                     call: Call,
                     inetSocketAddress: InetSocketAddress,
@@ -197,7 +197,7 @@ class ConnectionCoalescingTest {
                 }
             }
         val request2Listener: EventListener =
-            object : EventListener() {
+            object : EventListener {
                 override fun connectStart(
                     call: Call,
                     inetSocketAddress: InetSocketAddress,
@@ -430,7 +430,7 @@ class ConnectionCoalescingTest {
         server.enqueue(MockResponse())
         val connectCount = AtomicInteger()
         val listener: EventListener =
-            object : EventListener() {
+            object : EventListener {
                 override fun connectStart(
                     call: Call,
                     inetSocketAddress: InetSocketAddress,

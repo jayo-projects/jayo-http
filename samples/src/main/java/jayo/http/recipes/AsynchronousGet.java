@@ -24,6 +24,8 @@ package jayo.http.recipes;
 import jayo.JayoException;
 import jayo.http.*;
 
+import java.time.Duration;
+
 public final class AsynchronousGet {
     private final JayoHttpClient client = JayoHttpClient.create();
 
@@ -54,6 +56,10 @@ public final class AsynchronousGet {
                 }
             }
         });
+
+        // Trigger shutdown of the dispatcher, leaving a few seconds for this asynchronous request to respond if the
+        // network is slow.
+        client.getDispatcher().shutdown(Duration.ofSeconds(5));
     }
 
     public static void main(String... args) {

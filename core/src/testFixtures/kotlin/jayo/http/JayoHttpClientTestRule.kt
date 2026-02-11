@@ -27,6 +27,7 @@ import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.core.AppenderBase
 import jayo.http.JayoHttpClientTestRule.Companion.plus
+import jayo.http.internal.Utils
 import jayo.http.internal.connection.ClientRuleEventListener
 import jayo.http.internal.connection.RealConnectionPool
 import jayo.http.testing.Flaky
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.extension.AfterEachCallback
 import org.junit.jupiter.api.extension.BeforeEachCallback
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.slf4j.LoggerFactory
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 
@@ -192,11 +194,11 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
     private fun ensureAllTaskQueuesIdle() {
         val entryTime = System.nanoTime()
 
-        for (queue in JayoHttpClient.DEFAULT_TASK_RUNNER.activeQueues()) {
+        for (queue in Utils.defaultTaskRunner().activeQueues()) { // todo
             // We wait at most 1 second, so we don't ever turn multiple lost threads into a test timeout failure.
             val waitTime = (entryTime + 1_000_000_000L - System.nanoTime())
             if (!queue.idleLatch().await(waitTime, TimeUnit.NANOSECONDS)) {
-                JayoHttpClient.DEFAULT_TASK_RUNNER.shutdown()
+                Utils.defaultTaskRunner().shutdown(Duration.ZERO)
                 fail<Unit>("Queue still active after 1000 ms")
             }
         }
@@ -214,7 +216,7 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
             initUncaughtException(throwable)
         }
 
-        taskQueuesWereIdle = JayoHttpClient.DEFAULT_TASK_RUNNER.activeQueues().isEmpty()
+        taskQueuesWereIdle = Utils.defaultTaskRunner().activeQueues().isEmpty()
 
         appender.start()
 
@@ -259,7 +261,7 @@ class JayoHttpClientTestRule : BeforeEachCallback, AfterEachCallback {
     }
 
     private fun releaseClient() {
-        testClient?.dispatcher?.executorService?.shutdown()
+        testClient?.dispatcher?.shutdown(Duration.ZERO)
     }
 
     private fun ExtensionContext.isFlaky(): Boolean =

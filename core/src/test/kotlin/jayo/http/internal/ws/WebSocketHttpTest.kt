@@ -30,7 +30,7 @@ import jayo.bytestring.encodeToByteString
 import jayo.http.*
 import jayo.http.internal.TestUtils.repeat
 import jayo.http.internal.UnreadableResponseBody
-import jayo.http.internal.connection.RealJayoHttpClient
+import jayo.http.internal.Utils
 import jayo.http.internal.toOkio
 import jayo.http.internal.ws.WebSocketProtocol.acceptHeader
 import jayo.http.testing.Flaky
@@ -163,7 +163,7 @@ class WebSocketHttpTest {
         )
         val e = kotlin.RuntimeException()
         clientListener.setNextEventDelegate(
-            object : WebSocketListener() {
+            object : WebSocketListener {
                 override fun onOpen(
                     webSocket: WebSocket,
                     response: ClientResponse,
@@ -192,7 +192,7 @@ class WebSocketHttpTest {
         )
         val e = kotlin.RuntimeException("boom")
         clientListener.setNextEventDelegate(
-            object : WebSocketListener() {
+            object : WebSocketListener {
                 override fun onFailure(
                     webSocket: WebSocket,
                     t: Throwable,
@@ -217,7 +217,7 @@ class WebSocketHttpTest {
         val server = serverListener.assertOpen()
         val e = kotlin.RuntimeException()
         clientListener.setNextEventDelegate(
-            object : WebSocketListener() {
+            object : WebSocketListener {
                 override fun onMessage(
                     webSocket: WebSocket,
                     text: String,
@@ -243,7 +243,7 @@ class WebSocketHttpTest {
         val server = serverListener.assertOpen()
         val e = kotlin.RuntimeException()
         clientListener.setNextEventDelegate(
-            object : WebSocketListener() {
+            object : WebSocketListener {
                 override fun onClosing(
                     webSocket: WebSocket,
                     code: Int,
@@ -269,7 +269,7 @@ class WebSocketHttpTest {
         clientListener.assertOpen()
         val server = serverListener.assertOpen()
         clientListener.setNextEventDelegate(
-            object : WebSocketListener() {
+            object : WebSocketListener {
                 override fun onClosing(
                     webSocket: WebSocket,
                     code: Int,
@@ -1039,7 +1039,7 @@ class WebSocketHttpTest {
         val attempts = CountDownLatch(20)
         val webSockets = Collections.synchronizedList(kotlin.collections.ArrayList<WebSocket>())
         val reconnectOnFailure: WebSocketListener =
-            object : WebSocketListener() {
+            object : WebSocketListener {
                 override fun onFailure(
                     webSocket: WebSocket,
                     t: Throwable,
@@ -1206,7 +1206,7 @@ class WebSocketHttpTest {
     ): RealWebSocket {
         val webSocket =
             RealWebSocket(
-                RealJayoHttpClient.DEFAULT_TASK_RUNNER,
+                Utils.defaultTaskRunner(),
                 request,
                 clientListener,
                 random,

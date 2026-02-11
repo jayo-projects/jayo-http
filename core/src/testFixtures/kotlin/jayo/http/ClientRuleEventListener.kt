@@ -32,8 +32,7 @@ import java.util.concurrent.TimeUnit
 
 class ClientRuleEventListener(
     var logger: (String) -> Unit,
-) : EventListener(),
-    EventListener.Factory {
+) : EventListener, EventListener.Factory {
     private var startNs: Long? = null
 
     override fun create(call: Call): EventListener = this
@@ -45,17 +44,21 @@ class ClientRuleEventListener(
     }
 
     override fun dispatcherQueueStart(
-        call: Call,
+        asyncCall: Call.AsyncCall,
         dispatcher: Dispatcher,
     ) {
         logWithTime("dispatcherQueueStart: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
     }
 
     override fun dispatcherQueueEnd(
-        call: Call,
+        asyncCall: Call.AsyncCall,
         dispatcher: Dispatcher,
     ) {
         logWithTime("dispatcherQueueEnd: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
+    }
+
+    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) {
+        logWithTime("dispatcherExecution")
     }
 
     override fun proxySelected(

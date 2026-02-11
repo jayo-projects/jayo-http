@@ -25,8 +25,8 @@ import jayo.Jayo;
 import jayo.RawSocket;
 import jayo.http.Address;
 import jayo.http.ConnectionPool;
-import jayo.http.JayoHttpClient;
 import jayo.http.Route;
+import jayo.http.internal.Utils;
 import jayo.http.internal.connection.RealCall.CallReference;
 import jayo.scheduler.ScheduledTaskQueue;
 import jayo.scheduler.TaskRunner;
@@ -58,7 +58,7 @@ public final class RealConnectionPool implements ConnectionPool {
     private final Collection<RealConnection> connections = new ConcurrentLinkedQueue<>();
 
     public RealConnectionPool(final int maxIdleConnections, final @NonNull Duration keepAlive) {
-        this(JayoHttpClient.DEFAULT_TASK_RUNNER, maxIdleConnections, keepAlive);
+        this(Utils.defaultTaskRunner(), maxIdleConnections, keepAlive);
     }
 
     RealConnectionPool(final @NonNull TaskRunner taskRunner,
@@ -226,13 +226,13 @@ public final class RealConnectionPool implements ConnectionPool {
      * @return the duration in nanoseconds to sleep until the next scheduled call to this method. Returns -1 if no
      * further cleanups are required.
      */
-    long closeConnections(long now) {
+    long closeConnections(final long now) {
         // Find the longest-idle connections in 2 categories:
         //
         //  1. OLD: Connections that have been idle for at least keepAliveDurationNs. We close these if we find them,
         //     regardless of what the address policies need.
         //
-        //  2. EVICTABLE: Connections not required by any address policy. This matches connections that don't
+        //  2. EVICTABLE: Connections are not required by any address policy. This matches connections that don't
         //     participate in any policy, plus connections whose policies won't be violated if the connection is closed.
         //     We only close these if the idle connection limit is exceeded.
         //

@@ -26,14 +26,19 @@ import jayo.bytestring.ByteString;
 import jayo.http.ClientResponse;
 import jayo.http.JayoHttpClient;
 import jayo.http.MediaType;
+import jayo.scheduler.TaskRunner;
+import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Locale;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static jayo.tools.JayoUtils.executorService;
 
 public final class Utils {
     // un-instantiable
@@ -51,6 +56,49 @@ public final class Utils {
             .replaceFirst("Client$", "");
 
     public static final @NonNull String USER_AGENT = "jayohttp/" + InternalVersion.VERSION;
+
+    private static final @NonNull AtomicReference</* lateinit */ ExecutorService> DEFAULT_EXECUTOR_SERVICE =
+            new AtomicReference<>();
+    private static final @NonNull AtomicReference</* lateinit */ TaskRunner> DEFAULT_TASK_RUNNER =
+            new AtomicReference<>();
+
+    /**
+     * @return a lazily computed default executor.
+     */
+    public static @NonNull ExecutorService defaultExecutorService() {
+        var defaultExecutor = DEFAULT_EXECUTOR_SERVICE.get();
+        if (defaultExecutor != null) {
+            return defaultExecutor;
+        }
+        // initiate
+        defaultExecutor = executorService("JayoHttp#");
+        if (DEFAULT_EXECUTOR_SERVICE.compareAndSet(null, defaultExecutor)) {
+            return defaultExecutor;
+        }
+        // CAS failed, value was initiated by another thread. Shutdown the unused executor we just built and return the
+        // existing value.
+        defaultExecutor.shutdownNow();
+        return DEFAULT_EXECUTOR_SERVICE.get();
+    }
+
+    /**
+     * @return a lazily computed default task runner.
+     */
+    public static @NonNull TaskRunner defaultTaskRunner() {
+        var defaultTaskRunner = DEFAULT_TASK_RUNNER.get();
+        if (defaultTaskRunner != null) {
+            return defaultTaskRunner;
+        }
+        // initiate
+        defaultTaskRunner = TaskRunner.create(defaultExecutorService());
+        if (DEFAULT_TASK_RUNNER.compareAndSet(null, defaultTaskRunner)) {
+            return defaultTaskRunner;
+        }
+        // CAS failed, value was initiated by another thread. Shutdown the unused task runner we just built and return
+        // the existing value.
+        defaultTaskRunner.shutdown(Duration.ZERO);
+        return DEFAULT_TASK_RUNNER.get();
+    }
 
     /**
      * Byte order marks.
@@ -353,5 +401,46 @@ public final class Utils {
         final var result = Arrays.copyOf(original, originalLength + elementsLength);
         System.arraycopy(elements, 0, result, originalLength, elementsLength);
         return result;
+    }
+
+    public static @NonNull List<@NonNull Protocol> validateProtocols(final @NonNull List<@NonNull Protocol> protocols) {
+        // Create a private copy of the list.
+        final var protocolsCopy = new ArrayList<>(protocols);
+
+        // Validate that the list has everything we require and nothing we forbid.
+        if (!protocolsCopy.contains(Protocol.H2_PRIOR_KNOWLEDGE) && !protocolsCopy.contains(Protocol.HTTP_1_1)) {
+            throw new IllegalArgumentException(
+                    "protocols must contain h2_prior_knowledge or http/1.1: " + protocolsCopy);
+        }
+        if (protocolsCopy.contains(Protocol.H2_PRIOR_KNOWLEDGE) && protocolsCopy.size() > 1) {
+            throw new IllegalArgumentException(
+                    "protocols containing h2_prior_knowledge cannot use other protocols: " + protocolsCopy);
+        }
+        if (protocolsCopy.contains(Protocol.HTTP_1_0)) {
+            throw new IllegalArgumentException("protocols must not contain http/1.0: " + protocolsCopy);
+        }
+        if (protocolsCopy.contains(null)) {
+            throw new IllegalArgumentException("protocols must not contain null");
+        }
+        return List.copyOf(protocols);
+    }
+
+    private static final @NonNull Duration MIN_DURATION = Duration.ofMillis(1L);
+    private static final @NonNull Duration MAX_DURATION = Duration.ofHours(1L);
+
+    public static @NonNull Duration checkDuration(final @NonNull String name, final @NonNull Duration timeout) {
+        assert name != null;
+        Objects.requireNonNull(timeout, name + " == null");
+
+        if (timeout.isNegative()) {
+            throw new IllegalArgumentException(name + " < 0");
+        }
+        if (!timeout.isZero() && timeout.compareTo(MIN_DURATION) < 0) {
+            throw new IllegalArgumentException(name + " < 1ms");
+        }
+        if (timeout.compareTo(MAX_DURATION) > 0) {
+            throw new IllegalArgumentException(name + " > 1h");
+        }
+        return timeout;
     }
 }

@@ -21,8 +21,8 @@
 
 package jayo.http.internal.http2
 
+import jayo.http.internal.Utils
 import jayo.http.internal.connection.RealConnection
-import jayo.http.internal.connection.RealJayoHttpClient
 import jayo.scheduler.internal.TaskFaker
 import org.assertj.core.api.Assertions.assertThat
 
@@ -49,7 +49,7 @@ object Http2TestUtils {
         // Play it back.
         val connection =
             Http2Connection
-                .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
+                .Builder(true, Utils.defaultTaskRunner())
                 .socket(peer.openSocket().second, "peer")
                 .pushObserver(Http2ConnectionTest.IGNORE)
                 .listener(realConnection)

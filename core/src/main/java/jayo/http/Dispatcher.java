@@ -25,13 +25,14 @@ import jayo.JayoException;
 import jayo.http.internal.connection.RealDispatcher;
 import org.jspecify.annotations.NonNull;
 
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 
 /**
  * Policy on when async requests are executed.
  * <p>
- * Each dispatcher uses an {@link ExecutorService} to run async calls internally. If you supply your own executor, it
- * should be able to run the {@linkplain #getMaxRequests() configured maximum} number of calls concurrently.
+ * Each dispatcher uses an {@link ExecutorService} to run async calls internally. If you supply your own executor
+ * service, it should be able to run the {@linkplain #getMaxRequests() configured maximum} number of calls concurrently.
  */
 public sealed interface Dispatcher permits RealDispatcher {
     static @NonNull Builder builder() {
@@ -62,9 +63,21 @@ public sealed interface Dispatcher permits RealDispatcher {
      */
     void cancelAll();
 
-    @NonNull
-    ExecutorService getExecutorService();
+    /**
+     * <ul>
+     * <li>First, initiates an orderly shutdown; no new {@linkplain jayo.http.Call#execute() synchronous} nor
+     * {@linkplain jayo.http.Call#enqueue(Callback) asynchronous} request will be accepted.
+     * <li>Then wait at most for {@code shutdownTimeout} to let currently running and enqueued async calls complete.
+     * </ul>
+     * If some async calls did not complete in time, they will be forcibly terminated.
+     * <p>
+     * A {@code shutdownTimeout} of 0 will immediately forcibly terminate all async calls.
+     */
+    void shutdown(final @NonNull Duration shutdownTimeout);
 
+    /**
+     * @return the number of async calls enqueued for later execution.
+     */
     int queuedCallsCount();
 
     /**
@@ -92,7 +105,8 @@ public sealed interface Dispatcher permits RealDispatcher {
 
         /**
          * Sets the {@link ExecutorService} to run async calls internally. It should be able to run the
-         * {@linkplain #maxRequests(int) configured maximum} number of calls concurrently.
+         * {@linkplain #maxRequests(int) configured maximum} number of calls concurrently. If not set, the default
+         * executor service we use to run all other async tasks in Jayo HTTP will be used.
          */
         @NonNull
         Builder executorService(final @NonNull ExecutorService executorService);

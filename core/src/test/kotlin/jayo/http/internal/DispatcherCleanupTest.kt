@@ -26,6 +26,7 @@ import jayo.http.*
 import mockwebserver3.MockWebServer
 import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.Test
+import java.time.Duration
 
 class DispatcherCleanupTest {
     @StartStop
@@ -57,6 +58,6 @@ class DispatcherCleanupTest {
             )
                 .enqueue(callback)
         }
-        jayoHttp.dispatcher.executorService.shutdown()
+        jayoHttp.dispatcher.shutdown(Duration.ZERO)
     }
 }

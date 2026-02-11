@@ -25,9 +25,9 @@ import jayo.http.*;
 import jayo.http.internal.CertificateChainCleaner;
 import jayo.http.internal.JayoHostnameVerifier;
 import jayo.http.internal.RealCertificatePinner;
+import jayo.http.internal.Utils;
 import jayo.http.internal.ws.RealWebSocket;
 import jayo.network.NetworkSocket;
-import jayo.scheduler.TaskRunner;
 import jayo.tls.ClientHandshakeCertificates;
 import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
@@ -70,7 +70,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final @NonNull Authenticator proxyAuthenticator;
     private final boolean retryOnConnectionFailure;
     final @NonNull RouteDatabase routeDatabase;
-    final @NonNull TaskRunner taskRunner;
     private final @NonNull Duration webSocketCloseTimeout;
 
     private RealJayoHttpClient(final @NonNull Builder builder) {
@@ -98,13 +97,12 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         this.proxyAuthenticator = builder.proxyAuthenticator;
         this.retryOnConnectionFailure = builder.retryOnConnectionFailure;
         this.routeDatabase = (builder.routeDatabase != null) ? builder.routeDatabase : new RouteDatabase();
-        this.taskRunner = builder.taskRunner;
         this.webSocketCloseTimeout = builder.webSocketCloseTimeout;
 
         if (builder.connectionPool != null) {
             this.connectionPool = builder.connectionPool;
         } else {
-            this.connectionPool = new RealConnectionPool(taskRunner, 5, Duration.ofMinutes(5));
+            this.connectionPool = new RealConnectionPool(5, Duration.ofMinutes(5));
             // Cache the pool in the builder so that it will be shared with other clients
             builder.connectionPool = connectionPool;
         }
@@ -313,7 +311,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         Objects.requireNonNull(tags);
 
         final var webSocket = new RealWebSocket(
-                taskRunner,
+                Utils.defaultTaskRunner(),
                 request,
                 listener,
                 new Random(),
@@ -357,7 +355,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private boolean followTlsRedirects = true;
         private @NonNull HostnameVerifier hostnameVerifier;
         private final @NonNull List<@NonNull Interceptor> interceptors = new ArrayList<>();
-        private long minWebSocketMessageToCompress = RealWebSocket.DEFAULT_MINIMUM_DEFLATE_SIZE;
+        private long minWebSocketMessageToCompress;
         private final @NonNull List<@NonNull Interceptor> networkInterceptors = new ArrayList<>();
         final NetworkSocket.@NonNull Builder networkSocketBuilder;
         private @NonNull Duration pingInterval;
@@ -366,7 +364,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private @NonNull Authenticator proxyAuthenticator;
         private boolean retryOnConnectionFailure = true;
         private @Nullable RouteDatabase routeDatabase = null;
-        private @NonNull TaskRunner taskRunner;
         private @NonNull Duration webSocketCloseTimeout;
 
         public Builder() {
@@ -379,6 +376,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.dns = Dns.SYSTEM;
             this.eventListenerFactory = ignoredCall -> EventListener.NONE;
             this.hostnameVerifier = JayoHostnameVerifier.INSTANCE;
+            this.minWebSocketMessageToCompress = RealWebSocket.DEFAULT_MINIMUM_DEFLATE_SIZE;
             this.networkSocketBuilder = NetworkSocket.builder()
                     .connectTimeout(DEFAULT_TIMEOUT)
                     .readTimeout(DEFAULT_TIMEOUT)
@@ -387,7 +385,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.protocols = DEFAULT_PROTOCOLS;
             proxies = Proxies.EMPTY;
             this.proxyAuthenticator = Authenticator.DEFAULT_PROXY_AUTHENTICATOR;
-            this.taskRunner = DEFAULT_TASK_RUNNER;
             this.webSocketCloseTimeout = RealWebSocket.CANCEL_AFTER_CLOSE_TIMEOUT;
         }
 
@@ -420,7 +417,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.proxyAuthenticator = jayoHttpClient.proxyAuthenticator;
             this.retryOnConnectionFailure = jayoHttpClient.retryOnConnectionFailure;
             this.routeDatabase = jayoHttpClient.routeDatabase;
-            this.taskRunner = jayoHttpClient.taskRunner;
             this.webSocketCloseTimeout = jayoHttpClient.webSocketCloseTimeout;
         }
 
@@ -438,7 +434,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
 
         @Override
         public @NonNull Builder callTimeout(final @NonNull Duration callTimeout) {
-            this.callTimeout = checkDuration("callTimeout", callTimeout);
+            this.callTimeout = Utils.checkDuration("callTimeout", callTimeout);
             return this;
         }
 
@@ -587,31 +583,13 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         public @NonNull Builder protocols(final @NonNull List<@NonNull Protocol> protocols) {
             Objects.requireNonNull(protocols);
 
-            // Create a private copy of the list.
-            final var protocolsCopy = new ArrayList<>(protocols);
-
-            // Validate that the list has everything we require and nothing we forbid.
-            if (!protocolsCopy.contains(Protocol.H2_PRIOR_KNOWLEDGE) && !protocolsCopy.contains(Protocol.HTTP_1_1)) {
-                throw new IllegalArgumentException(
-                        "protocols must contain h2_prior_knowledge or http/1.1: " + protocolsCopy);
-            }
-            if (protocolsCopy.contains(Protocol.H2_PRIOR_KNOWLEDGE) && protocolsCopy.size() > 1) {
-                throw new IllegalArgumentException(
-                        "protocols containing h2_prior_knowledge cannot use other protocols: " + protocolsCopy);
-            }
-            if (protocolsCopy.contains(Protocol.HTTP_1_0)) {
-                throw new IllegalArgumentException("protocols must not contain http/1.0: " + protocolsCopy);
-            }
-            if (protocolsCopy.contains(null)) {
-                throw new IllegalArgumentException("protocols must not contain null");
-            }
+            final var protocolsCopy = Utils.validateProtocols(protocols);
 
             if (!protocolsCopy.equals(this.protocols)) {
                 this.routeDatabase = null;
             }
 
-            // Assign as an unmodifiable list. This is effectively immutable.
-            this.protocols = List.copyOf(protocolsCopy);
+            this.protocols = protocolsCopy;
             return this;
         }
 
@@ -641,7 +619,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
 
         @Override
         public @NonNull Builder readTimeout(final @NonNull Duration readTimeout) {
-            Objects.requireNonNull(readTimeout);
+            Utils.checkDuration("readTimeout", readTimeout);
             networkSocketBuilder.readTimeout(readTimeout);
             return this;
         }
@@ -654,14 +632,14 @@ public final class RealJayoHttpClient implements JayoHttpClient {
 
         @Override
         public @NonNull Builder tlsConfig(final ClientTlsSocket.@NonNull Builder clientTlsConfig) {
-            Objects.requireNonNull(clientTlsConfig);
+            final var clientTlsConfigCopy = Objects.requireNonNull(clientTlsConfig).clone();
 
-            if (!clientTlsConfig.equals(this.clientTlsSocketBuilderOrNull)) {
+            if (!clientTlsConfigCopy.equals(this.clientTlsSocketBuilderOrNull)) {
                 this.routeDatabase = null;
             }
 
-            this.clientTlsSocketBuilderOrNull = clientTlsConfig;
-            final var x509TrustManager = clientTlsConfig.getHandshakeCertificates().getTrustManager();
+            this.clientTlsSocketBuilderOrNull = clientTlsConfigCopy;
+            final var x509TrustManager = clientTlsConfigCopy.getHandshakeCertificates().getTrustManager();
             this.certificateChainCleaner = new CertificateChainCleaner(x509TrustManager);
             return this;
         }
@@ -674,19 +652,19 @@ public final class RealJayoHttpClient implements JayoHttpClient {
 
         @Override
         public @NonNull Builder pingInterval(@NonNull Duration interval) {
-            this.pingInterval = checkDuration("pingInterval", interval);
+            this.pingInterval = Utils.checkDuration("pingInterval", interval);
             return this;
         }
 
         @Override
         public @NonNull Builder webSocketCloseTimeout(final @NonNull Duration webSocketCloseTimeout) {
-            this.webSocketCloseTimeout = checkDuration("webSocketCloseTimeout", webSocketCloseTimeout);
+            this.webSocketCloseTimeout = Utils.checkDuration("webSocketCloseTimeout", webSocketCloseTimeout);
             return this;
         }
 
         @Override
         public @NonNull Builder writeTimeout(@NonNull Duration writeTimeout) {
-            Objects.requireNonNull(writeTimeout);
+            Utils.checkDuration("writeTimeout", writeTimeout);
             networkSocketBuilder.writeTimeout(writeTimeout);
             return this;
         }
@@ -694,33 +672,6 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         @Override
         public @NonNull JayoHttpClient build() {
             return new RealJayoHttpClient(this);
-        }
-
-        @NonNull
-        Builder taskRunner(final @NonNull TaskRunner taskRunner) {
-            assert taskRunner != null;
-
-            this.taskRunner = taskRunner;
-            return this;
-        }
-
-        private static final @NonNull Duration MIN_DURATION = Duration.ofMillis(1L);
-        private static final @NonNull Duration MAX_DURATION = Duration.ofHours(1L);
-
-        private static @NonNull Duration checkDuration(final @NonNull String name, final @NonNull Duration timeout) {
-            assert name != null;
-
-            Objects.requireNonNull(timeout, name + " == null");
-            if (timeout.isNegative()) {
-                throw new IllegalArgumentException(name + " < 0");
-            }
-            if (!timeout.isZero() && timeout.compareTo(MIN_DURATION) < 0) {
-                throw new IllegalArgumentException(name + " < 1ms");
-            }
-            if (timeout.compareTo(MAX_DURATION) > 0) {
-                throw new IllegalArgumentException(name + " > 1h");
-            }
-            return timeout;
         }
     }
 }

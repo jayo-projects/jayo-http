@@ -258,6 +258,7 @@ public final class RealWebSocket implements WebSocket, WebSocketReader.FrameCall
                 .header("Sec-WebSocket-Extensions", "permessage-deflate")
                 .build();
         call = new RealCall((RealJayoHttpClient) webSocketClient, request, tags, true);
+        listener.onEnqueued(call, webSocketClient.getDispatcher());
         call.enqueue(new Callback() {
             @Override
             public void onResponse(final @NonNull Call call, final @NonNull ClientResponse response) {

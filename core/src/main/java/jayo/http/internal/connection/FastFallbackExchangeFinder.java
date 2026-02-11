@@ -53,8 +53,7 @@ final class FastFallbackExchangeFinder implements ExchangeFinder {
      * Plans currently being connected, and that will later be added to {@link #connectResults}. This is mutated by the
      * call thread only. It is accessed by background connect threads.
      */
-    private final @NonNull CopyOnWriteArrayList<@NonNull Plan> tcpConnectsInFlight =
-            new CopyOnWriteArrayList<>();
+    private final @NonNull CopyOnWriteArrayList<@NonNull Plan> tcpConnectsInFlight = new CopyOnWriteArrayList<>();
 
     /**
      * Results are posted here as they occur. The find job is done when either one plan completes successfully or all

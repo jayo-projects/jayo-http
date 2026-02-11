@@ -29,6 +29,7 @@ import jayo.tls.Protocol;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -71,13 +72,17 @@ public final class PrintEventsConcurrent {
                 }
             }
         });
+
+        // Trigger shutdown of the dispatcher, leaving a few seconds for these asynchronous requests to respond if the
+        // network is slow.
+        client.getDispatcher().shutdown(Duration.ofSeconds(10));
     }
 
     public static void main(String... args) {
         new PrintEventsConcurrent().run();
     }
 
-    private static final class PrintingEventListener extends EventListener {
+    private static final class PrintingEventListener implements EventListener {
         private static final Factory FACTORY = new Factory() {
             final AtomicLong nextCallId = new AtomicLong(1L);
 

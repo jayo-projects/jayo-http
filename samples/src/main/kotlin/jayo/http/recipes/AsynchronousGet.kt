@@ -23,6 +23,7 @@ package jayo.http.recipes.kt
 
 import jayo.JayoException
 import jayo.http.*
+import java.time.Duration
 
 class AsynchronousGet {
     private val client = JayoHttpClient()
@@ -59,6 +60,10 @@ class AsynchronousGet {
                 }
             },
         )
+
+        // Trigger shutdown of the dispatcher, leaving a few seconds for this asynchronous request to respond if the
+        // network is slow.
+        client.getDispatcher().shutdown(Duration.ofSeconds(5))
     }
 }
 
