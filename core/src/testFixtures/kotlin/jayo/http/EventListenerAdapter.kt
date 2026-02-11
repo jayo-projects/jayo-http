@@ -33,7 +33,7 @@ import java.net.InetSocketAddress
  * This accepts events as function calls on [EventListener], and publishes them as subtypes of
  * [CallEvent].
  */
-class EventListenerAdapter : EventListener() {
+class EventListenerAdapter : EventListener {
     var listeners = listOf<(CallEvent) -> Unit>()
 
     private fun onEvent(listener: CallEvent) {
@@ -42,15 +42,14 @@ class EventListenerAdapter : EventListener() {
         }
     }
 
-    override fun dispatcherQueueStart(
-        call: Call,
-        dispatcher: Dispatcher,
-    ) = onEvent(DispatcherQueueStart(System.nanoTime(), call, dispatcher))
+    override fun dispatcherQueueStart(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) =
+        onEvent(DispatcherQueueStart(System.nanoTime(), asyncCall.call(), dispatcher))
 
-    override fun dispatcherQueueEnd(
-        call: Call,
-        dispatcher: Dispatcher,
-    ) = onEvent(DispatcherQueueEnd(System.nanoTime(), call, dispatcher))
+    override fun dispatcherQueueEnd(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) =
+        onEvent(DispatcherQueueEnd(System.nanoTime(), asyncCall.call(), dispatcher))
+
+    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) =
+        onEvent(DispatcherExecution(System.nanoTime(), asyncCall.call(), dispatcher))
 
     override fun proxySelected(
         call: Call,
@@ -58,10 +57,8 @@ class EventListenerAdapter : EventListener() {
         proxy: Proxy?,
     ) = onEvent(ProxySelected(System.nanoTime(), call, url, proxy))
 
-    override fun dnsStart(
-        call: Call,
-        domainName: String,
-    ) = onEvent(DnsStart(System.nanoTime(), call, domainName))
+    override fun dnsStart(call: Call, domainName: String) =
+        onEvent(DnsStart(System.nanoTime(), call, domainName))
 
     override fun dnsEnd(
         call: Call,
@@ -76,17 +73,10 @@ class EventListenerAdapter : EventListener() {
     ) = onEvent(ConnectStart(System.nanoTime(), call, inetSocketAddress, proxy))
 
     override fun secureConnectStart(call: Call) =
-        onEvent(
-            SecureConnectStart(
-                System.nanoTime(),
-                call,
-            ),
-        )
+        onEvent(SecureConnectStart(System.nanoTime(), call))
 
-    override fun secureConnectEnd(
-        call: Call,
-        handshake: Handshake?,
-    ) = onEvent(SecureConnectEnd(System.nanoTime(), call, handshake))
+    override fun secureConnectEnd(call: Call, handshake: Handshake?) =
+        onEvent(SecureConnectEnd(System.nanoTime(), call, handshake))
 
     override fun connectEnd(
         call: Call,
@@ -112,105 +102,60 @@ class EventListenerAdapter : EventListener() {
         ),
     )
 
-    override fun connectionAcquired(
-        call: Call,
-        connection: Connection,
-    ) = onEvent(ConnectionAcquired(System.nanoTime(), call, connection))
+    override fun connectionAcquired(call: Call, connection: Connection) =
+        onEvent(ConnectionAcquired(System.nanoTime(), call, connection))
 
-    override fun connectionReleased(
-        call: Call,
-        connection: Connection,
-    ) = onEvent(ConnectionReleased(System.nanoTime(), call, connection))
+    override fun connectionReleased(call: Call, connection: Connection) =
+        onEvent(ConnectionReleased(System.nanoTime(), call, connection))
 
     override fun callStart(call: Call) = onEvent(CallStart(System.nanoTime(), call))
 
     override fun requestHeadersStart(call: Call) =
-        onEvent(
-            RequestHeadersStart(
-                System.nanoTime(),
-                call,
-            ),
-        )
+        onEvent(RequestHeadersStart(System.nanoTime(), call))
 
-    override fun requestHeadersEnd(
-        call: Call,
-        request: ClientRequest,
-    ) = onEvent(RequestHeadersEnd(System.nanoTime(), call, request.headers.byteCount()))
+    override fun requestHeadersEnd(call: Call, request: ClientRequest) =
+        onEvent(RequestHeadersEnd(System.nanoTime(), call, request.headers.byteCount()))
 
-    override fun requestBodyStart(call: Call) =
-        onEvent(
-            RequestBodyStart(
-                System.nanoTime(),
-                call,
-            ),
-        )
+    override fun requestBodyStart(call: Call) = onEvent(RequestBodyStart(System.nanoTime(), call))
 
-    override fun requestBodyEnd(
-        call: Call,
-        byteCount: Long,
-    ) = onEvent(RequestBodyEnd(System.nanoTime(), call, byteCount))
+    override fun requestBodyEnd(call: Call, byteCount: Long) =
+        onEvent(RequestBodyEnd(System.nanoTime(), call, byteCount))
 
-    override fun requestFailed(
-        call: Call,
-        je: JayoException,
-    ) = onEvent(RequestFailed(System.nanoTime(), call, je))
+    override fun requestFailed(call: Call, je: JayoException) =
+        onEvent(RequestFailed(System.nanoTime(), call, je))
 
     override fun responseHeadersStart(call: Call) =
-        onEvent(
-            ResponseHeadersStart(
-                System.nanoTime(),
-                call,
-            ),
-        )
+        onEvent(ResponseHeadersStart(System.nanoTime(), call))
 
-    override fun responseHeadersEnd(
-        call: Call,
-        response: ClientResponse,
-    ) = onEvent(ResponseHeadersEnd(System.nanoTime(), call, response.headers.byteCount()))
+    override fun responseHeadersEnd(call: Call, response: ClientResponse) =
+        onEvent(ResponseHeadersEnd(System.nanoTime(), call, response.headers.byteCount()))
 
     override fun responseBodyStart(call: Call) =
-        onEvent(
-            ResponseBodyStart(
-                System.nanoTime(),
-                call,
-            ),
-        )
+        onEvent(ResponseBodyStart(System.nanoTime(), call))
 
-    override fun responseBodyEnd(
-        call: Call,
-        byteCount: Long,
-    ) = onEvent(ResponseBodyEnd(System.nanoTime(), call, byteCount))
+    override fun responseBodyEnd(call: Call, byteCount: Long) =
+        onEvent(ResponseBodyEnd(System.nanoTime(), call, byteCount))
 
-    override fun responseFailed(
-        call: Call,
-        je: JayoException,
-    ) = onEvent(ResponseFailed(System.nanoTime(), call, je))
+    override fun responseFailed(call: Call, je: JayoException) =
+        onEvent(ResponseFailed(System.nanoTime(), call, je))
 
     override fun callEnd(call: Call) = onEvent(CallEnd(System.nanoTime(), call))
 
-    override fun callFailed(
-        call: Call,
-        je: JayoException,
-    ) = onEvent(CallFailed(System.nanoTime(), call, je))
+    override fun callFailed(call: Call, je: JayoException) =
+        onEvent(CallFailed(System.nanoTime(), call, je))
 
     override fun canceled(call: Call) = onEvent(Canceled(System.nanoTime(), call))
 
-    override fun satisfactionFailure(
-        call: Call,
-        response: ClientResponse,
-    ) = onEvent(SatisfactionFailure(System.nanoTime(), call))
+    override fun satisfactionFailure(call: Call, response: ClientResponse) =
+        onEvent(SatisfactionFailure(System.nanoTime(), call))
 
     override fun cacheMiss(call: Call) = onEvent(CacheMiss(System.nanoTime(), call))
 
-    override fun cacheHit(
-        call: Call,
-        response: ClientResponse,
-    ) = onEvent(CacheHit(System.nanoTime(), call))
+    override fun cacheHit(call: Call, response: ClientResponse) =
+        onEvent(CacheHit(System.nanoTime(), call))
 
-    override fun cacheConditionalHit(
-        call: Call,
-        cachedResponse: ClientResponse,
-    ) = onEvent(CacheConditionalHit(System.nanoTime(), call))
+    override fun cacheConditionalHit(call: Call, cachedResponse: ClientResponse) =
+        onEvent(CacheConditionalHit(System.nanoTime(), call))
 
     override fun retryDecision(
         call: Call,

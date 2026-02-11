@@ -46,4 +46,8 @@ open class FailingCall : Call {
     override fun <T> tag(type: Class<T>, computeIfAbsent: Supplier<T>): T & Any = error("unexpected")
 
     override fun clone(): Call = error("unexpected")
+
+    class Async : Call.AsyncCall {
+        override fun call(): Call = FailingCall()
+    }
 }

@@ -23,10 +23,11 @@ package jayo.http.recipes;
 
 import jayo.bytestring.ByteString;
 import jayo.http.*;
+import org.jspecify.annotations.NonNull;
 
 import java.time.Duration;
 
-public final class WebSocketEcho extends WebSocketListener {
+public final class WebSocketEcho implements WebSocketListener {
     private void run() {
         JayoHttpClient client = JayoHttpClient.builder()
                 .readTimeout(Duration.ZERO)
@@ -37,8 +38,14 @@ public final class WebSocketEcho extends WebSocketListener {
                 .get();
         client.newWebSocket(request, this);
 
-        // Trigger shutdown of the dispatcher's executor so this process exits immediately.
-        client.getDispatcher().getExecutorService().shutdown();
+        // Trigger shutdown of the dispatcher, leaving a few seconds for this asynchronous request to respond if the
+        // network is slow.
+        client.getDispatcher().shutdown(Duration.ofSeconds(5));
+    }
+
+    @Override
+    public void onEnqueued(@NonNull Call call, @NonNull Dispatcher dispatcher) {
+        System.out.println("Enqueued for async execution");
     }
 
     @Override

@@ -53,13 +53,18 @@ public final class RealLoggingEventListener extends LoggingEventListener {
     }
 
     @Override
-    public void dispatcherQueueStart(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
-        logWithTime("dispatcherQueueStart: " + call + " queuedCallsCount=" + dispatcher.queuedCallsCount());
+    public void dispatcherQueueStart(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+        logWithTime("dispatcherQueueStart: " + asyncCall.call() + " queuedCallsCount=" + dispatcher.queuedCallsCount());
     }
 
     @Override
-    public void dispatcherQueueEnd(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
-        logWithTime("dispatcherQueueEnd: " + call + " queuedCallsCount=" + dispatcher.queuedCallsCount());
+    public void dispatcherQueueEnd(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+        logWithTime("dispatcherQueueEnd: " + asyncCall.call() + " queuedCallsCount=" + dispatcher.queuedCallsCount());
+    }
+
+    @Override
+    public void dispatcherExecution(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+        logWithTime("dispatcherExecution: " + asyncCall.call());
     }
 
     @Override

@@ -23,10 +23,9 @@ package jayo.http.internal.http2
 
 import jayo.*
 import jayo.http.Headers
-import jayo.http.JayoHttpClient
 import jayo.http.http2.*
 import jayo.http.internal.TestUtils.repeat
-import jayo.http.internal.connection.RealJayoHttpClient
+import jayo.http.internal.Utils
 import jayo.http.internal.http2.Http2Connection.EMPTY_BYTE_ARRAY
 import jayo.http.internal.http2.Http2TestUtils.headerEntries
 import jayo.scheduler.internal.TaskFaker
@@ -34,12 +33,8 @@ import jayo.scheduler.internal.activeQueues
 import jayo.tools.AsyncTimeout
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
-import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertArrayEquals
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Timeout
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -510,7 +505,7 @@ class Http2ConnectionTest {
         val networkClient = peer.openSocket()
         val connection =
             Http2Connection
-                .Builder(true, JayoHttpClient.DEFAULT_TASK_RUNNER)
+                .Builder(true, Utils.defaultTaskRunner())
                 .socket(networkClient.second, "peer")
                 .pushObserver(IGNORE)
                 .build()
@@ -1948,7 +1943,7 @@ class Http2ConnectionTest {
         peer.play()
         val connection =
             Http2Connection
-                .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
+                .Builder(true, Utils.defaultTaskRunner())
                 .socket(peer.openSocket().second, "peer")
                 .build()
         connection.start(false)
@@ -2033,7 +2028,7 @@ class Http2ConnectionTest {
     ): Http2Connection {
         val connection =
             Http2Connection
-                .Builder(true, RealJayoHttpClient.DEFAULT_TASK_RUNNER)
+                .Builder(true, Utils.defaultTaskRunner())
                 .socket(peer.openSocket().second, "peer")
                 .pushObserver(pushObserver)
                 .listener(listener)

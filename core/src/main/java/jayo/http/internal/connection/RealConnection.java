@@ -29,6 +29,7 @@ import jayo.http.http2.FlowControlListener;
 import jayo.http.http2.JayoConnectionShutdownException;
 import jayo.http.http2.JayoStreamResetException;
 import jayo.http.internal.JayoHostnameVerifier;
+import jayo.http.internal.Utils;
 import jayo.http.internal.http.ExchangeCodec;
 import jayo.http.internal.http1.Http1ExchangeCodec;
 import jayo.http.internal.http2.Http2Connection;

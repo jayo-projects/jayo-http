@@ -23,9 +23,11 @@ package jayo.http.internal.connection;
 
 import jayo.*;
 import jayo.http.*;
+import jayo.http.internal.Utils;
 import jayo.http.internal.cache.CacheInterceptor;
 import jayo.http.internal.http.BridgeInterceptor;
 import jayo.http.tools.JayoHttpUtils;
+import jayo.scheduler.TaskRunner;
 import jayo.tools.AsyncTimeout;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -39,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
@@ -226,7 +227,7 @@ public final class RealCall implements Call {
 
         // Atomically replace the current eventListener with a composite one.
         var previous = this.eventListener;
-        while (!EVENT_LISTENER_HANDLE.compareAndSet(this, previous, previous.plus(eventListener))) {
+        while (!EVENT_LISTENER_HANDLE.compareAndSet(this, previous, EventListener.plus(previous, eventListener))) {
             previous = this.eventListener;
         }
     }
@@ -385,7 +386,6 @@ public final class RealCall implements Call {
 
         if (newRoutePlanner) {
             final var routePlanner = new RealRoutePlanner(
-                    client.taskRunner,
                     connectionPool,
                     client.networkSocketBuilder,
                     client.getPingInterval(),
@@ -397,7 +397,7 @@ public final class RealCall implements Call {
                     request
             );
             this.exchangeFinder = client.fastFallback()
-                    ? new FastFallbackExchangeFinder(routePlanner, client.taskRunner)
+                    ? new FastFallbackExchangeFinder(routePlanner, Utils.defaultTaskRunner())
                     : new SequentialExchangeFinder(routePlanner);
         }
     }
@@ -738,7 +738,7 @@ public final class RealCall implements Call {
         return interceptorScopedExchange;
     }
 
-    class AsyncCall implements Runnable {
+    final class AsyncCall implements Call.AsyncCall, Runnable {
         private final @NonNull Callback responseCallback;
         private final long timeoutNanos;
 
@@ -762,26 +762,20 @@ public final class RealCall implements Call {
             return originalRequest.getUrl().getHost();
         }
 
-        @NonNull
-        ClientRequest request() {
-            return originalRequest;
-        }
-
-        @NonNull
-        RealCall call() {
+        public @NonNull RealCall call() {
             return RealCall.this;
         }
 
         /**
-         * Attempt to enqueue this async call on {@code executorService}. This will attempt to clean up if the executor
+         * Attempt to enqueue this async call on {@code taskRunner}. This will attempt to clean up if the executor
          * has been shut down by reporting the call as failed.
          */
-        void executeOn(final @NonNull ExecutorService executorService) {
-            assert executorService != null;
+        void executeOn(final @NonNull TaskRunner taskRunner) {
+            assert taskRunner != null;
 
             var success = false;
             try {
-                executorService.execute(this);
+                taskRunner.execute("JayoHttp " + redactedUrl(), false, this);
                 success = true;
             } catch (RejectedExecutionException e) {
                 failRejected(e);
@@ -801,10 +795,6 @@ public final class RealCall implements Call {
 
         @Override
         public void run() {
-            final var currentThread = Thread.currentThread();
-            final var oldName = currentThread.getName();
-            currentThread.setName("JayoHttp " + redactedUrl());
-
             var signalledCallback = false;
             timeoutNode = timeout.enter(timeoutNanos);
             try {
@@ -839,8 +829,6 @@ public final class RealCall implements Call {
                 }
             } finally {
                 client.dispatcher.finished(this);
-                // Revert to the old thread name
-                currentThread.setName(oldName);
             }
         }
     }

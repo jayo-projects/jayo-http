@@ -184,7 +184,11 @@ public interface Call extends Cloneable {
     @NonNull
     Call clone();
 
-    interface Factory {
+    interface AsyncCall {
+        @NonNull Call call();
+    }
+
+    sealed interface Factory permits JayoHttpClient {
         /**
          * Prepares the {@code request} to be executed at some point in the future.
          * <p>

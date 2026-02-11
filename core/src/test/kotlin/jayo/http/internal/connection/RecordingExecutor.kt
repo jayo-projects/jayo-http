@@ -21,6 +21,7 @@
 
 package jayo.http.internal.connection
 
+import jayo.http.*
 import org.assertj.core.api.Assertions.assertThat
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.RejectedExecutionException
@@ -31,27 +32,43 @@ import java.util.concurrent.TimeUnit
  */
 internal class RecordingExecutor(
     private val dispatcherTest: DispatcherTest,
-) : AbstractExecutorService() {
+) : AbstractExecutorService(), EventListener, WebSocketListener {
     private var shutdown: Boolean = false
-    private val calls = mutableListOf<RealCall.AsyncCall>()
+    private val calls = mutableListOf<Pair<Call?, RealCall.AsyncCall?>>()
 
     override fun execute(command: Runnable) {
         if (shutdown) throw RejectedExecutionException()
-        calls.add(command as RealCall.AsyncCall)
+        // do not execute
+    }
+
+    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) {
+        if (!shutdown) {
+            calls.add(null to asyncCall as RealCall.AsyncCall)
+        }
+    }
+
+    override fun onEnqueued(call: Call, dispatcher: Dispatcher) {
+        calls.add(call to null)
     }
 
     fun assertJobs(vararg expectedUrls: String) {
-        val actualUrls = calls.map { it.request().url.toString() }
+        val actualUrls = calls.map {
+            if (it.first != null) {
+                it.first!!.request().url.toString()
+            } else {
+                it.second!!.call().request().url.toString()
+            }
+        }
         assertThat(actualUrls).containsExactly(*expectedUrls)
     }
 
     fun finishJob(url: String) {
         val i = calls.iterator()
         while (i.hasNext()) {
-            val call = i.next()
-            if (call.request().url.toString() == url) {
+            val asyncCall = i.next().second
+            if (asyncCall?.call()?.request()?.url.toString() == url) {
                 i.remove()
-                dispatcherTest.dispatcher.finished(call)
+                dispatcherTest.dispatcher.finished(asyncCall!!)
                 return
             }
         }
@@ -62,8 +79,6 @@ internal class RecordingExecutor(
         shutdown = true
     }
 
-    override fun shutdownNow(): List<Runnable> = throw UnsupportedOperationException()
-
     override fun isShutdown(): Boolean = shutdown
 
     override fun isTerminated(): Boolean = throw UnsupportedOperationException()
@@ -72,4 +87,6 @@ internal class RecordingExecutor(
         timeout: Long,
         unit: TimeUnit,
     ): Boolean = throw UnsupportedOperationException()
+
+    override fun shutdownNow(): List<Runnable> = throw UnsupportedOperationException()
 }

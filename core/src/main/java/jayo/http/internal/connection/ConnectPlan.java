@@ -29,12 +29,15 @@ import jayo.http.Route;
 import jayo.http.internal.JayoHostnameVerifier;
 import jayo.http.internal.RealCertificatePinner;
 import jayo.http.internal.RealConnectionSpec;
+import jayo.http.internal.Utils;
 import jayo.http.internal.connection.RoutePlanner.ConnectResult;
 import jayo.http.internal.connection.RoutePlanner.Plan;
 import jayo.http.internal.http.ExchangeCodec;
 import jayo.http.internal.http1.Http1ExchangeCodec;
-import jayo.network.*;
-import jayo.scheduler.TaskRunner;
+import jayo.network.JayoConnectException;
+import jayo.network.JayoUnknownServiceException;
+import jayo.network.NetworkSocket;
+import jayo.network.Proxy;
 import jayo.tls.*;
 import jayo.tools.JayoUtils;
 import org.jspecify.annotations.NonNull;
@@ -64,7 +67,6 @@ import static jayo.tools.JayoTlsUtils.createHandshake;
 public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     private static final int MAX_TUNNEL_ATTEMPTS = 21;
 
-    private final @NonNull TaskRunner taskRunner;
     private final @NonNull RealConnectionPool connectionPool;
     private final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final @NonNull Duration pingInterval;
@@ -104,8 +106,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     private /* lateinit */ Socket socket;
     private @Nullable RealConnection connection = null;
 
-    ConnectPlan(final @NonNull TaskRunner taskRunner,
-                final @NonNull RealConnectionPool connectionPool,
+    ConnectPlan(final @NonNull RealConnectionPool connectionPool,
                 final NetworkSocket.@NonNull Builder networkSocketBuilder,
                 final @NonNull Duration pingInterval,
                 final boolean retryOnConnectionFailure,
@@ -117,7 +118,6 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 final @Nullable ClientRequest tunnelRequest,
                 final int connectionSpecIndex,
                 final boolean isTlsFallback) {
-        assert taskRunner != null;
         assert connectionPool != null;
         assert networkSocketBuilder != null;
         assert pingInterval != null;
@@ -126,7 +126,6 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
         assert route != null;
         assert attempt >= 0;
 
-        this.taskRunner = taskRunner;
         this.connectionPool = connectionPool;
         this.networkSocketBuilder = networkSocketBuilder;
         this.pingInterval = pingInterval;
@@ -153,7 +152,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                                       final @Nullable ClientRequest tunnelRequest,
                                       final int connectionSpecIndex,
                                       final boolean isTlsFallback) {
-        return new ConnectPlan(taskRunner,
+        return new ConnectPlan(
                 connectionPool,
                 networkSocketBuilder,
                 pingInterval,
@@ -165,7 +164,8 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                 attempt,
                 tunnelRequest,
                 connectionSpecIndex,
-                isTlsFallback);
+                isTlsFallback
+        );
     }
 
     @Override
@@ -285,7 +285,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
             }
 
             final var connection = new RealConnection(
-                    taskRunner,
+                    Utils.defaultTaskRunner(),
                     route,
                     networkSocket,
                     applicationSocket,
@@ -501,8 +501,7 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
                     }
                 }
 
-                default ->
-                        throw new JayoException("Unexpected response code for CONNECT: " + response.getStatusCode());
+                default -> throw new JayoException("Unexpected response code for CONNECT: " + response.getStatusCode());
             }
         }
     }
@@ -566,7 +565,6 @@ public final class ConnectPlan implements Plan, ExchangeCodec.Carrier {
     @Override
     public @NonNull Plan retry() {
         return new ConnectPlan(
-                taskRunner,
                 connectionPool,
                 networkSocketBuilder,
                 pingInterval,

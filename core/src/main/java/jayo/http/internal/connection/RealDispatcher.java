@@ -23,23 +23,24 @@ package jayo.http.internal.connection;
 
 import jayo.http.Call;
 import jayo.http.Dispatcher;
+import jayo.http.internal.Utils;
 import jayo.http.internal.connection.RealCall.AsyncCall;
-import jayo.tools.JayoUtils;
+import jayo.scheduler.TaskRunner;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
-import static jayo.http.internal.Utils.JAYO_HTTP_NAME;
-
 public final class RealDispatcher implements Dispatcher {
     private final int maxRequests;
     private final int maxRequestsPerHost;
-    private @Nullable ExecutorService executorServiceOrNull;
+    private @Nullable TaskRunner taskRunnerOrNull = null;
+    private final @Nullable ExecutorService executorServiceOrNull;
     private final @Nullable Runnable idleCallback;
 
     private final @NonNull Lock lock = new ReentrantLock();
@@ -79,14 +80,16 @@ public final class RealDispatcher implements Dispatcher {
         return maxRequestsPerHost;
     }
 
-    @Override
-    public @NonNull ExecutorService getExecutorService() {
+    private @NonNull TaskRunner getTaskRunner() {
         lock.lock();
         try {
-            if (executorServiceOrNull == null) {
-                executorServiceOrNull = JayoUtils.executorService(JAYO_HTTP_NAME + " Dispatcher", false);
+            if (taskRunnerOrNull == null) {
+                final var executorService = (executorServiceOrNull != null)
+                        ? executorServiceOrNull
+                        : Utils.defaultExecutorService();
+                taskRunnerOrNull = TaskRunner.create(executorService);
             }
-            return executorServiceOrNull;
+            return taskRunnerOrNull;
         } finally {
             lock.unlock();
         }
@@ -129,6 +132,12 @@ public final class RealDispatcher implements Dispatcher {
         }
     }
 
+    @Override
+    public void shutdown(final @NonNull Duration shutdownTimeout) {
+        Objects.requireNonNull(shutdownTimeout);
+        getTaskRunner().shutdown(shutdownTimeout);
+    }
+
     /**
      * Promotes eligible calls from {@link #readyAsyncCalls} to {@link #runningAsyncCalls} and runs them on the executor
      * service. Must not be called with synchronization because executing calls can call into user code.
@@ -140,7 +149,7 @@ public final class RealDispatcher implements Dispatcher {
     private void promoteAndExecute(final @Nullable AsyncCall enqueuedCall,
                                    final @Nullable RealCall finishedCall,
                                    final @Nullable AsyncCall finishedAsyncCall) {
-        final var executorIsShutdown = getExecutorService().isShutdown();
+        final var executorIsShutdown = getTaskRunner().isShutdown();
 
         final Effects effects;
         lock.lock();
@@ -158,18 +167,19 @@ public final class RealDispatcher implements Dispatcher {
             if (call == enqueuedCall) {
                 callDispatcherQueueStart = false;
             } else {
-                call.call().eventListener().dispatcherQueueEnd(call.call(), this);
+                call.call().eventListener().dispatcherQueueEnd(call, this);
             }
 
             if (executorIsShutdown) {
                 call.failRejected(null);
             } else {
-                call.executeOn(getExecutorService());
+                call.call().eventListener().dispatcherExecution(call, this);
+                call.executeOn(getTaskRunner());
             }
         }
 
         if (callDispatcherQueueStart && enqueuedCall != null) {
-            enqueuedCall.call().eventListener().dispatcherQueueStart(enqueuedCall.call(), this);
+            enqueuedCall.call().eventListener().dispatcherQueueStart(enqueuedCall, this);
         }
 
         if (effects.idleCallbackToRun != null) {

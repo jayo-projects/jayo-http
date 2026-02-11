@@ -47,8 +47,9 @@ import java.util.Objects;
  * <ul>
  * <li>call ({@link #callStart(Call)}, {@link #callEnd(Call)}, {@link #callFailed(Call, JayoException)}
  * <ul>
- * <li>dispatcher queue ({@link #dispatcherQueueStart(Call, Dispatcher)},
- * {@link #dispatcherQueueEnd(Call, Dispatcher)})</li>
+ * <li>dispatcher queue ({@link #dispatcherQueueStart(Call.AsyncCall, Dispatcher)},
+ * {@link #dispatcherQueueEnd(Call.AsyncCall, Dispatcher)} and
+ * {@link #dispatcherExecution(Call.AsyncCall, Dispatcher)})</li>
  * <li>proxy selection ({@link #proxySelected(Call, HttpUrl, Proxy)}</li>
  * <li>dns ({@link #dnsStart(Call, String)}, {@link #dnsEnd(Call, String, List)})</li>
  * <li>connect ({@link #connectStart(Call, InetSocketAddress, Proxy)},
@@ -89,7 +90,7 @@ import java.util.Objects;
  * All event methods must execute fast, without external locking, cannot throw exceptions, attempt to mutate the event
  * parameters, or be re-entrant back into the client. Any IO writing to files or network should be done asynchronously.
  */
-public abstract class EventListener {
+public interface EventListener {
     /**
      * Invoked as soon as a call is enqueued or executed by a client. In the case of thread or stream limits, this call
      * may be executed well before processing the request is able to begin.
@@ -97,25 +98,31 @@ public abstract class EventListener {
      * This will be invoked only once for a single {@link Call}. Retries of different routes or redirects will be
      * handled within the boundaries of a single {@code callStart} and {@code callEnd}/{@code callFailed} pair.
      */
-    public void callStart(final @NonNull Call call) {
+    default void callStart(final @NonNull Call call) {
     }
 
     /**
-     * Invoked for calls that were not executed immediately because resources weren't available. The call will remain in
-     * the queue until resources are available.
+     * Invoked for async calls that were not executed immediately because resources weren't available. The call will
+     * remain in the queue until resources are available.
      * <p>
      * Use {@link Dispatcher.Builder#maxRequests(int)} and {@link Dispatcher.Builder#maxRequestsPerHost(int)} to
      * configure how many calls Jayo HTTP performs concurrently.
      */
-    public void dispatcherQueueStart(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
+    default void dispatcherQueueStart(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
     }
 
     /**
-     * Invoked when {@code call} will be executed immediately.
+     * Invoked when this async call will be executed.
      * <p>
-     * This method is invoked after {@link #dispatcherQueueStart(Call, Dispatcher)}.
+     * This method is only invoked after {@link #dispatcherQueueStart(Call.AsyncCall, Dispatcher)}.
      */
-    public void dispatcherQueueEnd(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
+    default void dispatcherQueueEnd(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+    }
+
+    /**
+     * Invoked when this async call starts being executed.
+     */
+    default void dispatcherExecution(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
     }
 
     /**
@@ -123,9 +130,9 @@ public abstract class EventListener {
      *
      * @param url a URL with only the scheme, hostname, and port specified.
      */
-    public void proxySelected(final @NonNull Call call,
-                              final @NonNull HttpUrl url,
-                              final @Nullable Proxy proxy) {
+    default void proxySelected(final @NonNull Call call,
+                               final @NonNull HttpUrl url,
+                               final @Nullable Proxy proxy) {
     }
 
     /**
@@ -138,7 +145,7 @@ public abstract class EventListener {
      *
      * @see ConnectionPool
      */
-    public void dnsStart(final @NonNull Call call, final @NonNull String domainName) {
+    default void dnsStart(final @NonNull Call call, final @NonNull String domainName) {
     }
 
     /**
@@ -146,9 +153,9 @@ public abstract class EventListener {
      * <p>
      * This method is invoked after {@link #dnsStart(Call, String)}.
      */
-    public void dnsEnd(final @NonNull Call call,
-                       final @NonNull String domainName,
-                       final @NonNull List<InetAddress> inetAddressList) {
+    default void dnsEnd(final @NonNull Call call,
+                        final @NonNull String domainName,
+                        final @NonNull List<InetAddress> inetAddressList) {
     }
 
     /**
@@ -159,9 +166,9 @@ public abstract class EventListener {
      * This can be invoked more than 1 time for a single {@link Call}. For example, if the response to the
      * {@link Call#request()} is a redirect to a different address, or a connection is retried.
      */
-    public void connectStart(final @NonNull Call call,
-                             final @NonNull InetSocketAddress inetSocketAddress,
-                             final @Nullable Proxy proxy) {
+    default void connectStart(final @NonNull Call call,
+                              final @NonNull InetSocketAddress inetSocketAddress,
+                              final @Nullable Proxy proxy) {
     }
 
     /**
@@ -175,7 +182,7 @@ public abstract class EventListener {
      * This can be invoked more than 1 time for a single {@link Call}. For example, if the response to the
      * {@link Call#request()} is a redirect to a different address, or a connection is retried.
      */
-    public void secureConnectStart(final @NonNull Call call) {
+    default void secureConnectStart(final @NonNull Call call) {
     }
 
     /**
@@ -183,7 +190,7 @@ public abstract class EventListener {
      * <p>
      * This method is invoked after {@link #secureConnectStart(Call)}.
      */
-    public void secureConnectEnd(final @NonNull Call call, final @Nullable Handshake handshake) {
+    default void secureConnectEnd(final @NonNull Call call, final @Nullable Handshake handshake) {
     }
 
     /**
@@ -192,10 +199,10 @@ public abstract class EventListener {
      * If the {@code call} uses HTTPS, this will be invoked after {@link #secureConnectEnd(Call, Handshake)}, otherwise
      * it will be invoked after {@link #connectStart(Call, InetSocketAddress, Proxy)}.
      */
-    public void connectEnd(final @NonNull Call call,
-                           final @NonNull InetSocketAddress inetSocketAddress,
-                           final @Nullable Proxy proxy,
-                           final @Nullable Protocol protocol) {
+    default void connectEnd(final @NonNull Call call,
+                            final @NonNull InetSocketAddress inetSocketAddress,
+                            final @Nullable Proxy proxy,
+                            final @Nullable Protocol protocol) {
     }
 
     /**
@@ -205,11 +212,11 @@ public abstract class EventListener {
      * If the {@code call} uses HTTPS, this will be invoked after {@link #secureConnectStart(Call)}, otherwise it will
      * be invoked after {@link #connectStart(Call, InetSocketAddress, Proxy)}.
      */
-    public void connectFailed(final @NonNull Call call,
-                              final @NonNull InetSocketAddress inetSocketAddress,
-                              final @Nullable Proxy proxy,
-                              final @Nullable Protocol protocol,
-                              final @NonNull JayoException je) {
+    default void connectFailed(final @NonNull Call call,
+                               final @NonNull InetSocketAddress inetSocketAddress,
+                               final @Nullable Proxy proxy,
+                               final @Nullable Protocol protocol,
+                               final @NonNull JayoException je) {
     }
 
     /**
@@ -218,7 +225,7 @@ public abstract class EventListener {
      * This can be invoked more than 1 time for a single {@link Call}. For example, if the response to the
      * {@link Call#request()} is a redirect to a different address.
      */
-    public void connectionAcquired(final @NonNull Call call, final @NonNull Connection connection) {
+    default void connectionAcquired(final @NonNull Call call, final @NonNull Connection connection) {
     }
 
     /**
@@ -229,7 +236,7 @@ public abstract class EventListener {
      * This can be invoked more than 1 time for a single {@link Call}. For example, if the response to the
      * {@link Call#request()} is a redirect to a different address.
      */
-    public void connectionReleased(final @NonNull Call call, final @NonNull Connection connection) {
+    default void connectionReleased(final @NonNull Call call, final @NonNull Connection connection) {
     }
 
     /**
@@ -241,7 +248,7 @@ public abstract class EventListener {
      * This can be invoked more than 1 time for a single {@link Call}. For example, if the response to the
      * {@link Call#request()} is a redirect to a different address.
      */
-    public void requestHeadersStart(final @NonNull Call call) {
+    default void requestHeadersStart(final @NonNull Call call) {
     }
 
     /**
@@ -251,7 +258,7 @@ public abstract class EventListener {
      *
      * @param request the request sent over the network. It is an error to access the body of this request.
      */
-    public void requestHeadersEnd(final @NonNull Call call, final @NonNull ClientRequest request) {
+    default void requestHeadersEnd(final @NonNull Call call, final @NonNull ClientRequest request) {
     }
 
     /**
@@ -264,7 +271,7 @@ public abstract class EventListener {
      * This can be invoked more than 1 time for a single {@link Call}. For example, if the response to the
      * {@link Call#request()} is a redirect to a different address.
      */
-    public void requestBodyStart(final @NonNull Call call) {
+    default void requestBodyStart(final @NonNull Call call) {
     }
 
     /**
@@ -272,7 +279,7 @@ public abstract class EventListener {
      * <p>
      * This method is always invoked after {@link #requestBodyStart(Call)}.
      */
-    public void requestBodyEnd(final @NonNull Call call, final long byteCount) {
+    default void requestBodyEnd(final @NonNull Call call, final long byteCount) {
     }
 
     /**
@@ -281,7 +288,7 @@ public abstract class EventListener {
      * This method is invoked after {@link #requestHeadersStart(Call)} or {@link #requestBodyStart(Call)}. Note that
      * request failures do not necessarily fail the entire call.
      */
-    public void requestFailed(final @NonNull Call call, final @NonNull JayoException je) {
+    default void requestFailed(final @NonNull Call call, final @NonNull JayoException je) {
     }
 
     /**
@@ -293,7 +300,7 @@ public abstract class EventListener {
      * This can be invoked more than 1 time for a single {@link Call}. For example, if the response to the
      * {@link Call#request()} is a redirect to a different address.
      */
-    public void responseHeadersStart(final @NonNull Call call) {
+    default void responseHeadersStart(final @NonNull Call call) {
     }
 
     /**
@@ -303,7 +310,7 @@ public abstract class EventListener {
      *
      * @param response the response received over the network. It is an error to access the body of this response.
      */
-    public void responseHeadersEnd(final @NonNull Call call, final @NonNull ClientResponse response) {
+    default void responseHeadersEnd(final @NonNull Call call, final @NonNull ClientResponse response) {
     }
 
     /**
@@ -320,7 +327,7 @@ public abstract class EventListener {
      * This will usually be invoked only 1 time for a single {@link Call}, exceptions are a limited set of cases
      * including failure recovery.
      */
-    public void responseBodyStart(final @NonNull Call call) {
+    default void responseBodyStart(final @NonNull Call call) {
     }
 
     /**
@@ -334,7 +341,7 @@ public abstract class EventListener {
      * <p>
      * This method is always invoked after {@link #responseBodyStart(Call)}.
      */
-    public void responseBodyEnd(final @NonNull Call call, final long byteCount) {
+    default void responseBodyEnd(final @NonNull Call call, final long byteCount) {
     }
 
     /**
@@ -344,7 +351,7 @@ public abstract class EventListener {
      * <p>
      * May be invoked without a prior call to {@link #responseHeadersStart(Call)} or {@link #responseBodyStart(Call)}.
      */
-    public void responseFailed(final @NonNull Call call, final @NonNull JayoException je) {
+    default void responseFailed(final @NonNull Call call, final @NonNull JayoException je) {
     }
 
     /**
@@ -353,7 +360,7 @@ public abstract class EventListener {
      * <p>
      * This method is always invoked after {@link #callStart(Call)}.
      */
-    public void callEnd(final @NonNull Call call) {
+    default void callEnd(final @NonNull Call call) {
     }
 
     /**
@@ -361,7 +368,7 @@ public abstract class EventListener {
      * <p>
      * This method is always invoked after {@link #callStart(Call)}.
      */
-    public void callFailed(final @NonNull Call call, final @NonNull JayoException je) {
+    default void callFailed(final @NonNull Call call, final @NonNull JayoException je) {
     }
 
     /**
@@ -380,14 +387,14 @@ public abstract class EventListener {
      * This is invoked at most once, even if {@link Call#cancel()} is invoked multiple times. It may be invoked at any
      * point in a call's life, including before {@link #callStart(Call)} and after {@link #callEnd(Call)}.
      */
-    public void canceled(final @NonNull Call call) {
+    default void canceled(final @NonNull Call call) {
     }
 
     /**
      * Invoked when a call fails due to cache rules. For example, we're forbidden from using the network and the cache
      * is insufficient.
      */
-    public void satisfactionFailure(final @NonNull Call call, final @NonNull ClientResponse response) {
+    default void satisfactionFailure(final @NonNull Call call, final @NonNull ClientResponse response) {
     }
 
     /**
@@ -396,7 +403,7 @@ public abstract class EventListener {
      * <p>
      * This event will only be received when a cache is configured for the client.
      */
-    public void cacheHit(final @NonNull Call call, final @NonNull ClientResponse response) {
+    default void cacheHit(final @NonNull Call call, final @NonNull ClientResponse response) {
     }
 
     /**
@@ -405,7 +412,7 @@ public abstract class EventListener {
      * <p>
      * This event will only be received when a cache is configured for the client.
      */
-    public void cacheMiss(final @NonNull Call call) {
+    default void cacheMiss(final @NonNull Call call) {
     }
 
     /**
@@ -414,7 +421,7 @@ public abstract class EventListener {
      * <p>
      * This event will only be received when a cache is configured for the client.
      */
-    public void cacheConditionalHit(final @NonNull Call call, final @NonNull ClientResponse cachedResponse) {
+    default void cacheConditionalHit(final @NonNull Call call, final @NonNull ClientResponse cachedResponse) {
     }
 
     /**
@@ -439,9 +446,9 @@ public abstract class EventListener {
      *
      * @param retry {@code true} if Jayo HTTP will make another attempt
      */
-    public void retryDecision(final @NonNull Call call,
-                              final @NonNull JayoException je,
-                              final boolean retry) {
+    default void retryDecision(final @NonNull Call call,
+                               final @NonNull JayoException je,
+                               final boolean retry) {
     }
 
     /**
@@ -466,22 +473,25 @@ public abstract class EventListener {
      * @param networkResponse the intermediate response that may require a follow-up request.
      * @param nextRequest     the follow-up request that will be made. Null if no follow-up will be made.
      */
-    public void followUpDecision(final @NonNull Call call,
-                                 final @NonNull ClientResponse networkResponse,
-                                 final @Nullable ClientRequest nextRequest) {
+    default void followUpDecision(final @NonNull Call call,
+                                  final @NonNull ClientResponse networkResponse,
+                                  final @Nullable ClientRequest nextRequest) {
     }
 
     /**
-     * @return a new {@link EventListener} that publishes events to this and then {@code other}.
+     * @return a new {@link EventListener} that publishes events to {@code leftEventListener} and then
+     * {@code rightEventListener}.
      */
-    public final @NonNull EventListener plus(final @NonNull EventListener other) {
-        Objects.requireNonNull(other);
+    static @NonNull EventListener plus(final @NonNull EventListener leftEventListener,
+                                       final @NonNull EventListener rightEventListener) {
+        Objects.requireNonNull(leftEventListener);
+        Objects.requireNonNull(rightEventListener);
 
-        return AggregateEventListener.create(this, other);
+        return AggregateEventListener.create(leftEventListener, rightEventListener);
     }
 
     @FunctionalInterface
-    public interface Factory {
+    interface Factory {
         /**
          * Creates an instance of the {@link EventListener} for a particular {@link Call}. The returned
          * {@link EventListener} instance will be used during the lifecycle of {@code call}.

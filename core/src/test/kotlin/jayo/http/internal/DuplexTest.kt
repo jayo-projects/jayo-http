@@ -349,7 +349,7 @@ class DuplexTest {
         enableProtocol(Protocol.HTTP_2)
         val duplexResponseSent = CountDownLatch(1)
         val requestHeadersEndListener =
-            object : EventListener() {
+            object : EventListener {
                 override fun requestHeadersEnd(
                     call: Call,
                     request: ClientRequest,

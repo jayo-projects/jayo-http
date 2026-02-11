@@ -62,6 +62,8 @@ class CancelCall {
                 je,
             )
         }
+
+        executor.shutdown()
     }
 }
 

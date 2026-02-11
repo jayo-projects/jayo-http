@@ -1614,7 +1614,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
             client
                 .newBuilder()
                 .eventListener(
-                    object : EventListener() {
+                    object : EventListener {
                         override fun connectionAcquired(
                             call: Call,
                             connection: Connection,
@@ -1892,7 +1892,7 @@ abstract class HttpOverHttp2Test(val protocol: Protocol) {
                 .newBuilder()
                 .eventListenerFactory(
                     clientTestRule.wrap(
-                        object : EventListener() {
+                        object : EventListener {
                             var callCount = 0
 
                             override fun connectionAcquired(

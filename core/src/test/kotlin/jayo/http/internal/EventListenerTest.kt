@@ -213,6 +213,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
         completionLatch.await()
         assertThat(eventRecorder.recordedEventTypes()).containsExactly(
             CallStart::class,
+            DispatcherExecution::class,
             ProxySelected::class,
             DnsStart::class,
             DnsEnd::class,
@@ -2311,6 +2312,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
             return mapOf(
                 Boolean::class.java to false,
                 Call::class.java to FailingCall(),
+                Call.AsyncCall::class.java to FailingCall.Async(),
                 Connection::class.java to factory.newConnection(pool, route),
                 Dispatcher::class.java to Dispatcher.builder().build(),
                 Handshake::class.java to handshake,

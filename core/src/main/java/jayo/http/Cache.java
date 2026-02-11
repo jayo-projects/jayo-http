@@ -21,8 +21,8 @@
 
 package jayo.http;
 
+import jayo.http.internal.Utils;
 import jayo.http.internal.cache.RealCache;
-import jayo.http.internal.connection.RealJayoHttpClient;
 import org.jspecify.annotations.NonNull;
 
 import java.nio.file.Path;
@@ -120,7 +120,7 @@ public sealed interface Cache extends AutoCloseable permits RealCache {
             throw new IllegalArgumentException("maxSize <= 0: " + maxSize);
         }
 
-        return new RealCache(directory, maxSize, RealJayoHttpClient.DEFAULT_TASK_RUNNER);
+        return new RealCache(directory, maxSize, Utils.defaultTaskRunner());
     }
 
     /**

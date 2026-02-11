@@ -39,14 +39,11 @@ import kotlin.test.assertFailsWith
 class DispatcherTest {
     @RegisterExtension
     val clientTestRule = JayoHttpClientTestRule()
-    private val executor = RecordingExecutor(this)
+    private val executorAndListener = RecordingExecutor(this)
     val callback = RecordingCallback()
 
-    val webSocketListener =
-        object : WebSocketListener() {
-        }
     val dispatcherBuilder = Dispatcher.builder()
-        .executorService(executor)
+        .executorService(executorAndListener)
     val dispatcher: RealDispatcher by lazy { dispatcherBuilder.build() as RealDispatcher }
     val eventRecorder = EventRecorder()
     val client: JayoHttpClient by lazy {
@@ -81,21 +78,24 @@ class DispatcherTest {
 
     @Test
     fun enqueuedJobsRunImmediately() {
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        executor.assertJobs("http://a/1")
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        executorAndListener.assertJobs("http://a/1")
 
         assertThat(eventRecorder.eventSequence).noneMatch { it is DispatcherQueueStart }
         assertThat(eventRecorder.eventSequence).noneMatch { it is DispatcherQueueEnd }
     }
 
+    private fun createCall(newRequest: ClientRequest) =
+        client.newCall(newRequest).apply { addEventListener(executorAndListener) }
+
     @Test
     fun maxRequestsEnforced() {
         dispatcherBuilder.maxRequests(3)
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        client.newCall(newRequest("http://a/2")).enqueue(callback)
-        client.newCall(newRequest("http://b/1")).enqueue(callback)
-        client.newCall(newRequest("http://b/2")).enqueue(callback)
-        executor.assertJobs("http://a/1", "http://a/2", "http://b/1")
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        createCall(newRequest("http://a/2")).enqueue(callback)
+        createCall(newRequest("http://b/1")).enqueue(callback)
+        createCall(newRequest("http://b/2")).enqueue(callback)
+        executorAndListener.assertJobs("http://a/1", "http://a/2", "http://b/1")
 
         val dispatcherQueueStart = eventRecorder.removeUpToEvent<DispatcherQueueStart>()
         assertThat(dispatcherQueueStart.call.request().url).isEqualTo("http://b/2".toHttpUrl())
@@ -105,10 +105,10 @@ class DispatcherTest {
     @Test
     fun maxPerHostEnforced() {
         dispatcherBuilder.maxRequestsPerHost(2)
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        client.newCall(newRequest("http://a/2")).enqueue(callback)
-        client.newCall(newRequest("http://a/3")).enqueue(callback)
-        executor.assertJobs("http://a/1", "http://a/2")
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        createCall(newRequest("http://a/2")).enqueue(callback)
+        createCall(newRequest("http://a/3")).enqueue(callback)
+        executorAndListener.assertJobs("http://a/1", "http://a/2")
 
         val dispatcherQueueStart = eventRecorder.removeUpToEvent<DispatcherQueueStart>()
         assertThat(dispatcherQueueStart.call.request().url).isEqualTo("http://a/3".toHttpUrl())
@@ -119,77 +119,77 @@ class DispatcherTest {
     @Test
     fun maxPerHostNotEnforcedForWebSockets() {
         dispatcherBuilder.maxRequestsPerHost(2)
-        client.newWebSocket(newRequest("http://a/1"), webSocketListener)
-        client.newWebSocket(newRequest("http://a/2"), webSocketListener)
-        client.newWebSocket(newRequest("http://a/3"), webSocketListener)
-        executor.assertJobs("http://a/1", "http://a/2", "http://a/3")
+        client.newWebSocket(newRequest("http://a/1"), executorAndListener)
+        client.newWebSocket(newRequest("http://a/2"), executorAndListener)
+        client.newWebSocket(newRequest("http://a/3"), executorAndListener)
+        executorAndListener.assertJobs("http://a/1", "http://a/2", "http://a/3")
     }
 
     @Test
     fun oldJobFinishesNewJobCanRunDifferentHost() {
         dispatcherBuilder.maxRequests(1)
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        client.newCall(newRequest("http://b/1")).enqueue(callback)
-        executor.finishJob("http://a/1")
-        executor.assertJobs("http://b/1")
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        createCall(newRequest("http://b/1")).enqueue(callback)
+        executorAndListener.finishJob("http://a/1")
+        executorAndListener.assertJobs("http://b/1")
     }
 
     @Test
     fun oldJobFinishesNewJobWithSameHostStarts() {
         dispatcherBuilder.maxRequests(2)
         dispatcherBuilder.maxRequestsPerHost(1)
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        client.newCall(newRequest("http://b/1")).enqueue(callback)
-        client.newCall(newRequest("http://b/2")).enqueue(callback)
-        client.newCall(newRequest("http://a/2")).enqueue(callback)
-        executor.finishJob("http://a/1")
-        executor.assertJobs("http://b/1", "http://a/2")
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        createCall(newRequest("http://b/1")).enqueue(callback)
+        createCall(newRequest("http://b/2")).enqueue(callback)
+        createCall(newRequest("http://a/2")).enqueue(callback)
+        executorAndListener.finishJob("http://a/1")
+        executorAndListener.assertJobs("http://b/1", "http://a/2")
     }
 
     @Test
     fun oldJobFinishesNewJobCantRunDueToHostLimit() {
         dispatcherBuilder.maxRequestsPerHost(1)
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        client.newCall(newRequest("http://b/1")).enqueue(callback)
-        client.newCall(newRequest("http://a/2")).enqueue(callback)
-        executor.finishJob("http://b/1")
-        executor.assertJobs("http://a/1")
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        createCall(newRequest("http://b/1")).enqueue(callback)
+        createCall(newRequest("http://a/2")).enqueue(callback)
+        executorAndListener.finishJob("http://b/1")
+        executorAndListener.assertJobs("http://a/1")
     }
 
     @Test
     fun enqueuedCallsStillRespectMaxCallsPerHost() {
         dispatcherBuilder.maxRequests(1)
         dispatcherBuilder.maxRequestsPerHost(1)
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        client.newCall(newRequest("http://b/1")).enqueue(callback)
-        client.newCall(newRequest("http://b/2")).enqueue(callback)
-        client.newCall(newRequest("http://b/3")).enqueue(callback)
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        createCall(newRequest("http://b/1")).enqueue(callback)
+        createCall(newRequest("http://b/2")).enqueue(callback)
+        createCall(newRequest("http://b/3")).enqueue(callback)
         dispatcherBuilder.maxRequests(3)
-        executor.finishJob("http://a/1")
-        executor.assertJobs("http://b/1")
+        executorAndListener.finishJob("http://a/1")
+        executorAndListener.assertJobs("http://b/1")
     }
 
     @Test
     fun cancelingRunningJobTakesNoEffectUntilJobFinishes() {
         dispatcherBuilder.maxRequests(1)
-        val c1 = client.newCall(newRequest("http://a/1"))
-        val c2 = client.newCall(newRequest("http://a/2"))
+        val c1 = createCall(newRequest("http://a/1"))
+        val c2 = createCall(newRequest("http://a/2"))
         c1.enqueue(callback)
         c2.enqueue(callback)
         c1.cancel()
-        executor.assertJobs("http://a/1")
-        executor.finishJob("http://a/1")
-        executor.assertJobs("http://a/2")
+        executorAndListener.assertJobs("http://a/1")
+        executorAndListener.finishJob("http://a/1")
+        executorAndListener.assertJobs("http://a/2")
     }
 
     @Test
     fun asyncCallAccessors() {
         dispatcherBuilder.maxRequests(3)
-        val a1 = client.newCall(newRequest("http://a/1"))
-        val a2 = client.newCall(newRequest("http://a/2"))
-        val a3 = client.newCall(newRequest("http://a/3"))
-        val a4 = client.newCall(newRequest("http://a/4"))
-        val a5 = client.newCall(newRequest("http://a/5"))
+        val a1 = createCall(newRequest("http://a/1"))
+        val a2 = createCall(newRequest("http://a/2"))
+        val a3 = createCall(newRequest("http://a/3"))
+        val a4 = createCall(newRequest("http://a/4"))
+        val a5 = createCall(newRequest("http://a/5"))
         a1.enqueue(callback)
         a2.enqueue(callback)
         a3.enqueue(callback)
@@ -277,9 +277,9 @@ class DispatcherTest {
     fun idleCallbackInvokedWhenIdle() {
         val idle = AtomicBoolean()
         dispatcherBuilder.idleCallback { idle.set(true) }
-        client.newCall(newRequest("http://a/1")).enqueue(callback)
-        client.newCall(newRequest("http://a/2")).enqueue(callback)
-        executor.finishJob("http://a/1")
+        createCall(newRequest("http://a/1")).enqueue(callback)
+        createCall(newRequest("http://a/2")).enqueue(callback)
+        executorAndListener.finishJob("http://a/1")
         assertThat(idle.get()).isFalse()
         val ready = CountDownLatch(1)
         val proceed = CountDownLatch(1)
@@ -297,7 +297,7 @@ class DispatcherTest {
                 }.build()
         val t1 = makeSynchronousCall(newClient.newCall(newRequest("http://a/3")))
         ready.await(5, TimeUnit.SECONDS)
-        executor.finishJob("http://a/2")
+        executorAndListener.finishJob("http://a/2")
         assertThat(idle.get()).isFalse()
         proceed.countDown()
         t1.join()
@@ -307,8 +307,8 @@ class DispatcherTest {
     @Test
     fun executionRejectedImmediately() {
         val request = newRequest("http://a/1")
-        executor.shutdown()
-        client.newCall(request).enqueue(callback)
+        executorAndListener.shutdown()
+        createCall(request).enqueue(callback)
         callback.await(request.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(eventRecorder.recordedEventTypes())
             .containsExactly(CallStart::class, CallFailed::class)
@@ -319,12 +319,12 @@ class DispatcherTest {
         val request1 = newRequest("http://a/1")
         val request2 = newRequest("http://a/2")
         dispatcherBuilder.maxRequests(2)
-        client.newCall(request1).enqueue(callback)
-        executor.shutdown()
-        client.newCall(request2).enqueue(callback)
+        createCall(request1).enqueue(callback)
+        executorAndListener.shutdown()
+        createCall(request2).enqueue(callback)
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(eventRecorder.recordedEventTypes())
-            .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
+            .containsExactly(CallStart::class, DispatcherExecution::class, CallStart::class, CallFailed::class)
     }
 
     @Test
@@ -332,12 +332,12 @@ class DispatcherTest {
         val request1 = newRequest("http://a/1")
         val request2 = newRequest("http://a/2")
         dispatcherBuilder.maxRequestsPerHost(2)
-        client.newCall(request1).enqueue(callback)
-        executor.shutdown()
-        client.newCall(request2).enqueue(callback)
+        createCall(request1).enqueue(callback)
+        executorAndListener.shutdown()
+        createCall(request2).enqueue(callback)
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(eventRecorder.recordedEventTypes())
-            .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
+            .containsExactly(CallStart::class, DispatcherExecution::class, CallStart::class, CallFailed::class)
     }
 
     @Test
@@ -345,13 +345,13 @@ class DispatcherTest {
         val request1 = newRequest("http://a/1")
         val request2 = newRequest("http://a/2")
         dispatcherBuilder.maxRequests(1)
-        client.newCall(request1).enqueue(callback)
-        executor.shutdown()
-        client.newCall(request2).enqueue(callback)
-        executor.finishJob("http://a/1") // Trigger promotion.
+        createCall(request1).enqueue(callback)
+        executorAndListener.shutdown()
+        createCall(request2).enqueue(callback)
+        executorAndListener.finishJob("http://a/1") // Trigger promotion.
         callback.await(request2.url).assertFailure(JayoInterruptedIOException::class.java)
         assertThat(eventRecorder.recordedEventTypes())
-            .containsExactly(CallStart::class, CallStart::class, CallFailed::class)
+            .containsExactly(CallStart::class, DispatcherExecution::class, CallStart::class, CallFailed::class)
     }
 
     private fun makeSynchronousCall(call: Call): Thread {

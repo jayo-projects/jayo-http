@@ -1180,7 +1180,6 @@ class HttpLoggingInterceptorTest {
             apply {
                 assertThat(index).isLessThan(logs.size)
                 assertThat(logs[index++]).isEqualTo(expected)
-                return this
             }
 
         fun assertLogMatch(regex: Regex) =

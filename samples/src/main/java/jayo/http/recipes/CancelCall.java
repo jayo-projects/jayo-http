@@ -58,6 +58,8 @@ public class CancelCall {
             System.out.printf("%.2f Call failed as expected: %s%n",
                     (System.nanoTime() - startNanos) / 1e9f, je);
         }
+
+        executor.shutdown();
     }
 
     public static void main(String... args) {

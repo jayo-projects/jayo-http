@@ -44,7 +44,6 @@ import static jayo.http.internal.UrlUtils.toHostHeader;
 import static jayo.http.internal.Utils.USER_AGENT;
 
 final class RealRoutePlanner implements RoutePlanner {
-    private final @NonNull TaskRunner taskRunner;
     private final @NonNull RealConnectionPool connectionPool;
     private final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final @NonNull Duration pingInterval;
@@ -61,8 +60,7 @@ final class RealRoutePlanner implements RoutePlanner {
 
     private final @NonNull ArrayDeque<Plan> deferredPlans = new ArrayDeque<>();
 
-    RealRoutePlanner(final @NonNull TaskRunner taskRunner,
-                     final @NonNull RealConnectionPool connectionPool,
+    RealRoutePlanner(final @NonNull RealConnectionPool connectionPool,
                      NetworkSocket.@NonNull Builder networkSocketBuilder,
                      final @NonNull Duration pingInterval,
                      final boolean retryOnConnectionFailure,
@@ -71,7 +69,6 @@ final class RealRoutePlanner implements RoutePlanner {
                      final @NonNull RouteDatabase routeDatabase,
                      final @NonNull RealCall call,
                      final @NonNull ClientRequest request) {
-        assert taskRunner != null;
         assert connectionPool != null;
         assert networkSocketBuilder != null;
         assert pingInterval != null;
@@ -80,7 +77,6 @@ final class RealRoutePlanner implements RoutePlanner {
         assert call != null;
         assert request != null;
 
-        this.taskRunner = taskRunner;
         this.connectionPool = connectionPool;
         this.networkSocketBuilder = networkSocketBuilder;
         this.pingInterval = pingInterval;
@@ -259,7 +255,6 @@ final class RealRoutePlanner implements RoutePlanner {
         final var tunnelRequest = route.requiresTunnel() ? createTunnelRequest(route) : null;
 
         return new ConnectPlan(
-                taskRunner,
                 connectionPool,
                 networkSocketBuilder,
                 pingInterval,
@@ -271,7 +266,8 @@ final class RealRoutePlanner implements RoutePlanner {
                 0, // attempt
                 tunnelRequest,
                 -1, // connectionSpecIndex
-                false); // isTlsFallback
+                false // isTlsFallback
+        );
     }
 
     /**

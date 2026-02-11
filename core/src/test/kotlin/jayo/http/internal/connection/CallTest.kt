@@ -1046,7 +1046,7 @@ class CallTest {
         dispatcher.enqueue(MockResponse(body = "retry success"))
         server.dispatcher = dispatcher
         val requestFinishedListener =
-            object : EventListener() {
+            object : EventListener {
                 override fun requestHeadersEnd(
                     call: Call,
                     request: ClientRequest,
@@ -2540,7 +2540,7 @@ class CallTest {
     fun cancelWhileRequestHeadersAreSent() {
         server.enqueue(MockResponse(body = "A"))
         val listener: EventListener =
-            object : EventListener() {
+            object : EventListener {
                 override fun requestHeadersStart(call: Call) {
                     try {
                         // Cancel call from another thread to avoid reentrance.
@@ -2622,7 +2622,6 @@ class CallTest {
     fun canceledBeforeIOSignalsOnFailure() {
         // Force requests to be executed serially.
         val dispatcher = Dispatcher.builder()
-            .executorService(client.dispatcher.executorService)
             .maxRequests(1)
             .build()
         client =
@@ -4325,7 +4324,7 @@ class CallTest {
     @Test
     fun connectionIsImmediatelyUnhealthy() {
         val listener: EventListener =
-            object : EventListener() {
+            object : EventListener {
                 override fun connectionAcquired(
                     call: Call,
                     connection: Connection,
@@ -4388,7 +4387,7 @@ class CallTest {
             client
                 .newBuilder()
                 .eventListener(
-                    object : EventListener() {
+                    object : EventListener {
                         override fun responseBodyEnd(
                             call: Call,
                             byteCount: Long,

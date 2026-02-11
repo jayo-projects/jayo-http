@@ -33,7 +33,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-public final class AggregateEventListener extends EventListener {
+public final class AggregateEventListener implements EventListener {
     public static @NonNull EventListener create(final @NonNull EventListener leftEventListener,
                                                 final @NonNull EventListener rightEventListener) {
         assert leftEventListener != null;
@@ -75,19 +75,27 @@ public final class AggregateEventListener extends EventListener {
     }
 
     @Override
-    public void dispatcherQueueStart(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
+    public void dispatcherQueueStart(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
         for (final var delegate : eventListeners) {
-            delegate.dispatcherQueueStart(call, dispatcher);
+            delegate.dispatcherQueueStart(asyncCall, dispatcher);
         }
     }
 
     @Override
-    public void dispatcherQueueEnd(final @NonNull Call call, final @NonNull Dispatcher dispatcher) {
+    public void dispatcherQueueEnd(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
         for (final var delegate : eventListeners) {
-            delegate.dispatcherQueueEnd(call, dispatcher);
+            delegate.dispatcherQueueEnd(asyncCall, dispatcher);
         }
     }
 
+    @Override
+    public void dispatcherExecution(final Call.@NonNull AsyncCall asyncCall, @NonNull Dispatcher dispatcher) {
+        for (final var delegate : eventListeners) {
+            delegate.dispatcherExecution(asyncCall, dispatcher);
+        }
+    }
+
+    @Override
     public void proxySelected(final @NonNull Call call,
                               final @NonNull HttpUrl url,
                               final @Nullable Proxy proxy) {

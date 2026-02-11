@@ -22,7 +22,6 @@
 package jayo.http;
 
 import jayo.http.internal.connection.RealJayoHttpClient;
-import jayo.scheduler.TaskRunner;
 import jayo.tls.ClientTlsSocket;
 import jayo.tls.Protocol;
 import org.jspecify.annotations.NonNull;
@@ -31,8 +30,6 @@ import org.jspecify.annotations.Nullable;
 import javax.net.ssl.HostnameVerifier;
 import java.time.Duration;
 import java.util.List;
-
-import static jayo.tools.JayoUtils.executorService;
 
 /**
  * Factory for {@linkplain Call calls}, which can be used to send HTTP requests and read their responses.
@@ -53,7 +50,7 @@ import static jayo.tools.JayoUtils.executorService;
  * {@code
  * // The singleton HTTP client.
  * public final JayoHttpClient client = JayoHttpClient.builder()
- *     .addInterceptor(new HttpLoggingInterceptor())
+ *     .addInterceptor(HttpLoggingInterceptor.builder().level(Level.BASIC).build())
  *     .cache(new Cache(cacheDir, cacheSize))
  *     .build();
  * }
@@ -86,26 +83,27 @@ import static jayo.tools.JayoUtils.executorService;
  * The threads and connections that are held will be released automatically if they remain idle. But if you are writing
  * an application that needs to aggressively release unused resources, you may do so.
  * <p>
- * Shutdown the dispatcher's executor service with
- * {@linkplain java.util.concurrent.ExecutorService#shutdown() shutdown()}. This will also cause future calls to the
+ * Shutdown the dispatcher with {@linkplain Dispatcher#shutdown(Duration)}. This will also cause future calls to the
  * client to be rejected.
  * <pre>
  * {@code
- * client.dispatcher().executorService().shutdown();
+ * // Trigger shutdown of the dispatcher, leaving a few seconds
+ * // for asynchronous requests to respond if the network is slow.
+ * client.getDispatcher().shutdown(Duration.ofSeconds(5));
  * }
  * </pre>
  * Clear the connection pool with {@linkplain ConnectionPool#evictAll() evictAll()}. Note that the connection pool's
  * daemon thread may not exit immediately.
  * <pre>
  * {@code
- * client.connectionPool().evictAll();
+ * client.getConnectionPool().evictAll();
  * }
  * </pre>
  * If your client has a cache, call {@linkplain Cache#close() close()}. Note that it is an error to create calls against
  * a cache that is closed, and doing so will cause the call to crash.
  * <pre>
  * {@code
- * client.cache().close();
+ * client.getCache().close();
  * }
  * </pre>
  * Jayo HTTP uses daemon threads for HTTP/2 connections that are also virtual for Java 21+. These will exit
@@ -122,9 +120,6 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
     static @NonNull JayoHttpClient create() {
         return builder().build();
     }
-
-    @NonNull
-    TaskRunner DEFAULT_TASK_RUNNER = TaskRunner.create(executorService("JayoHttpClient#", true));
 
     @NonNull
     Authenticator getAuthenticator();
@@ -153,7 +148,7 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
     List<@NonNull ConnectionSpec> getConnectionSpecs();
 
     /**
-     * @return the default connect timeout. If unset in the builder, it is 10 seconds.
+     * @return the connect timeout for network connections. If unset in the builder, it is 10 seconds.
      */
     @NonNull
     Duration getConnectTimeout();
@@ -220,7 +215,7 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
     Authenticator getProxyAuthenticator();
 
     /**
-     * @return the default read timeout. If unset in the builder, it is 10 seconds.
+     * @return the read timeout for network connections. If unset in the builder, it is 10 seconds.
      */
     @NonNull
     Duration getReadTimeout();
@@ -234,7 +229,7 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
     Duration getWebSocketCloseTimeout();
 
     /**
-     * @return the default write timeout. If unset in the builder, it is 10 seconds.
+     * @return the write timeout for network connections. If unset in the builder, it is 10 seconds.
      */
     @NonNull
     Duration getWriteTimeout();

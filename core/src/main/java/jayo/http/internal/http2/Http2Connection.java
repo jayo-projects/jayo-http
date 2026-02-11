@@ -197,12 +197,12 @@ public final class Http2Connection implements AutoCloseable {
         // Flow control was designed more for servers or proxies than edge clients. If we are a client, set the flow
         // control window to 16MiB.  This avoids thrashing window updates every 64KiB, yet small enough to avoid blowing
         // up the heap.
-        if (builder.client) {
+        if (client) {
             jayoHttpSettings.set(Settings.INITIAL_WINDOW_SIZE, JAYO_HTTP_CLIENT_WINDOW_SIZE);
         }
         peerSettings = DEFAULT_SETTINGS;
 
-        this.nextStreamId = (builder.client) ? 3 : 2;
+        this.nextStreamId = (client) ? 3 : 2;
         readBytes = new RealWindowCounter(0);
         writeBytesMaximum = peerSettings.initialWindowSize();
 

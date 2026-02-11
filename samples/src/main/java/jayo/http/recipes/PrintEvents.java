@@ -57,7 +57,7 @@ public final class PrintEvents {
         new PrintEvents().run();
     }
 
-    private static final class PrintingEventListener extends EventListener {
+    private static final class PrintingEventListener implements EventListener {
         long callStartNanos;
 
         private void printEvent(String name) {
