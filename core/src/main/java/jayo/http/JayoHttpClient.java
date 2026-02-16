@@ -420,8 +420,8 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
          * The following protocols are currently supported:
          * <ul>
          * <li><a href="https://www.w3.org/Protocols/rfc2616/rfc2616.html">http/1.1</a>
-         * <li><a href="https://tools.ietf.org/html/rfc7540>h2</a>
-         * <li><a href="https://tools.ietf.org/html/rfc7540#section-3.4>h2 with prior knowledge(cleartext only)</a>
+         * <li><a href="https://tools.ietf.org/html/rfc7540">h2</a>
+         * <li><a href="https://tools.ietf.org/html/rfc7540#section-3.4">h2 with prior knowledge(cleartext only)</a>
          * </ul>
          * <b>This is an evolving set.</b> Future releases include support for transitional protocols. The http/1.1
          * transport will never be dropped.
