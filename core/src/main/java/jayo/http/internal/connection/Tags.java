@@ -36,7 +36,7 @@ import java.util.Collections;
  * <p>
  * This collection is optimized for safe concurrent access over a very small number of elements.
  * <p>
- * This collection and is expected to hold fewer than 10 elements. Each operation is <i>O(N)</i>, and so building an
+ * This collection is expected to hold fewer than 10 elements. Each operation is <i>O(N)</i>, and so building an
  * instance with <i>N</i> elements is <i>O(N**2)</i>.
  */
 sealed interface Tags {
@@ -44,9 +44,9 @@ sealed interface Tags {
      * @return a {@link Tags} instance that maps {@code key} to {@code value}. If {@code value} is null, this returns a
      * {@link Tags} instance that does not have any mapping for {@code key}.
      */
-    <T> Tags plus(final Class<@NonNull T> key, final @Nullable T value);
+    <T> Tags plus(final @NonNull Class<@NonNull T> key, final @Nullable T value);
 
-    <T> T get(final Class<@NonNull T> key);
+    <T> T get(final @NonNull Class<@NonNull T> key);
 
     /**
      * An empty tags. This is always the tail of a {@link LinkedTags} chain.
@@ -55,7 +55,7 @@ sealed interface Tags {
         INSTANCE;
 
         @Override
-        public <T> Tags plus(final Class<@NonNull T> key, final @Nullable T value) {
+        public <T> Tags plus(final @NonNull Class<@NonNull T> key, final @Nullable T value) {
             assert key != null;
 
             return (value != null)
@@ -64,7 +64,7 @@ sealed interface Tags {
         }
 
         @Override
-        public <T> T get(final Class<@NonNull T> key) {
+        public <T> T get(final @NonNull Class<@NonNull T> key) {
             assert key != null;
             return null;
         }
@@ -97,7 +97,7 @@ sealed interface Tags {
         }
 
         @Override
-        public <T> Tags plus(final Class<@NonNull T> key, final @Nullable T value) {
+        public <T> Tags plus(final @NonNull Class<@NonNull T> key, final @Nullable T value) {
             assert key != null;
 
             // Create a copy of this `LinkedTags` that doesn't have a mapping for `key`.
@@ -122,7 +122,7 @@ sealed interface Tags {
         }
 
         @Override
-        public <T> T get(final Class<@NonNull T> key) {
+        public <T> T get(final @NonNull Class<@NonNull T> key) {
             assert key != null;
 
             if (key.equals(this.key)) {
