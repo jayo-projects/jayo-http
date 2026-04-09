@@ -19,6 +19,8 @@ release = "3.1.0"
 # main
 # https://github.com/jayo-projects/jayo/tags
 jayo = "0.1.0-beta8"
+# https://github.com/jayo-projects/jayo-scheduler/tags
+jayoScheduler = "0.1.0-beta9"
 # https://github.com/jspecify/jspecify/releases
 jspecify = "1.0.0"
 

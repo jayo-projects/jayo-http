@@ -20,7 +20,7 @@ fun catalogVersion(lib: String) =
 
 dependencies {
     api("dev.jayo:jayo:${catalogVersion("jayo")}")
-    api("dev.jayo:jayo-scheduler:${catalogVersion("jayo")}")
+    api("dev.jayo:jayo-scheduler:${catalogVersion("jayoScheduler")}")
 
     optional("org.jetbrains.kotlin:kotlin-stdlib")
 
@@ -30,7 +30,7 @@ dependencies {
     testImplementation(project(":jayo-http-logging-interceptor"))
 
     testFixturesApi(testFixtures("dev.jayo:jayo:${catalogVersion("jayo")}"))
-    testFixturesApi(testFixtures("dev.jayo:jayo-scheduler:${catalogVersion("jayo")}"))
+    testFixturesApi(testFixtures("dev.jayo:jayo-scheduler:${catalogVersion("jayoScheduler")}"))
     testFixturesImplementation("com.squareup.okhttp3:mockwebserver3:${catalogVersion("okhttp")}")
     testFixturesImplementation("org.junit.jupiter:junit-jupiter:${catalogVersion("junit")}")
     testFixturesImplementation("org.assertj:assertj-core:${catalogVersion("assertj")}")
