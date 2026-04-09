@@ -138,9 +138,10 @@ public final class RealCall implements Call {
 
     static {
         try {
-            STATE_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "state", int.class);
-            EVENT_LISTENER_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "eventListener", EventListener.class);
-            TAGS_HANDLE = MethodHandles.lookup().findVarHandle(RealCall.class, "tags", Tags.class);
+            final var lookup = MethodHandles.lookup();
+            STATE_HANDLE = lookup.findVarHandle(RealCall.class, "state", int.class);
+            EVENT_LISTENER_HANDLE = lookup.findVarHandle(RealCall.class, "eventListener", EventListener.class);
+            TAGS_HANDLE = lookup.findVarHandle(RealCall.class, "tags", Tags.class);
         } catch (ReflectiveOperationException e) {
             throw new ExceptionInInitializerError(e);
         }
