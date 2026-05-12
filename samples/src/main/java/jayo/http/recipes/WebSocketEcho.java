@@ -44,7 +44,7 @@ public final class WebSocketEcho implements WebSocketListener {
     }
 
     @Override
-    public void onEnqueued(@NonNull Call call, @NonNull Dispatcher dispatcher) {
+    public void onEnqueued(@NonNull Call call, @NonNull ClientDispatcher dispatcher) {
         System.out.println("Enqueued for async execution");
     }
 

@@ -28,7 +28,7 @@ import mockwebserver3.junit5.StartStop
 import org.junit.jupiter.api.Test
 import java.time.Duration
 
-class DispatcherCleanupTest {
+class ClientDispatcherCleanupTest {
     @StartStop
     private val server = MockWebServer()
 

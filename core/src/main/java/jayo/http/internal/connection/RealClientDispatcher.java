@@ -22,7 +22,7 @@
 package jayo.http.internal.connection;
 
 import jayo.http.Call;
-import jayo.http.Dispatcher;
+import jayo.http.ClientDispatcher;
 import jayo.http.internal.Utils;
 import jayo.http.internal.connection.RealCall.AsyncCall;
 import jayo.scheduler.TaskRunner;
@@ -36,7 +36,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
-public final class RealDispatcher implements Dispatcher {
+public final class RealClientDispatcher implements ClientDispatcher {
     private final int maxRequests;
     private final int maxRequestsPerHost;
     private @Nullable TaskRunner taskRunnerOrNull = null;
@@ -60,10 +60,10 @@ public final class RealDispatcher implements Dispatcher {
      */
     private final Collection<RealCall> runningSyncCalls = new ArrayDeque<>();
 
-    public RealDispatcher(final int maxRequests,
-                          final int maxRequestsPerHost,
-                          final @Nullable ExecutorService executorServiceOrNull,
-                          final @Nullable Runnable idleCallback) {
+    public RealClientDispatcher(final int maxRequests,
+                                final int maxRequestsPerHost,
+                                final @Nullable ExecutorService executorServiceOrNull,
+                                final @Nullable Runnable idleCallback) {
         this.maxRequests = maxRequests;
         this.maxRequestsPerHost = maxRequestsPerHost;
         this.executorServiceOrNull = executorServiceOrNull;
@@ -342,7 +342,7 @@ public final class RealDispatcher implements Dispatcher {
         }
     }
 
-    public static final class Builder implements Dispatcher.Builder {
+    public static final class Builder implements ClientDispatcher.Builder {
         private int maxRequests = 64;
         private int maxRequestsPerHost = 5;
         private @Nullable ExecutorService executorServiceOrNull = null;
@@ -379,8 +379,8 @@ public final class RealDispatcher implements Dispatcher {
         }
 
         @Override
-        public @NonNull RealDispatcher build() {
-            return new RealDispatcher(maxRequests, maxRequestsPerHost, executorServiceOrNull, idleCallback);
+        public @NonNull RealClientDispatcher build() {
+            return new RealClientDispatcher(maxRequests, maxRequestsPerHost, executorServiceOrNull, idleCallback);
         }
     }
 }

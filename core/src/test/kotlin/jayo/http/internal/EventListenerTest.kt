@@ -2314,7 +2314,7 @@ abstract class EventListenerTest(private val listenerInstalledOn: ListenerInstal
                 Call::class.java to FailingCall(),
                 Call.AsyncCall::class.java to FailingCall.Async(),
                 Connection::class.java to factory.newConnection(pool, route),
-                Dispatcher::class.java to Dispatcher.builder().build(),
+                ClientDispatcher::class.java to ClientDispatcher.builder().build(),
                 Handshake::class.java to handshake,
                 HttpUrl::class.java to url,
                 JayoException::class.java to JayoException("boom"),

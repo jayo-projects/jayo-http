@@ -45,19 +45,19 @@ class ClientRuleEventListener(
 
     override fun dispatcherQueueStart(
         asyncCall: Call.AsyncCall,
-        dispatcher: Dispatcher,
+        dispatcher: ClientDispatcher,
     ) {
-        logWithTime("dispatcherQueueStart: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
+        logWithTime("dispatcherQueueStart: queuedCallsCount=${(dispatcher as RealClientDispatcher).queuedCallsCount()}")
     }
 
     override fun dispatcherQueueEnd(
         asyncCall: Call.AsyncCall,
-        dispatcher: Dispatcher,
+        dispatcher: ClientDispatcher,
     ) {
-        logWithTime("dispatcherQueueEnd: queuedCallsCount=${(dispatcher as RealDispatcher).queuedCallsCount()}")
+        logWithTime("dispatcherQueueEnd: queuedCallsCount=${(dispatcher as RealClientDispatcher).queuedCallsCount()}")
     }
 
-    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) {
+    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: ClientDispatcher) {
         logWithTime("dispatcherExecution")
     }
 

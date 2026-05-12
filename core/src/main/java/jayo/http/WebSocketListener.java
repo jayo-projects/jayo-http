@@ -29,7 +29,7 @@ public interface WebSocketListener {
     /**
      * Invoked when a web socket is enqueued to the dispatcher.
      */
-    default void onEnqueued(final @NonNull Call call, @NonNull Dispatcher dispatcher) {
+    default void onEnqueued(final @NonNull Call call, @NonNull ClientDispatcher dispatcher) {
     }
 
     /**

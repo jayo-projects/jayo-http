@@ -54,7 +54,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     private final @NonNull List<@NonNull ConnectionSpec> connectionSpecs;
     final NetworkSocket.@NonNull Builder networkSocketBuilder;
     private final @NonNull CookieJar cookieJar;
-    final @NonNull RealDispatcher dispatcher;
+    final @NonNull RealClientDispatcher dispatcher;
     private final @NonNull Dns dns;
     private final EventListener.@NonNull Factory eventListenerFactory;
     private final boolean fastFallback;
@@ -168,7 +168,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
     }
 
     @Override
-    public @NonNull Dispatcher getDispatcher() {
+    public @NonNull ClientDispatcher getDispatcher() {
         return dispatcher;
     }
 
@@ -347,7 +347,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         private @Nullable ConnectionPool connectionPool = null;
         private @NonNull List<@NonNull ConnectionSpec> connectionSpecs;
         private @NonNull CookieJar cookieJar;
-        private @NonNull RealDispatcher dispatcher;
+        private @NonNull RealClientDispatcher dispatcher;
         private @NonNull Dns dns;
         private EventListener.@NonNull Factory eventListenerFactory;
         private boolean fastFallback = true;
@@ -372,7 +372,7 @@ public final class RealJayoHttpClient implements JayoHttpClient {
             this.certificatePinner = CertificatePinner.DEFAULT;
             this.connectionSpecs = DEFAULT_CONNECTION_SPECS;
             this.cookieJar = CookieJar.NO_COOKIES;
-            this.dispatcher = new RealDispatcher.Builder().build();
+            this.dispatcher = new RealClientDispatcher.Builder().build();
             this.dns = Dns.SYSTEM;
             this.eventListenerFactory = ignoredCall -> EventListener.NONE;
             this.hostnameVerifier = JayoHostnameVerifier.INSTANCE;
@@ -482,9 +482,9 @@ public final class RealJayoHttpClient implements JayoHttpClient {
         }
 
         @Override
-        public @NonNull Builder dispatcher(final @NonNull Dispatcher dispatcher) {
+        public @NonNull Builder dispatcher(final @NonNull ClientDispatcher dispatcher) {
             Objects.requireNonNull(dispatcher);
-            if (!(dispatcher instanceof RealDispatcher realDispatcher)) {
+            if (!(dispatcher instanceof RealClientDispatcher realDispatcher)) {
                 throw new IllegalArgumentException("dispatcher must be a RealDispatcher");
             }
             this.dispatcher = realDispatcher;

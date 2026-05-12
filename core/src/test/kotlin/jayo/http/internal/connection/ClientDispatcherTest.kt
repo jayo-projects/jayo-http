@@ -36,15 +36,15 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertFailsWith
 
-class DispatcherTest {
+class ClientDispatcherTest {
     @RegisterExtension
     val clientTestRule = JayoHttpClientTestRule()
     private val executorAndListener = RecordingExecutor(this)
     val callback = RecordingCallback()
 
-    val dispatcherBuilder = Dispatcher.builder()
+    val dispatcherBuilder = ClientDispatcher.builder()
         .executorService(executorAndListener)
-    val dispatcher: RealDispatcher by lazy { dispatcherBuilder.build() as RealDispatcher }
+    val dispatcher: RealClientDispatcher by lazy { dispatcherBuilder.build() as RealClientDispatcher }
     val eventRecorder = EventRecorder()
     val client: JayoHttpClient by lazy {
         clientTestRule

@@ -83,8 +83,8 @@ import java.util.List;
  * The threads and connections that are held will be released automatically if they remain idle. But if you are writing
  * an application that needs to aggressively release unused resources, you may do so.
  * <p>
- * Shutdown the dispatcher with {@linkplain Dispatcher#shutdown(Duration)}. This will also cause future calls to the
- * client to be rejected.
+ * Shutdown the dispatcher with {@linkplain ClientDispatcher#shutdown(Duration)}. This will also cause future calls to
+ * the client to be rejected.
  * <pre>
  * {@code
  * // Trigger shutdown of the dispatcher, leaving a few seconds
@@ -160,7 +160,7 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
      * @return the dispatcher used to set policy and execute sync and async requests.
      */
     @NonNull
-    Dispatcher getDispatcher();
+    ClientDispatcher getDispatcher();
 
     @NonNull
     Dns getDns();
@@ -314,7 +314,7 @@ public sealed interface JayoHttpClient extends Call.Factory, WebSocket.Factory p
          * Sets the dispatcher used to set policy and execute sync and async requests.
          */
         @NonNull
-        Builder dispatcher(final @NonNull Dispatcher dispatcher);
+        Builder dispatcher(final @NonNull ClientDispatcher dispatcher);
 
         /**
          * Sets the DNS service used to lookup IP addresses for hostnames.

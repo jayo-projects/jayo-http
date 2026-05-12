@@ -42,13 +42,13 @@ sealed class CallEvent {
     data class DispatcherQueueStart(
         override val timestampNs: Long,
         override val call: Call,
-        val dispatcher: Dispatcher,
+        val dispatcher: ClientDispatcher,
     ) : CallEvent()
 
     data class DispatcherQueueEnd(
         override val timestampNs: Long,
         override val call: Call,
-        val dispatcher: Dispatcher,
+        val dispatcher: ClientDispatcher,
     ) : CallEvent() {
         override fun closes(event: CallEvent): Boolean = event is DispatcherQueueStart && call == event.call
     }
@@ -56,7 +56,7 @@ sealed class CallEvent {
     data class DispatcherExecution(
         override val timestampNs: Long,
         override val call: Call,
-        val dispatcher: Dispatcher,
+        val dispatcher: ClientDispatcher,
     ) : CallEvent()
 
     data class ProxySelected(
