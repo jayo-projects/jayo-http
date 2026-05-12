@@ -75,21 +75,23 @@ public final class AggregateEventListener implements EventListener {
     }
 
     @Override
-    public void dispatcherQueueStart(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+    public void dispatcherQueueStart(final Call.@NonNull AsyncCall asyncCall,
+                                     final @NonNull ClientDispatcher dispatcher) {
         for (final var delegate : eventListeners) {
             delegate.dispatcherQueueStart(asyncCall, dispatcher);
         }
     }
 
     @Override
-    public void dispatcherQueueEnd(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+    public void dispatcherQueueEnd(final Call.@NonNull AsyncCall asyncCall,
+                                   final @NonNull ClientDispatcher dispatcher) {
         for (final var delegate : eventListeners) {
             delegate.dispatcherQueueEnd(asyncCall, dispatcher);
         }
     }
 
     @Override
-    public void dispatcherExecution(final Call.@NonNull AsyncCall asyncCall, @NonNull Dispatcher dispatcher) {
+    public void dispatcherExecution(final Call.@NonNull AsyncCall asyncCall, @NonNull ClientDispatcher dispatcher) {
         for (final var delegate : eventListeners) {
             delegate.dispatcherExecution(asyncCall, dispatcher);
         }

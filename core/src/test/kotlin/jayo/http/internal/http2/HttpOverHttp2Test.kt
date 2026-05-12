@@ -28,6 +28,7 @@ import jayo.Writer
 import jayo.http.*
 import jayo.http.Credentials.basic
 import jayo.http.EventListener
+import jayo.http.MediaType
 import jayo.http.http2.ErrorCode
 import jayo.http.http2.ErrorCode.REFUSED_STREAM
 import jayo.http.http2.JayoStreamResetException
@@ -44,7 +45,6 @@ import jayo.tls.JayoTlsException
 import jayo.tls.Protocol
 import jayo.tools.JayoTlsUtils
 import mockwebserver3.*
-import mockwebserver3.Dispatcher
 import mockwebserver3.junit5.StartStop
 import okhttp3.Headers.Companion.headersOf
 import okhttp3.internal.http2.Settings
@@ -52,14 +52,10 @@ import okio.GzipSink
 import okio.buffer
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.data.Offset
-import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assumptions.assumeTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Tag
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.extension.RegisterExtension
 import java.net.Authenticator
 import java.net.HttpURLConnection

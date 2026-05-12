@@ -579,7 +579,7 @@ class InterceptorTest {
         val boom = kotlin.RuntimeException("boom!")
         addInterceptor(network) { throw boom }
         val executor = ExceptionCatchingExecutor()
-        val dispatcher = Dispatcher.builder()
+        val dispatcher = ClientDispatcher.builder()
             .executorService(executor)
             .build()
         client =

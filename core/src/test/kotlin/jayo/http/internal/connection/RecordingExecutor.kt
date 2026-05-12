@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
  * A fake executor for testing that never executes anything! Instead, it just keeps track of what's been enqueued.
  */
 internal class RecordingExecutor(
-    private val dispatcherTest: DispatcherTest,
+    private val dispatcherTest: ClientDispatcherTest,
 ) : AbstractExecutorService(), EventListener, WebSocketListener {
     private var shutdown: Boolean = false
     private val calls = mutableListOf<Pair<Call?, RealCall.AsyncCall?>>()
@@ -41,13 +41,13 @@ internal class RecordingExecutor(
         // do not execute
     }
 
-    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) {
+    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: ClientDispatcher) {
         if (!shutdown) {
             calls.add(null to asyncCall as RealCall.AsyncCall)
         }
     }
 
-    override fun onEnqueued(call: Call, dispatcher: Dispatcher) {
+    override fun onEnqueued(call: Call, dispatcher: ClientDispatcher) {
         calls.add(call to null)
     }
 

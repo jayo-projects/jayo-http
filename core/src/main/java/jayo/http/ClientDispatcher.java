@@ -22,7 +22,7 @@
 package jayo.http;
 
 import jayo.JayoException;
-import jayo.http.internal.connection.RealDispatcher;
+import jayo.http.internal.connection.RealClientDispatcher;
 import org.jspecify.annotations.NonNull;
 
 import java.time.Duration;
@@ -34,9 +34,9 @@ import java.util.concurrent.ExecutorService;
  * Each dispatcher uses an {@link ExecutorService} to run async calls internally. If you supply your own executor
  * service, it should be able to run the {@linkplain #getMaxRequests() configured maximum} number of calls concurrently.
  */
-public sealed interface Dispatcher permits RealDispatcher {
+public sealed interface ClientDispatcher permits RealClientDispatcher {
     static @NonNull Builder builder() {
-        return new RealDispatcher.Builder();
+        return new RealClientDispatcher.Builder();
     }
 
     /**
@@ -81,9 +81,9 @@ public sealed interface Dispatcher permits RealDispatcher {
     int queuedCallsCount();
 
     /**
-     * The builder used to create a {@link Dispatcher} instance.
+     * The builder used to create a {@link ClientDispatcher} instance.
      */
-    sealed interface Builder permits RealDispatcher.Builder {
+    sealed interface Builder permits RealClientDispatcher.Builder {
         /**
          * Sets the maximum number of async requests to execute concurrently. Above this, requests are queued in memory,
          * waiting for the running calls to complete. Default is {@code 64}.
@@ -129,6 +129,6 @@ public sealed interface Dispatcher permits RealDispatcher {
         Builder idleCallback(final @NonNull Runnable idleCallback);
 
         @NonNull
-        Dispatcher build();
+        ClientDispatcher build();
     }
 }

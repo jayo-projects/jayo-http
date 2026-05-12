@@ -47,9 +47,9 @@ import java.util.Objects;
  * <ul>
  * <li>call ({@link #callStart(Call)}, {@link #callEnd(Call)}, {@link #callFailed(Call, JayoException)}
  * <ul>
- * <li>dispatcher queue ({@link #dispatcherQueueStart(Call.AsyncCall, Dispatcher)},
- * {@link #dispatcherQueueEnd(Call.AsyncCall, Dispatcher)} and
- * {@link #dispatcherExecution(Call.AsyncCall, Dispatcher)})</li>
+ * <li>dispatcher queue ({@link #dispatcherQueueStart(Call.AsyncCall, ClientDispatcher)},
+ * {@link #dispatcherQueueEnd(Call.AsyncCall, ClientDispatcher)} and
+ * {@link #dispatcherExecution(Call.AsyncCall, ClientDispatcher)})</li>
  * <li>proxy selection ({@link #proxySelected(Call, HttpUrl, Proxy)}</li>
  * <li>dns ({@link #dnsStart(Call, String)}, {@link #dnsEnd(Call, String, List)})</li>
  * <li>connect ({@link #connectStart(Call, InetSocketAddress, Proxy)},
@@ -105,24 +105,28 @@ public interface EventListener {
      * Invoked for async calls that were not executed immediately because resources weren't available. The call will
      * remain in the queue until resources are available.
      * <p>
-     * Use {@link Dispatcher.Builder#maxRequests(int)} and {@link Dispatcher.Builder#maxRequestsPerHost(int)} to
-     * configure how many calls Jayo HTTP performs concurrently.
+     * Use {@link ClientDispatcher.Builder#maxRequests(int)} and
+     * {@link ClientDispatcher.Builder#maxRequestsPerHost(int)} to configure how many calls Jayo HTTP performs
+     * concurrently.
      */
-    default void dispatcherQueueStart(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+    default void dispatcherQueueStart(final Call.@NonNull AsyncCall asyncCall,
+                                      final @NonNull ClientDispatcher dispatcher) {
     }
 
     /**
      * Invoked when this async call will be executed.
      * <p>
-     * This method is only invoked after {@link #dispatcherQueueStart(Call.AsyncCall, Dispatcher)}.
+     * This method is only invoked after {@link #dispatcherQueueStart(Call.AsyncCall, ClientDispatcher)}.
      */
-    default void dispatcherQueueEnd(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+    default void dispatcherQueueEnd(final Call.@NonNull AsyncCall asyncCall,
+                                    final @NonNull ClientDispatcher dispatcher) {
     }
 
     /**
      * Invoked when this async call starts being executed.
      */
-    default void dispatcherExecution(final Call.@NonNull AsyncCall asyncCall, final @NonNull Dispatcher dispatcher) {
+    default void dispatcherExecution(final Call.@NonNull AsyncCall asyncCall,
+                                     final @NonNull ClientDispatcher dispatcher) {
     }
 
     /**
@@ -506,6 +510,6 @@ public interface EventListener {
         EventListener create(final @NonNull Call call);
     }
 
-    public static final @NonNull EventListener NONE = new EventListener() {
+    @NonNull EventListener NONE = new EventListener() {
     };
 }

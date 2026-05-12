@@ -2621,7 +2621,7 @@ class CallTest {
     @Test
     fun canceledBeforeIOSignalsOnFailure() {
         // Force requests to be executed serially.
-        val dispatcher = Dispatcher.builder()
+        val dispatcher = ClientDispatcher.builder()
             .maxRequests(1)
             .build()
         client =

@@ -42,13 +42,13 @@ class EventListenerAdapter : EventListener {
         }
     }
 
-    override fun dispatcherQueueStart(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) =
+    override fun dispatcherQueueStart(asyncCall: Call.AsyncCall, dispatcher: ClientDispatcher) =
         onEvent(DispatcherQueueStart(System.nanoTime(), asyncCall.call(), dispatcher))
 
-    override fun dispatcherQueueEnd(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) =
+    override fun dispatcherQueueEnd(asyncCall: Call.AsyncCall, dispatcher: ClientDispatcher) =
         onEvent(DispatcherQueueEnd(System.nanoTime(), asyncCall.call(), dispatcher))
 
-    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: Dispatcher) =
+    override fun dispatcherExecution(asyncCall: Call.AsyncCall, dispatcher: ClientDispatcher) =
         onEvent(DispatcherExecution(System.nanoTime(), asyncCall.call(), dispatcher))
 
     override fun proxySelected(
