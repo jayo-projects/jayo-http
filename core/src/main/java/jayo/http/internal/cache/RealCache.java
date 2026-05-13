@@ -644,9 +644,8 @@ public final class RealCache implements Cache {
                         .writeDecimalLong(receivedResponseMillis)
                         .writeByte((byte) '\n');
 
-                if (url.isHttps()) {
+                if (url.isHttps() && handshake != null) {
                     writer.writeByte((byte) '\n');
-                    assert handshake != null;
                     writer.write(handshake.getCipherSuite().getJavaName()).writeByte((byte) '\n');
                     writeCertList(writer, handshake.getPeerCertificates());
                     writeCertList(writer, handshake.getLocalCertificates());

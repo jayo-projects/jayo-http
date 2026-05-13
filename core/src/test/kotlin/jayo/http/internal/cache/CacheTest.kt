@@ -284,7 +284,7 @@ class CacheTest {
         server.enqueue(mockResponse.build())
 
         // Make sure that calling skip() doesn't omit bytes from the cache.
-        val request = ClientRequest.builder().url(server.url("/").toJayo()).get()
+        val request = ClientRequest.get(server.url("/").toJayo())
         val response1 = client.newCall(request).execute()
         val in1 = response1.body.reader()
         assertThat(in1.readString("I love ".length.toLong())).isEqualTo("I love ")
@@ -322,7 +322,7 @@ class CacheTest {
                 .body("ABC")
                 .build(),
         )
-        val request = ClientRequest.builder().url(server.url("/").toJayo()).get()
+        val request = ClientRequest.get(server.url("/").toJayo())
         val response1 = client.newCall(request).execute()
         val source = response1.body.reader()
         assertThat(source.readString()).isEqualTo("ABC")
@@ -343,6 +343,115 @@ class CacheTest {
         assertThat(response2.handshake!!.peerCertificates).isEqualTo(serverCerts)
         assertThat(response2.handshake!!.peerPrincipal).isEqualTo(peerPrincipal)
         assertThat(response2.handshake!!.localPrincipal).isEqualTo(localPrincipal)
+    }
+
+    /**
+     * A network interceptor strips the handshake from a real HTTPS response before the CacheInterceptor writes it to
+     * disk. This creates the bug condition: url.isHttps=true but handshake=null. Before the fix,
+     * `assert handshake != null;` in writeTo() threw NPE.
+     */
+    @Test
+    fun httpsResponseWithNullHandshakeDoesNotCrashWriteTo() {
+        enableTls()
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .body("secure content")
+                .addHeader("Cache-Control", "max-age=3600")
+                .build(),
+        )
+
+        client =
+            client
+                .newBuilder()
+                .addNetworkInterceptor { chain ->
+                    chain
+                        .proceed(chain.request())
+                        .newBuilder()
+                        .handshake(null)
+                        .build()
+                }.build()
+
+        val response = client.newCall(ClientRequest.get(server.url("/").toJayo())).execute()
+        assertThat(response.statusCode).isEqualTo(200)
+        assertThat(response.body.string()).isEqualTo("secure content")
+    }
+
+    /**
+     * Verifies the null-handshake fix holds across multiple sequential cache writes, confirming it is not a one-time
+     * race condition.
+     */
+    @Test
+    fun multipleHttpsRequestsWithNullHandshakeAllSucceed() {
+        enableTls()
+        repeat(3) {
+            server.enqueue(
+                MockResponse
+                    .Builder()
+                    .body("response $it")
+                    .addHeader("Cache-Control", "max-age=3600")
+                    .build(),
+            )
+        }
+
+        client =
+            client
+                .newBuilder()
+                .addNetworkInterceptor { chain ->
+                    chain
+                        .proceed(chain.request())
+                        .newBuilder()
+                        .handshake(null)
+                        .build()
+                }.build()
+
+        repeat(3) { i ->
+            val response = client.newCall(ClientRequest.get(server.url("/").toJayo())).execute()
+            assertThat(response.statusCode).isEqualTo(200)
+            assertThat(response.body.string()).isEqualTo("response $i")
+        }
+    }
+
+    /**
+     * When handshake is null for an HTTPS URL, the TLS block is skipped, making the entry unreadable on re-read. The
+     * response should still succeed but won't be served from cache on subsequent requests.
+     */
+    @Test
+    fun httpsResponseWithNullHandshakeIsNotServedFromCache() {
+        enableTls()
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .body("first")
+                .addHeader("Cache-Control", "max-age=3600")
+                .build(),
+        )
+        server.enqueue(
+            MockResponse
+                .Builder()
+                .body("second")
+                .addHeader("Cache-Control", "max-age=3600")
+                .build(),
+        )
+
+        client =
+            client
+                .newBuilder()
+                .addNetworkInterceptor { chain ->
+                    chain
+                        .proceed(chain.request())
+                        .newBuilder()
+                        .handshake(null)
+                        .build()
+                }.build()
+
+        val response1 = client.newCall(ClientRequest.get(server.url("/").toJayo())).execute()
+        assertThat(response1.body.string()).isEqualTo("first")
+
+        // Second request hits the network again because the first entry was not cacheable
+        val response2 = client.newCall(ClientRequest.get(server.url("/").toJayo())).execute()
+        assertThat(response2.body.string()).isEqualTo("second")
+        assertThat(response2.cacheResponse).isNull()
     }
 
     @Test
@@ -370,7 +479,7 @@ class CacheTest {
                 .body("DEF")
                 .build(),
         )
-        val request = ClientRequest.builder().url(server.url("/").toJayo()).get()
+        val request = ClientRequest.get(server.url("/").toJayo())
         val response1 = client.newCall(request).execute()
         assertThat(response1.body.string()).isEqualTo("ABC")
         val response2 = client.newCall(request).execute() // Cached!
@@ -781,10 +890,10 @@ class CacheTest {
                 .body("ABC")
                 .build(),
         )
-        val request1 = ClientRequest.builder().url(server.url("/").toJayo()).get()
+        val request1 = ClientRequest.get(server.url("/").toJayo())
         val response1 = client.newCall(request1).execute()
         assertThat(response1.body.string()).isEqualTo("ABC")
-        val request2 = ClientRequest.builder().url(server.url("/").toJayo()).get()
+        val request2 = ClientRequest.get(server.url("/").toJayo())
         val response2 = client.newCall(request2).execute()
         assertThat(response2.body.string()).isEqualTo("ABC")
     }

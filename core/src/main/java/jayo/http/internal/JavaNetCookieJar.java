@@ -127,6 +127,9 @@ public final class JavaNetCookieJar implements CookieJar {
                 value = value.substring(1, value.length() - 1);
             }
 
+            // Minimal normalization so Cookie.Builder doesn't crash on values like "abc123 ".
+            value = value.trim();
+
             result.add(Cookie.builder()
                     .name(name)
                     .value(value)
