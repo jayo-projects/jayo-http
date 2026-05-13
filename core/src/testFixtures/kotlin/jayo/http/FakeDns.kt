@@ -25,10 +25,11 @@ import jayo.Buffer
 import org.assertj.core.api.Assertions.assertThat
 import java.net.InetAddress
 import java.net.UnknownHostException
+import java.util.*
 
 class FakeDns : Dns {
-    private val hostAddresses: MutableMap<String, List<InetAddress>> = mutableMapOf()
-    private val requestedHosts: MutableList<String> = mutableListOf()
+    private val hostAddresses: MutableMap<String, List<InetAddress>> = Collections.synchronizedMap(mutableMapOf())
+    private val requestedHosts: MutableList<String> = Collections.synchronizedList(mutableListOf())
     private var nextAddress = 0xff000064L // 255.0.0.100 in IPv4; ::ff00:64 in IPv6.
 
     /** Sets the results for `hostname`.  */

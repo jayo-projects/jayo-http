@@ -30,6 +30,7 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
+import static jayo.http.internal.Utils.HEADER_LIMIT;
 import static jayo.http.internal.http2.RealBinaryHeader.*;
 
 final class Hpack {
@@ -127,6 +128,7 @@ final class Hpack {
     // http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-12#section-3.1
     static final class Reader {
         private final @NonNull List<@NonNull RealBinaryHeader> headerList = new ArrayList<>();
+        private long headerListByteCount = 0L;
         private final jayo.@NonNull Reader source;
 
         // Visible for testing.
@@ -157,6 +159,7 @@ final class Hpack {
         List<@NonNull RealBinaryHeader> getAndResetHeaderList() {
             final var result = List.copyOf(headerList);
             headerList.clear();
+            headerListByteCount = 0L;
             return result;
         }
 
@@ -253,13 +256,13 @@ final class Hpack {
         private void readIndexedHeader(final int index) {
             if (isStaticHeader(index)) {
                 final var staticEntry = STATIC_HEADER_TABLE[index];
-                headerList.add(staticEntry);
+                addHeader(staticEntry);
             } else {
                 final var dynamicTableIndex = dynamicTableIndex(index - STATIC_HEADER_TABLE.length);
                 if (dynamicTableIndex < 0 || dynamicTableIndex >= dynamicTable.length) {
                     throw new JayoException("Header index too large " + (index + 1));
                 }
-                headerList.add(dynamicTable[dynamicTableIndex]);
+                addHeader(dynamicTable[dynamicTableIndex]);
             }
         }
 
@@ -271,13 +274,13 @@ final class Hpack {
         private void readLiteralHeaderWithoutIndexingIndexedName(final int index) {
             final var name = getName(index);
             final var value = readByteString();
-            headerList.add(new RealBinaryHeader(name, value));
+            addHeader(new RealBinaryHeader(name, value));
         }
 
         private void readLiteralHeaderWithoutIndexingNewName() {
             final var name = checkLowercase(readByteString());
             final var value = readByteString();
-            headerList.add(new RealBinaryHeader(name, value));
+            addHeader(new RealBinaryHeader(name, value));
         }
 
         private void readLiteralHeaderWithIncrementalIndexingIndexedName(final int nameIndex) {
@@ -311,7 +314,7 @@ final class Hpack {
         private void insertIntoDynamicTable(final @NonNull RealBinaryHeader entry) {
             assert entry != null;
 
-            headerList.add(entry);
+            addHeader(entry);
 
             var index = -1;
             final var delta = entry.hpackSize;
@@ -354,19 +357,27 @@ final class Hpack {
             }
 
             // This is a multibyte value. Read 7 bits at a time.
-            var result = prefixMask;
+            long result = prefixMask;
             var shift = 0;
+            var byteCount = 0;
             while (true) {
+                // An Int.MAX_VALUE payload needs at most 5 continuation bytes after the prefix.
+                if (byteCount == 5) {
+                    throw new JayoException("HPACK integer overflow");
+                }
                 final var b = readByte();
-                if ((b & 0x80) != 0) { // Equivalent to (b >= 128) since b is in [0..255].
-                    result += (b & 0x7f) << shift;
-                    shift += 7;
-                } else {
-                    result += (b << shift); // Last byte.
+                byteCount++;
+                final var increment = ((long) (b & 0x7f)) << shift;
+                if (increment > ((long) Integer.MAX_VALUE) - result) {
+                    throw new JayoException("HPACK integer overflow");
+                }
+                result += increment;
+                if ((b & 0x80) == 0) {
                     break;
                 }
+                shift += 7;
             }
-            return result;
+            return (int) result;
         }
 
         /**
@@ -378,12 +389,30 @@ final class Hpack {
             final var huffmanDecode = (firstByte & 0x80) == 0x80; // 1NNNNNNN
             final var length = readInt(firstByte, PREFIX_7_BITS);
 
+            // If the compressed or decompressed length exceeds the limit, don't even bother.
+            if (headerListByteCount + length > HEADER_LIMIT) {
+                throw new JayoException("header byte count limit of " + HEADER_LIMIT + " exceeded");
+            }
+
             if (huffmanDecode) {
                 final var decodeBuffer = Buffer.create();
                 Huffman.decode(source, length, decodeBuffer);
                 return decodeBuffer.readByteString();
             } else {
                 return source.readByteString(length);
+            }
+        }
+
+        private void addHeader(final @NonNull RealBinaryHeader header) {
+            assert header != null;
+
+            headerList.add(header);
+
+            final var headerSize = header.getName().byteSize() + header.getValue().byteSize();
+            final var newHeaderListSize = headerListByteCount + headerSize;
+            headerListByteCount = newHeaderListSize;
+            if (newHeaderListSize > HEADER_LIMIT) {
+                throw new JayoException("header byte count limit of " + HEADER_LIMIT + " exceeded");
             }
         }
 

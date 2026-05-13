@@ -158,7 +158,6 @@ final class Http2Reader implements AutoCloseable {
                                                                      final int flags,
                                                                      final int streamId) {
         continuation.left = length;
-        continuation.length = continuation.left;
         continuation.padding = padding;
         continuation.flags = flags;
         continuation.streamId = streamId;
@@ -400,7 +399,6 @@ final class Http2Reader implements AutoCloseable {
      */
     private static final class ContinuationRawReader implements RawReader {
         private final @NonNull Reader reader;
-        private int length = 0;
         private int flags = 0;
         private int streamId = 0;
 
@@ -441,8 +439,8 @@ final class Http2Reader implements AutoCloseable {
         private void readContinuationHeader() {
             final var previousStreamId = streamId;
 
-            left = readMedium(reader);
-            length = left;
+            final var length = readMedium(reader);
+            left = length;
             final var type = reader.readByte() & 0xff;
             flags = reader.readByte() & 0xff;
             if (LOGGER.isLoggable(TRACE)) {

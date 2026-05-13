@@ -28,9 +28,9 @@ import org.jspecify.annotations.NonNull;
 
 import java.nio.charset.StandardCharsets;
 
-public final class HeadersReader {
-    private static final int HEADER_LIMIT = 256 * 1024;
+import static jayo.http.internal.Utils.HEADER_LIMIT;
 
+public final class HeadersReader {
     private final @NonNull Reader reader;
     private long headerLimit = HEADER_LIMIT;
 

@@ -27,7 +27,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A non-blocking interface to a web socket. Use the ÷{@linkplain WebSocket.Factory factory} to create instances;
+ * A non-blocking interface to a web socket. Use the {@linkplain WebSocket.Factory factory} to create instances;
  * usually this is {@link JayoHttpClient}.
  * <h2>Web Socket Lifecycle</h2>
  * Upon normal operation each web socket progresses through a sequence of states:
@@ -49,6 +49,15 @@ import org.jspecify.annotations.Nullable;
  * Note that the state progression is independent for each peer. Arriving at a gracefully closed state indicates that a
  * peer has sent all of its outgoing messages and received all of its incoming messages. But it does not guarantee that
  * the other peer will successfully receive all of its incoming messages.
+ * <h2>Message Queue</h2>
+ * Messages enqueued with {@link #send(String)} and {@link #send(ByteString)} are buffered in an outgoing message queue.
+ * This queue has a 16 MiB limit. If a call to {@code send()} would cause the queue to exceed this limit, the web socket
+ * will initiate a graceful shutdown (close code 1001) and {@code send()} will return {@code false}. No exception is
+ * thrown and no {@link WebSocketListener#onFailure(WebSocket, Throwable, ClientResponse)} callback is triggered, so
+ * callers should always check the return value of {@code send()}.
+ * <p>
+ * Use {@link #queueByteSize()} to monitor backpressure before sending. For large payloads, consider breaking them into
+ * smaller messages or using HTTP requests instead.
  */
 public sealed interface WebSocket permits RealWebSocket {
     /**
@@ -62,6 +71,9 @@ public sealed interface WebSocket permits RealWebSocket {
      * include any bytes buffered by the operating system or network intermediaries. This method returns 0 if no
      * messages are waiting in the queue. It may return a nonzero value after the web socket has been canceled; this
      * indicates that enqueued messages were not transmitted.
+     * <p>
+     * Use this to monitor backpressure and avoid exceeding the 16 MiB outgoing message buffer limit. When that limit is
+     * exceeded, the web socket is gracefully shut down.
      */
     long queueByteSize();
 
@@ -69,8 +81,9 @@ public sealed interface WebSocket permits RealWebSocket {
      * Attempts to enqueue {@code text} to be UTF-8 encoded and sent as the data of a text (type {@code 0x1}) message.
      * <p>
      * This method returns true if the message was enqueued. Messages that would overflow the outgoing message buffer
-     * will be rejected and trigger a {@linkplain #close(short, String) graceful shutdown} of this web socket. This method
-     * returns false in that case, and in any other case where this web socket is closing, closed, or canceled.
+     * (16 MiB) will be rejected and trigger a {@linkplain #close(short, String) graceful shutdown} of this web socket.
+     * This method returns false in that case, and in any other case where this web socket is closing, closed, or
+     * canceled.
      * <p>
      * This method returns immediately.
      */

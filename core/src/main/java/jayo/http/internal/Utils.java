@@ -62,6 +62,8 @@ public final class Utils {
     private static final @NonNull AtomicReference</* lateinit */ TaskRunner> DEFAULT_TASK_RUNNER =
             new AtomicReference<>();
 
+    public static final long HEADER_LIMIT = 256 * 1024L; // This is the same as Chrome's limit.
+
     /**
      * @return a lazily computed default executor.
      */

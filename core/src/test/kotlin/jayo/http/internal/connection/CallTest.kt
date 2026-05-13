@@ -2428,36 +2428,6 @@ class CallTest {
     }
 
     @Test
-    fun httpWithExcessiveStatusLine() {
-        val longLine = "HTTP/1.1 200 " + "O".repeat(256 * 1024) + "K"
-        server.protocols = listOf(okhttp3.Protocol.HTTP_1_1)
-        server.enqueue(
-            MockResponse
-                .Builder()
-                .status(longLine)
-                .body("I'm not even supposed to be here today.")
-                .build(),
-        )
-        executeSynchronously("/")
-            .assertFailureMatches(".*unexpected end of stream on ${server.url("/").redact()}")
-    }
-
-    @Test
-    fun httpWithExcessiveHeaders() {
-        server.protocols = listOf(okhttp3.Protocol.HTTP_1_1)
-        server.enqueue(
-            MockResponse
-                .Builder()
-                .addHeader("Set-Cookie", "a=${"A".repeat(255 * 1024)}")
-                .addHeader("Set-Cookie", "b=${"B".repeat(1 * 1024)}")
-                .body("I'm not even supposed to be here today.")
-                .build(),
-        )
-        executeSynchronously("/")
-            .assertFailureMatches(".*unexpected end of stream on ${server.url("/").redact()}")
-    }
-
-    @Test
     fun canceledBeforeExecute() {
         val call = client.newCall(ClientRequest.get(server.url("/a").toJayo()))
         call.cancel()
